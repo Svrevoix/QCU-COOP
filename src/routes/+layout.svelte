@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import './layout.css';
 	import { cartItemCount, cartPieceCount } from '$lib/cart';
+	import { avatarImage } from '$lib/profile';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
@@ -10,15 +12,17 @@
 	let showMobileMenu = $state(false);
 	let searchQuery = $state('');
 	let searchInput = $state<HTMLInputElement>();
-	let isDarkMode = $state(false);
+
+	// Placeholder student identity shown on the profile avatar badge/dropdown.
+	const studentId = '23-1111';
+
+	// Profile dropdown state + a reference to its wrapper so outside clicks can close it.
+	let showProfileMenu = $state(false);
+	let profileMenuContainer = $state<HTMLDivElement>();
 
 	let activeNav = $derived(
 		page.url.pathname === '/' ? 'home' : page.url.pathname.startsWith('/shop') ? 'aisle' : page.url.pathname.startsWith('/products') ? 'product' : 'product'
 	);
-
-	function focusSearch() {
-		searchInput?.focus();
-	}
 
 	function submitSearch() {
 		const query = searchQuery.trim();
@@ -27,15 +31,35 @@
 		goto(`/products?query=${encodeURIComponent(query)}`);
 	}
 
-	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-		localStorage.setItem('qcu-theme', isDarkMode ? 'dark' : 'light');
+	function toggleProfileMenu() {
+		showProfileMenu = !showProfileMenu;
+	}
+
+	function closeProfileMenu() {
+		showProfileMenu = false;
+	}
+
+	function handleLogout() {
+		// Placeholder logout action until real auth is wired up.
+		closeProfileMenu();
+		goto('/');
+	}
+
+	// Closes the dropdown when a click lands outside of its container.
+	function handleWindowClick(event: MouseEvent) {
+		if (!showProfileMenu) return;
+		if (profileMenuContainer && !profileMenuContainer.contains(event.target as Node)) {
+			showProfileMenu = false;
+		}
 	}
 
 	onMount(() => {
-		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
-		document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
+		// Applies the previously saved theme (set from the Account page) on load.
+		const savedTheme = localStorage.getItem('qcu-theme');
+		if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+
+		window.addEventListener('click', handleWindowClick);
+		return () => window.removeEventListener('click', handleWindowClick);
 	});
 </script>
 
@@ -80,20 +104,17 @@
 			</div>
 		</form>
 
-		<div class="flex items-center gap-4 font-medium text-sm shrink-0">
-			<nav class="hidden md:grid grid-cols-3 items-center gap-1 rounded-full bg-[#17233d] border border-white/10 p-1 shadow-inner shadow-black/20">
+		<div class="flex items-center gap-4 font-medium text-sm shrink-0 ml-auto">
+			<nav class="hidden md:grid grid-cols-2 items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
 				<div class="pointer-events-none absolute"></div>
-				<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-[#17233d]' : 'text-zinc-300 hover:text-white'}">
+				<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
 					{#if activeNav === 'home'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
 					Home
 				</a>
-				<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-[#17233d]' : 'text-zinc-300 hover:text-white'}">
+				<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
 					{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
 					Shop
 				</a>
-				<button type="button" onclick={focusSearch} class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors text-zinc-300 hover:text-white">
-					Search
-				</button>
 			</nav>
 
 			<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
@@ -104,13 +125,43 @@
 					{$cartPieceCount}
 				</span>
 			</a>
-			<button type="button" class="theme-toggle" onclick={toggleTheme} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
-				{#if isDarkMode}
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
-				{:else}
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+
+			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
+			<div class="profile-menu-container" bind:this={profileMenuContainer}>
+				<div class="profile-trigger">
+					<span class="student-id-badge" aria-hidden="true">{studentId}</span>
+					<button
+						type="button"
+						class="profile-avatar-button"
+						onclick={toggleProfileMenu}
+						aria-haspopup="menu"
+						aria-expanded={showProfileMenu}
+						aria-label={`Open profile menu. Student ID: ${studentId}`}
+					>
+						{#if $avatarImage}
+							<img src={$avatarImage} alt="" class="profile-avatar-image" />
+						{:else}
+							<span class="profile-avatar" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
+							</span>
+						{/if}
+					</button>
+				</div>
+
+				{#if showProfileMenu}
+					<div class="profile-dropdown" role="menu" transition:fly={{ y: -6, duration: 150 }}>
+						<a href="/account" role="menuitem" class="profile-dropdown-item" onclick={closeProfileMenu}>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
+							<span>Account</span>
+						</a>
+
+						<button type="button" role="menuitem" class="profile-dropdown-item logout-item" onclick={handleLogout}>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 17l5-5-5-5"/><path stroke-linecap="round" d="M21 12H9"/></svg>
+							<span>Logout</span>
+						</button>
+					</div>
 				{/if}
-			</button>
+			</div>
 
 			<button 
 				class="block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition" 
@@ -180,9 +231,28 @@
 	.cart-back-button svg { width: 1.25rem; height: 1.25rem; }
 	.cart-header-title { margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
 	.cart-header-meta { margin: 0.25rem 0 0; color: #a8bddf; font-size: 0.625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-	.theme-toggle { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 0; border-radius: 0.55rem; background: #17233d; color: #d9e8ff; cursor: pointer; transition: background 150ms ease, color 150ms ease; }
-	.theme-toggle:hover { background: #243557; color: white; }
-	.theme-toggle svg { width: 1.1rem; height: 1.1rem; }
+	/* Profile trigger: student ID pill placed left of the avatar button */
+	.profile-menu-container { position: relative; display: inline-flex; }
+	.profile-trigger { display: flex; align-items: center; gap: 0.5rem; }
+	.student-id-badge { background: #2563eb; color: #ffffff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1; padding: 0.35rem 0.7rem; border-radius: 9999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+	.profile-avatar-button { position: relative; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 9999px; background: #17233d; color: #d9e8ff; cursor: pointer; overflow: hidden; transition: background 150ms ease, border-color 150ms ease; }
+	.profile-avatar-button:hover { background: #243557; }
+	.profile-avatar { width: 1.3rem; height: 1.3rem; }
+	.profile-avatar-image { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+
+	/* Dropdown panel: minimalist light theme with subtle border + smooth transitions */
+	.profile-dropdown { position: absolute; top: calc(100% + 0.85rem); right: 0; width: 12rem; background: #ffffff; color: #1f2937; border: 1px solid #e5e9f0; border-radius: 0.85rem; box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16); padding: 0.4rem; z-index: 60; }
+	.profile-dropdown-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.55rem 0.65rem; border: 0; border-radius: 0.6rem; background: transparent; color: #1f2937; font-size: 0.8rem; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+	.profile-dropdown-item svg { width: 1.05rem; height: 1.05rem; flex-shrink: 0; }
+	.profile-dropdown-item:hover { background: #f1f5f9; }
+	.logout-item { color: #dc2626; }
+	.logout-item:hover { background: #fef2f2; color: #b91c1c; }
+
+	:global(html[data-theme='dark'] .profile-dropdown) { background: #172640; border-color: #334866; box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4); }
+	:global(html[data-theme='dark'] .profile-dropdown-item) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .profile-dropdown-item:hover) { background: #223957; }
+	:global(html[data-theme='dark'] .logout-item) { color: #fca5a5; }
+	:global(html[data-theme='dark'] .logout-item:hover) { background: #3b1f24; color: #fecaca; }
 	:global(html[data-theme='dark']) { color-scheme: dark; background: #07152d; }
 	:global(html[data-theme='dark'] body) { background: #07152d; color: #edf4ff; }
 	:global(html[data-theme='dark'] main.min-h-screen) { background: #101d35 !important; }
@@ -228,9 +298,12 @@
 	:global(html[data-theme='light'] .site-header) { background: #ffffff !important; color: #07152d !important; border-bottom: 1px solid #d9e2ec; box-shadow: 0 2px 10px rgba(7, 21, 45, 0.08); }
 	:global(html[data-theme='light'] .site-header > div > a) { color: #07152d !important; }
 	:global(html[data-theme='light'] .site-header input) { background: #f5f7fa !important; border-color: #d9e2ec !important; color: #07152d !important; }
-	:global(html[data-theme='light'] .site-header nav), :global(html[data-theme='light'] .site-header .theme-toggle) { background: #edf2f8 !important; border-color: #d9e2ec !important; box-shadow: none; }
-	:global(html[data-theme='light'] .site-header nav a), :global(html[data-theme='light'] .site-header nav button), :global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header .theme-toggle) { color: #38506f !important; }
+	:global(html[data-theme='light'] .site-header .profile-avatar-button) { background: #edf2f8 !important; border-color: #d9e2ec !important; box-shadow: none; }
+	:global(html[data-theme='light'] .site-header nav) { background: #dbeafe !important; border-color: #93c5fd !important; box-shadow: none; }
+	:global(html[data-theme='light'] .site-header nav a), :global(html[data-theme='light'] .site-header nav button) { color: #1d4ed8 !important; }
+	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
 	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
+	:global(html[data-theme='dark'] .site-header nav) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
 </style>
 
 <main class="min-h-screen bg-zinc-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
