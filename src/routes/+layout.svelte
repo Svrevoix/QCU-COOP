@@ -5,6 +5,8 @@
 	import './layout.css';
 	import { cartItemCount, cartPieceCount } from '$lib/cart';
 	import { avatarImage } from '$lib/profile';
+	import { session, type Role } from '$lib/session';
+	import AuthModal from '$lib/AuthModal.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
@@ -13,12 +15,23 @@
 	let searchQuery = $state('');
 	let searchInput = $state<HTMLInputElement>();
 
-	// Placeholder student identity shown on the profile avatar badge/dropdown.
-	const studentId = '23-1111';
+	// Fallback identity shown on the avatar badge before any session is authenticated.
+	const placeholderStudentId = '23-1111';
+	let displayedId = $derived($session.id ?? placeholderStudentId);
+	let isAdmin = $derived($session.role === 'admin');
 
 	// Profile dropdown state + a reference to its wrapper so outside clicks can close it.
 	let showProfileMenu = $state(false);
 	let profileMenuContainer = $state<HTMLDivElement>();
+
+	// Controls the split-screen auth modal shown after logging out.
+	let showAuthModal = $state(false);
+
+	// Bumping this key remounts <main>, replaying the dashboard entrance animation on demand.
+	let dashboardEntranceKey = $state(0);
+
+	// Bumping this tells the auth modal to wipe any typed credentials on sign-out.
+	let authResetSignal = $state(0);
 
 	let activeNav = $derived(
 		page.url.pathname === '/' ? 'home' : page.url.pathname.startsWith('/shop') ? 'aisle' : page.url.pathname.startsWith('/products') ? 'product' : 'product'
@@ -40,9 +53,26 @@
 	}
 
 	function handleLogout() {
-		// Placeholder logout action until real auth is wired up.
+		// Total session purge: clear auth state, wipe typed credentials, reset every panel/tab
+		// tracking marker, then force a fresh route + remount so no prior sub-page bleeds through.
 		closeProfileMenu();
+		showMobileMenu = false;
+		searchQuery = '';
+		session.logout();
+		authResetSignal += 1;
+		dashboardEntranceKey += 1;
+		showAuthModal = true;
 		goto('/');
+	}
+
+	// Resolves the auth modal's result: hardcoded admin credentials route to the isolated
+	// Admin Workspace, everything else lands back on the store with the entrance animation.
+	// Every authorization explicitly resets routing to its default landing index, overwriting
+	// whatever sub-page was previously active, and forces the dashboard wrapper to remount.
+	function handleAuthenticated(role: Role, id: string) {
+		session.login(role, id);
+		dashboardEntranceKey += 1;
+		goto(role === 'admin' ? '/admin' : '/');
 	}
 
 	// Closes the dropdown when a click lands outside of its container.
@@ -89,79 +119,90 @@
 		<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
 			QCU COOP STORE
 		</a>
-		<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
-			<input 
-				bind:this={searchInput}
-				type="text" 
-				bind:value={searchQuery}
-				placeholder="Search essentials, uniforms..." 
-				class="w-full bg-zinc-900/60 border border-zinc-800 focus:border-blue-500 rounded-xl px-4 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 outline-none transition"
-			/>
-			<div class="absolute right-3 top-2.5 text-zinc-500 pointer-events-none">
-				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-				</svg>
-			</div>
-		</form>
+		{#if !isAdmin}
+			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
+				<input 
+					bind:this={searchInput}
+					type="text" 
+					bind:value={searchQuery}
+					placeholder="Search essentials, uniforms..." 
+					class="w-full bg-zinc-900/60 border border-zinc-800 focus:border-blue-500 rounded-xl px-4 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 outline-none transition"
+				/>
+				<div class="absolute right-3 top-2.5 text-zinc-500 pointer-events-none">
+					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					</svg>
+				</div>
+			</form>
+		{/if}
 
 		<div class="flex items-center gap-4 font-medium text-sm shrink-0 ml-auto">
-			<nav class="hidden md:grid grid-cols-2 items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
-				<div class="pointer-events-none absolute"></div>
-				<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
-					{#if activeNav === 'home'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
-					Home
-				</a>
-				<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
-					{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
-					Shop
-				</a>
-			</nav>
+			{#if !isAdmin}
+				<nav class="hidden md:grid grid-cols-2 items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
+					<div class="pointer-events-none absolute"></div>
+					<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
+						{#if activeNav === 'home'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
+						Home
+					</a>
+					<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
+						{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
+						Shop
+					</a>
+				</nav>
 
-			<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-				</svg>
-				<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
-					{$cartPieceCount}
-				</span>
-			</a>
+				<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+					</svg>
+					<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
+						{$cartPieceCount}
+					</span>
+				</a>
+			{/if}
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
-			<div class="profile-menu-container" bind:this={profileMenuContainer}>
-				<div class="profile-trigger">
-					<span class="student-id-badge" aria-hidden="true">{studentId}</span>
-					<button
-						type="button"
-						class="profile-avatar-button"
-						onclick={toggleProfileMenu}
-						aria-haspopup="menu"
-						aria-expanded={showProfileMenu}
-						aria-label={`Open profile menu. Student ID: ${studentId}`}
-					>
-						{#if $avatarImage}
-							<img src={$avatarImage} alt="" class="profile-avatar-image" />
-						{:else}
-							<span class="profile-avatar" aria-hidden="true">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
-							</span>
-						{/if}
-					</button>
-				</div>
-
-				{#if showProfileMenu}
-					<div class="profile-dropdown" role="menu" transition:fly={{ y: -6, duration: 150 }}>
-						<a href="/account" role="menuitem" class="profile-dropdown-item" onclick={closeProfileMenu}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
-							<span>Account</span>
-						</a>
-
-						<button type="button" role="menuitem" class="profile-dropdown-item logout-item" onclick={handleLogout}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 17l5-5-5-5"/><path stroke-linecap="round" d="M21 12H9"/></svg>
-							<span>Logout</span>
+			<!-- Keyed on role+id so the avatar visual force-resets/remounts on every identity change. -->
+			{#key `${$session.role}:${$session.id}`}
+				<div class="profile-menu-container" bind:this={profileMenuContainer}>
+					<div class="profile-trigger">
+						<span class="student-id-badge" aria-hidden="true">{displayedId}</span>
+						<button
+							type="button"
+							class="profile-avatar-button"
+							onclick={toggleProfileMenu}
+							aria-haspopup="menu"
+							aria-expanded={showProfileMenu}
+							aria-label={`Open profile menu. Student ID: ${displayedId}`}
+						>
+							{#if isAdmin}
+								<span class="profile-avatar" aria-hidden="true">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z" stroke-linejoin="round"/></svg>
+								</span>
+							{:else if $avatarImage}
+								<img src={$avatarImage} alt="" class="profile-avatar-image" />
+							{:else}
+								<span class="profile-avatar" aria-hidden="true">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
+								</span>
+							{/if}
 						</button>
 					</div>
-				{/if}
-			</div>
+
+					{#if showProfileMenu}
+						<div class="profile-dropdown" role="menu" transition:fly={{ y: -6, duration: 150 }}>
+							<a href="/account" role="menuitem" class="profile-dropdown-item" onclick={closeProfileMenu}>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path stroke-linecap="round" d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
+								<span>Account</span>
+							</a>
+
+							<button type="button" role="menuitem" class="profile-dropdown-item logout-item" onclick={handleLogout}>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 17l5-5-5-5"/><path stroke-linecap="round" d="M21 12H9"/></svg>
+								<span>Logout</span>
+							</button>
+						</div>
+					{/if}
+				</div>
+			{/key}
 
 			<button 
 				class="block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition" 
@@ -304,8 +345,19 @@
 	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
 	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
 	:global(html[data-theme='dark'] .site-header nav) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
+
+	/* Fade + slide entrance replayed on reload (fresh mount) or right after a successful login (key bump) */
+	@keyframes dashboard-enter {
+		from { opacity: 0; transform: translateY(22px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.dashboard-enter { animation: dashboard-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 </style>
 
-<main class="min-h-screen bg-zinc-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
-	{@render children()}
-</main>
+{#key dashboardEntranceKey}
+	<main class="min-h-screen bg-zinc-50 font-sans" class:dashboard-enter={$session.role !== 'guest'} style="font-family: 'Montserrat', sans-serif;">
+		{@render children()}
+	</main>
+{/key}
+
+<AuthModal bind:open={showAuthModal} onAuthenticated={handleAuthenticated} resetSignal={authResetSignal} />
