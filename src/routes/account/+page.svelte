@@ -3,7 +3,7 @@
 	import { avatarImage } from '$lib/profile';
 
 	// Placeholder student identity until real auth/profile data is wired up.
-	const studentId = '23-1111';
+	const studentId = '23-2111';
 	const studentName = 'Student Account';
 
 	let fileInput = $state<HTMLInputElement>();
