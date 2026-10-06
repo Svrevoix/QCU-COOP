@@ -1,0 +1,8 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	const receiving = page.params.workflow !== 'return';
+	let saved = $state(false);
+	const title = receiving ? 'Purchase Item' : 'Purchase Return';
+</script>
+<svelte:head><title>{title} | QCU Coop Admin</title></svelte:head>
+<div class="admin-page"><a href="/staff/admin/inventory">Back to inventory</a><p class="admin-eyebrow">Purchasing</p><h1 class="admin-title">{title}</h1><p class="admin-subtitle">{receiving ? 'Receiving Report: record delivered items against a supplier purchase order.' : 'Return Report: document goods returned to a supplier.'}</p>{#if saved}<p role="status">Transaction draft saved for review.</p>{/if}<form onsubmit={(event)=>{event.preventDefault();saved=true}}><div>{#each ['Supplier', receiving ? 'Purchase order number' : 'Return reference', receiving ? 'Receiving date' : 'Return date', 'Warehouse'] as field}<label>{field}<input required placeholder={`Enter ${field.toLowerCase()}`} /></label>{/each}</div><label>Remarks<textarea rows="3" placeholder="Add receiving or return notes"></textarea></label><h2>Line items</h2><input placeholder="SKU or item name" aria-label="Item" /><input type="number" min="1" placeholder="Quantity" aria-label="Quantity" /><input placeholder="Unit cost" aria-label="Unit cost" /><a href="/staff/admin/inventory">Cancel</a><button type="submit">Save transaction</button></form></div>
