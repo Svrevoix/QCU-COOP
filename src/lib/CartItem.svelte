@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CartItem as CartItemData } from '$lib/cart';
+	import { handleImageError } from '$lib/imageFallback';
 
 	let { item, selected, selectionMode, onSelectionChange, onQuantityChange }: {
 		item: CartItemData;
@@ -12,9 +13,7 @@
 	const formatPrice = (value: number) =>
 		new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
 
-	function productIcon(category: string) {
-		return category === 'uniforms' ? 'shirt' : category === 'supplies' || category === 'textbooks' ? 'notebook' : 'lanyard';
-	}
+	const placeholderImage = 'images/attires/placeholder-shirt.png';
 </script>
 
 <article class="cart-item">
@@ -22,14 +21,9 @@
 		<input type="checkbox" checked={selected} onchange={(event) => onSelectionChange(event.currentTarget.checked)} />
 		<span aria-hidden="true"></span>
 	</label>
-	<div class="product-icon" aria-hidden="true">
-		{#if productIcon(item.category) === 'lanyard'}
-			<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M24 7l8 9-8 10-8-10 8-9Z"/><path d="M24 26v10M19 41h10v-5H19v5Z" stroke-linejoin="round"/></svg>
-		{:else if productIcon(item.category) === 'shirt'}
-			<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m16 14 5-4h6l5 4 8 5-7 5-3-4v17H18V23l-5 3-5-7 8-5Z" stroke-linejoin="round"/></svg>
-		{:else}
-			<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="13" y="8" width="22" height="32" rx="1"/><path d="M18 16h12M18 22h12M18 28h8" stroke-linecap="round"/></svg>
-		{/if}
+	<div class="product-icon">
+		<img src={item.image || placeholderImage} alt={item.name} onerror={(event) => handleImageError(event, item.name)} />
+		<span class="sr-only">Product image for {item.name}</span>
 	</div>
 	<div class="item-details">
 		<h2>{item.name}</h2>
@@ -51,8 +45,9 @@
 	.item-select span { width: 1.15rem; height: 1.15rem; border: 1.5px solid #aebdd0; border-radius: 0.3rem; background: white; transition: background 150ms ease, border-color 150ms ease; }
 	.item-select input:checked + span { border-color: #155bd8; background: #155bd8; box-shadow: inset 0 0 0 3px white; }
 	.item-select input:focus-visible + span { outline: 2px solid #155bd8; outline-offset: 2px; }
-	.product-icon { display: grid; place-items: center; width: 5.25rem; height: 5.25rem; border: 1px solid #d7e0ec; border-radius: 0.7rem; background: #f5f8fc; color: #1860b5; }
-	.product-icon svg { width: 2.55rem; height: 2.55rem; }
+	.product-icon { display: grid; place-items: center; width: 5.25rem; aspect-ratio: 1; overflow: hidden; border: 1px solid #d7e0ec; border-radius: 0.7rem; background: #f5f8fc; color: #1860b5; }
+	.product-icon img { display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; padding: 0.45rem; box-sizing: border-box; object-fit: contain; object-position: center; }
+	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 	.item-details h2 { margin: 0; font-size: 0.98rem; font-weight: 800; line-height: 1.3; }
 	.item-details p, .item-details code { display: block; margin: 0.25rem 0 0; color: #7890b6; font-size: 0.77rem; font-weight: 600; }
 	.item-details code, .item-price { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

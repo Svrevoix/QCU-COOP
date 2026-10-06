@@ -39,4 +39,10 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
+## Authentication
+
+The login routes use signed, HTTP-only session cookies. Development-only demo credentials are `23-2111` / `password` for a customer, `00-0000` / `password1` for an admin, and `11-1111` / `password2` for a cashier. Demo accounts are disabled in production.
+
+Set `SESSION_SECRET` and the account variables in `.env.example` in the deployment environment, or replace `authenticate()` in `src/lib/server/auth.ts` with the application's persistent identity provider. Customer sign-up remains unavailable until a persistent account store is connected.
+
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

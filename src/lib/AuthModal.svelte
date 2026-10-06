@@ -114,7 +114,7 @@
 
 					<div class="form-header">
 						<span class="brand-logo" aria-hidden="true">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z" stroke-linejoin="round" /></svg>
+							<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
 						</span>
 						<h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
 						<p class="form-subtitle">{mode === 'login' ? 'Sign in with your student credentials' : 'Register using your student ID'}</p>
@@ -278,17 +278,12 @@
 
 	.form-header { text-align: center; margin-bottom: clamp(1rem, 3vh, 1.4rem); }
 	.brand-logo {
-		display: grid;
-		place-items: center;
-		width: 3rem;
-		height: 3rem;
+		display: block;
+		width: 8rem;
 		margin: 0 auto 0.75rem;
-		border-radius: 9999px;
-		background: #2563eb;
-		color: #ffffff;
 		flex-shrink: 0;
 	}
-	.brand-logo svg { width: 1.5rem; height: 1.5rem; }
+	.brand-logo img { display: block; width: 8rem; height: auto; margin: 0 auto; }
 	.form-header h1 { margin: 0; font-size: clamp(0.95rem, 2.2vw, 1.15rem); font-weight: 800; overflow-wrap: break-word; }
 	.form-subtitle { margin: 0.35rem 0 0; font-size: clamp(0.68rem, 1.6vw, 0.75rem); font-weight: 600; color: var(--form-muted); overflow-wrap: break-word; }
 

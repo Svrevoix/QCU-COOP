@@ -6,6 +6,8 @@ export type ProductVariant = {
 export interface Product {
 	id: string;
 	name: string;
+	image?: string;
+	images?: string[];
 	price?: number;
 	sku: string;
 	variants?: ProductVariant[];
@@ -177,6 +179,113 @@ const categoryDefinitions: CategoryDefinition[] = [
 	}
 ];
 
+const productImages: Record<string, string> = {
+	'Badge Pin (25MM)': 'images/accessories/small_pin-removebg.webp',
+	'Badge Pin (32MM)': 'images/accessories/small_pin2-removebg.webp',
+	'Badge Pin (58MM)': 'images/accessories/small_pin_1_-removebg.webp',
+	'Coin Purse': 'images/accessories/cinamoroll-wallet-removebg-.webp',
+	'Duo Small Keychain': 'images/accessories/small_keychain-removebg.webp',
+	'Regular Keychain': 'images/accessories/medium_keychain-removebg.webp',
+	'Big Keychain': 'images/accessories/large-keychain-removebg.webp',
+	'San Rio': 'images/accessories/sanrio-removebg.webp',
+	'Flower Hair Clip': 'images/accessories/flower_pink-removebg.webp',
+	'Hair Clip (Large)': 'images/accessories/butterfly-blue-removebg-preview.webp',
+	'Hair Clip (Regular)': 'images/accessories/hairpins-removebg.webp',
+	'Hair Clip (Small)': 'images/accessories/clips-black-removebg.webp',
+	'Fashion Pin (Large)': 'images/accessories/perdibles-removebg.webp',
+	'Fashion Pin (Medium)': 'images/accessories/small_pin-removebg.webp',
+	'Pardible with Design': 'images/accessories/perdibles-removebg.webp',
+	'Pardible': 'images/accessories/perdibles-removebg.webp',
+	'Ballpen (Black)': 'images/stationaries/ballpen-black-removebg.webp',
+	'Ballpen (Blue)': 'images/stationaries/ballpen-blue-removebg.webp',
+	'Ballpen (Red)': 'images/stationaries/ballpen-red-removebg.webp',
+	'Eraser': 'images/stationaries/eraser-white-removebg.webp',
+	'Sharpener': 'images/stationaries/sharpener-removebg.webp',
+	'Marker (Permanent)': 'images/stationaries/permanent_marker-black-removebg.webp',
+	'Marker (Whiteboard)': 'images/stationaries/whiteboard_marker-blue-removebg.webp',
+	'Chalk': 'images/stationaries/chalks-white-removebg.webp',
+	'Tape': 'images/stationaries/transparent-tape-removebg.webp',
+	'Correction Tape': 'images/stationaries/correction-tape-removebg.webp',
+	'Glue': 'images/stationaries/glue-regular-removebg.webp',
+	'Glue Stick (Small)': 'images/stationaries/glue-stick-removebg.webp',
+	'Glue Stick (Big)': 'images/stationaries/glue-stick-removebg.webp',
+	'Bond Paper (A4)': 'images/stationaries/a4_bond-paper-removebg.webp',
+	'Bond Paper (Long)': 'images/stationaries/long_bond-paper-removebg.webp',
+	'Bond Paper (Short)': 'images/stationaries/short_bond-paper-removebg.webp',
+	'Manila Paper': 'images/stationaries/manila-paper-removebg.webp',
+	'Folder (Colored Long)': 'images/stationaries/folder_long-removebg.webp',
+	'Folder (Long Cover)': 'images/stationaries/folder_long-removebg.webp',
+	'Folder (Long)': 'images/stationaries/folder_long-removebg.webp',
+	'Folder (Colored Short)': 'images/stationaries/folder_short-removebg.webp',
+	'Folder (Short Cover)': 'images/stationaries/folder_short-removebg.webp',
+	'Folder (Short)': 'images/stationaries/folder_short-removebg.webp',
+	'Long Brown Envelope': 'images/stationaries/envelope-brown-long-removebg.webp',
+	'Short Brown Envelope': 'images/stationaries/envelope-brown-short-removebg.webp',
+	'Plastic Envelope (Short)': 'images/stationaries/envelope_short-plastic-removebg.webp',
+	'Binder Clips': 'images/stationaries/binder_clip-removebg.webp',
+	'Binder Clips (Large)': 'images/stationaries/binder_clip-removebg.webp',
+	'Paper Fastener': 'images/stationaries/fasteners-removebg.webp',
+	'Thumbtacks': 'images/stationaries/push-pins-removebg.webp',
+	'Protractor': 'images/stationaries/protractor-removebg.webp',
+	'Ruler': 'images/stationaries/transparent-ruler-removebg.webp',
+	'Scissors': 'images/stationaries/scissor-removebg.webp',
+	'Rexona Deo': 'images/hygiene/deodorant.webp',
+	'Toothbrush': 'images/hygiene/toothbrush.webp',
+	'Toothpaste': 'images/hygiene/toothpaste.webp',
+	'Wet Wipes': 'images/hygiene/baby-wipes.webp',
+	'Band Aid with Cotton Balls': 'images/hygiene/band-aid-removebg.webp',
+	'CBAA T-Shirt (XS, S, M, L, XL, 2XL, 3XL)': 'images/attires/qcu_shirt-uniform-boys.webp',
+	'JPIA T-Shirt (XS, S, M, L, XL, 2XL)': 'images/attires/jpia_shirt-white-green.webp',
+	'Female Blouse (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL)': 'images/attires/qcu-uniform-girls.webp',
+	'Female Slacks (XS, S, M, L, XL, 2XL, 3XL, 4XL)': 'images/attires/qcu_pants.webp',
+	'Male Polo (XS, S, M, L, XL, 2XL, 3XL, 4XL)': 'images/attires/qcu_shirt-uniform-boys.webp',
+	'Male Pants (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL)': 'images/attires/qcu_pants.webp',
+	'P.E. T-Shirt (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL)': 'images/attires/pe_shirt-yellow.webp',
+	'P.E. Pants (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL)': 'images/attires/pe_pants-blue.webp',
+	'NSTP T-Shirt (XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL)': 'images/attires/nstp_shirt-green.webp',
+	'CCS (IT, IS, CS) Department Uniforms': 'images/attires/qcu_shirt-uniform-boys.webp',
+	'COE (ECE, IE, CE) Department Uniforms': 'images/attires/qcu_shirt-uniform-boys.webp',
+	'COA (BSA, BSMA) Department Uniforms': 'images/attires/qcu-uniform-girls.webp',
+	'COB (ENTREP) Department Uniforms': 'images/attires/qcu_shirt-uniform-boys.webp',
+	'COED (EDUC) Department Uniforms': 'images/attires/faculty-blue.webp',
+	'ID Lace Case (Landscape)': 'images/lanyards/id_lace-case-landscape.webp',
+	'ID Lace Case (Portrait)': 'images/lanyards/id_lace-case-portrait.webp',
+	'Lanyard (Admin)': 'images/lanyards/lanyard-admin.webp',
+	'Lanyard (Faculty)': 'images/lanyards/lanyard-faculty.webp',
+	'Lanyard (BS Accountancy)': 'images/lanyards/lanyard-accountancy.webp',
+	'Lanyard (BS Computer Engineering)': 'images/lanyards/lanyard_computer-engineering.webp',
+	'Lanyard (BS Computer Science)': 'images/lanyards/lanyard_computer-science.webp',
+	'Lanyard (BS Education)': 'images/lanyards/lanyard-early-childhood-education.webp',
+	'Lanyard (BS Electrical Engineering)': 'images/lanyards/lanyard-electronic-engineering.webp',
+	'Lanyard (BS Electronics Engineering)': 'images/lanyards/lanyard-electronic-engineering.webp',
+	'Lanyard (BS Entrep)': 'images/lanyards/lanyard-entrepreneurship.webp',
+	'Lanyard (BS Industrial Engineering)': 'images/lanyards/lanyard-industrial-engineering.webp',
+	'Lanyard (BS Information System)': 'images/lanyards/lanyard_information-systems.webp',
+	'Lanyard (BS Information Technology)': 'images/lanyards/lanyard-information-technology.webp',
+	'Lanyard (BS Management in Accounting)': 'images/lanyards/lanyard-management-accountancy.webp'
+};
+
+const productImageSets: Record<string, string[]> = {
+	'Badge Pin (25MM)': ['images/accessories/small_pin-removebg.webp', 'images/accessories/small_pin2-removebg.webp', 'images/accessories/small_pin_1_-removebg.webp'],
+	'Coin Purse': ['images/accessories/cinamoroll-wallet-removebg-.webp', 'images/accessories/wallet-hellokitty-removebg.webp'],
+	'Regular Keychain': ['images/accessories/medium_keychain-removebg.webp', 'images/accessories/medium-keychains-removebg.webp', 'images/accessories/keychain_medium-removebg.webp'],
+	'Big Keychain': ['images/accessories/large-keychain-removebg.webp', 'images/accessories/large_keychain-removebg.webp'],
+	'Flower Hair Clip': [
+		'images/accessories/flower_blue-green-removebg.webp', 'images/accessories/flower_pink-green-removebg.webp',
+		'images/accessories/flower_pink-removebg.webp', 'images/accessories/flower_red-removebg.webp',
+		'images/accessories/flower_violet-removebg.webp', 'images/accessories/flower_white-pink-removebg.webp',
+		'images/accessories/flower_white-removebg.webp', 'images/accessories/flower_yellow-green-removebg.webp',
+		'images/accessories/flower_yellow-removebg.webp'
+	],
+	'Hair Clip (Large)': [
+		'images/accessories/butterfly-blue-removebg-preview.webp', 'images/accessories/butterfly-pink-removebg.webp',
+		'images/accessories/butterfly-violet-removebg.webp', 'images/accessories/butterfly-yellow-removebg.webp'
+	],
+	'Ballpen (Sign Pen)': ['images/stationaries/sign_pen-blue-removebg.webp', 'images/stationaries/sign_pen-red-removebg.webp'],
+	'Filler Notebook': ['images/stationaries/notebook-1.webp', 'images/stationaries/notebook.webp'],
+	Facemask: ['images/hygiene/face_mask-black-50-removebg.webp', 'images/hygiene/face_mask-white-10-removebg.webp']
+};
+
 export const productCatalog: Product[] = categoryDefinitions.flatMap(({ category, prefix, items }) =>
 	items.map((item, index) => {
 		const name = typeof item === 'string' ? item : item.name;
@@ -185,6 +294,8 @@ export const productCatalog: Product[] = categoryDefinitions.flatMap(({ category
 		return {
 			id: `${prefix.toLowerCase()}-${index + 1}`,
 			name,
+			image: productImages[name] ?? productImageSets[name]?.[0],
+			images: productImageSets[name],
 			sku: variants?.[0]?.sku ?? `${prefix}-${String(index + 1).padStart(3, '0')}`,
 			category,
 			...(variants ? { variants, price: variants[0].price } : typeof item === 'string' ? {} : { price: item.price })

@@ -1,0 +1,8 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	const labels = { 'beginning-inventory': ['Inventory Setup', 'Beginning Inventory'], 'actual-count': ['Physical Count', 'Actual Count'], 'adjusted-item': ['Inventory Adjustment', 'Adjusted Item'], 'transfer-item': ['Transfer Slip', 'Transfer Item'] } as const;
+	let label = $derived(labels[page.params.workflow as keyof typeof labels] ?? labels['actual-count']);
+	let saved = $state(false);
+</script>
+<svelte:head><title>{label[0]} | QCU Coop Admin</title></svelte:head>
+<div class="admin-page"><a href="/staff/admin/inventory">Back to inventory</a><p class="admin-eyebrow">Inventory control / {label[1]}</p><h1 class="admin-title">{label[0]}</h1><p class="admin-subtitle">Create a controlled record for this inventory workflow.</p>{#if saved}<p role="status">Workflow saved and queued for approval.</p>{/if}<form onsubmit={(event)=>{event.preventDefault();saved=true}}><div>{#each ['Reference number', 'Transaction date', 'Warehouse', 'Prepared by'] as field}<label>{field}<input required placeholder={`Enter ${field.toLowerCase()}`} /></label>{/each}</div><label>Reason<select><option>Stock count correction</option><option>Opening balance</option><option>Damaged goods</option><option>Warehouse transfer</option></select></label><h2>Items to process</h2><input placeholder="SKU or item name" aria-label="Item" /><input type="number" min="0" placeholder="System quantity" aria-label="System quantity" /><input type="number" min="0" placeholder="New quantity" aria-label="New quantity" /><label>Notes<textarea rows="3" placeholder="Explain the adjustment or transfer"></textarea></label><a href="/staff/admin/inventory">Cancel</a><button type="submit">Save workflow</button></form></div>

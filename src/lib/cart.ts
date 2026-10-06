@@ -4,6 +4,7 @@ import { derived, writable } from 'svelte/store';
 export type CartItem = {
 	productId: string;
 	name: string;
+	image?: string;
 	variant: string;
 	sku: string;
 	unitPrice: number;
