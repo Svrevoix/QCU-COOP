@@ -35,8 +35,10 @@
 		if (pathname.startsWith('/staff/admin/inventory/profiles/') || pathname.startsWith('/staff/admin/inventory/purchases/') || pathname.startsWith('/staff/admin/inventory/adjustments/')) return 'inventory-form';
 		if (pathname.startsWith('/staff/admin/inventory')) return 'inventory';
 		if (pathname.startsWith('/staff/admin/reports')) return 'reports';
+		if (pathname === '/staff/admin/settings') return 'admin-settings';
 		if (pathname === '/staff/admin' || pathname.startsWith('/staff/admin/dashboard')) return 'admin-dashboard';
 		if (pathname === '/cart') return 'cart';
+		if (pathname === '/orders') return 'orders';
 		if (pathname.startsWith('/products')) return 'products';
 		if (pathname.startsWith('/shop')) return 'shop';
 		if (pathname.startsWith('/about')) return 'about';
@@ -159,7 +161,7 @@
 			</div>
 		</div>
 	</header>
-{:else if !page.url.pathname.startsWith('/staff')}
+{:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login'}
 <header class="site-header bg-[#050c1e] text-white shadow-md relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
 	<div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 		
@@ -204,6 +206,9 @@
 					<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
 						{$cartPieceCount}
 					</span>
+				</a>
+				<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
 				</a>
 			{/if}
 
@@ -280,6 +285,7 @@
 			</form>
 
 			<a href="/shop" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Shop</a>
+			<a href="/orders" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Purchase history</a>
 			<a href="/about" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>About</a>
 			
 		</div>
@@ -395,9 +401,15 @@
 	:global(html[data-theme='light'] .site-header .profile-avatar-button) { background: #edf2f8 !important; border-color: #d9e2ec !important; box-shadow: none; }
 	:global(html[data-theme='light'] .site-header nav) { background: #dbeafe !important; border-color: #93c5fd !important; box-shadow: none; }
 	:global(html[data-theme='light'] .site-header nav a), :global(html[data-theme='light'] .site-header nav button) { color: #1d4ed8 !important; }
-	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
+	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header a[aria-label='Purchase history']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
 	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
 	:global(html[data-theme='dark'] .site-header nav) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
+	@media (max-width: 560px) {
+		:global(.site-header > div) { gap: .5rem; }
+		:global(.site-header > div > .ml-auto) { gap: .35rem; }
+		:global(.site-header .student-id-badge) { display: none; }
+		:global(.site-header > div > a:first-child) { font-size: .9rem !important; letter-spacing: .08em !important; }
+	}
 	.page-loading-overlay { position: fixed; z-index: 200; inset: 0; overflow: auto; background: #f3f6fa; color: #172b4d; }
 	.loading-stage { display: grid; min-height: 100vh; grid-template-columns: minmax(0, 1fr); }
 	.loading-stage.staff-loading { grid-template-columns: 17rem minmax(0, 1fr); }
@@ -440,6 +452,7 @@
 	.loading-section { width: min(100%, 72rem); margin: 2rem auto; padding: 0 1.25rem; }.loading-section-title { width: 12rem; height: 1.1rem; margin-bottom: 1rem; border-radius: .3rem; }
 	.loading-shop-card .loading-image { height: 14rem; }.loading-product-card .loading-image { height: 9rem; }.loading-product-card .loading-card-copy { min-height: 8rem; }
 	.loading-account { width: min(100%, 38rem); margin: 0 auto; }.loading-account-center { display: grid; justify-items: center; gap: .65rem; padding: 2rem 0; }.loading-profile-avatar { width: 6rem; height: 6rem; border-radius: 50%; }.loading-settings-row { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #edf1f5; padding-top: 1rem; }.loading-settings-row i:first-child { width: 7rem; height: .75rem; }.loading-settings-row i:last-child { width: 2.5rem; height: 1.3rem; border-radius: 1rem; }
+	.loading-orders { width: min(100%, 65rem); margin: 0 auto; }.loading-order-filters { display: flex; gap: .5rem; margin-bottom: 1.5rem; }.loading-order-filters i { width: 7rem; height: 2.6rem; border-radius: 2rem; }.loading-order-filters i:nth-child(3) { width: 9rem; }.loading-order-panel { margin-bottom: 1rem; }.loading-order-title { width: 5rem; height: 1rem; margin-bottom: .5rem; }.loading-order-item { display: grid; grid-template-columns: 1.15rem 4.25rem minmax(0, 1fr) 7rem 5rem; align-items: center; gap: .9rem; border-top: 1px solid #edf1f5; padding: .85rem 0; }.loading-order-checkbox { width: 1rem; height: 1rem; border-radius: .25rem; }.loading-order-thumbnail { width: 4.25rem; height: 4.25rem; border-radius: .6rem; }.loading-order-copy { display: grid; gap: .45rem; }.loading-order-copy i:first-child { width: 70%; height: .8rem; }.loading-order-copy i:last-child { width: 35%; height: .6rem; }.loading-order-quantity { width: 6.5rem; height: 2.3rem; border-radius: .5rem; }.loading-order-price { width: 4.5rem; height: .8rem; }
 	.loading-cart { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 1.5rem; }.loading-cart-item { display: grid; grid-template-columns: 5rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; border-bottom: 1px solid #edf1f5; padding: 1rem 0; }.loading-cart-image { width: 5rem; height: 5rem; border-radius: .6rem; }.loading-cart-copy { display: grid; gap: .6rem; }.loading-cart-copy i { width: 65%; height: .65rem; }.loading-cart-copy i:first-child { width: 82%; height: .85rem; }.loading-cart-price { width: 4rem; height: .85rem; }.loading-cart-summary { display: grid; align-content: start; gap: 1rem; }.loading-cart-summary i { height: .75rem; }.loading-cart-summary i:last-child { height: 2.5rem; margin-top: .5rem; border-radius: .5rem; }
 	.loading-dashboard-charts { display: grid; grid-template-columns: 1.5fr 1fr; gap: .85rem; margin-bottom: 1.1rem; }.loading-chart { display: flex; height: 10rem; align-items: flex-end; justify-content: space-around; gap: .5rem; padding-top: 1rem; }.loading-chart i { width: 7%; min-height: 20%; }.loading-chart i:nth-child(3n) { height: 78%; }.loading-chart i:nth-child(3n + 1) { height: 48%; }.loading-chart i:nth-child(3n + 2) { height: 62%; }.loading-report-filters { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: .7rem; margin-top: 1.2rem; }.loading-filter { display: grid; gap: .45rem; }.loading-filter i:first-child { width: 45%; height: .55rem; }.loading-filter i:last-child { width: 100%; height: 2.4rem; }
 	.loading-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }.loading-form-field { display: grid; gap: .45rem; }.loading-form-field i:first-child { width: 45%; height: .6rem; }.loading-form-field i:last-child { height: 2.6rem; }
@@ -463,6 +476,25 @@
 	@media (max-width: 639px) { .loading-products-grid { grid-template-columns: 1fr; } }
 	@media (max-width: 560px) { .loading-cart-summary { min-height: 5.75rem; }.loading-cart-summary i:first-child { width: 7rem; }.loading-cart-summary i:last-child { width: 7rem; height: 2.75rem; } }
 	@media (prefers-reduced-motion: reduce) { .skeleton-block, .loading-block, .loading-stat i, .loading-table-row i, .loading-card-copy i, .loading-image, .loading-cart-item i, .loading-cart-summary i, .loading-chart i, .loading-filter i, .loading-form-field i, .loading-panel-heading i, .loading-topbar-actions i { animation: none; } }
+
+	.loading-admin-settings { width: min(100%, 38rem); margin: 0; }
+	.loading-admin-profile { display: grid; justify-items: center; gap: .65rem; padding: .75rem 0 1rem; }
+	.loading-admin-profile > i:not(:first-child) { height: .7rem; border-radius: .3rem; }
+	.loading-admin-details { display: grid; width: min(100%, 22rem); gap: .55rem; margin: .5rem auto 1.25rem; }
+	.loading-admin-detail-row { display: flex; justify-content: space-between; gap: 1rem; }
+	.loading-admin-detail-row i { width: 42%; height: .65rem; border-radius: .3rem; }
+	.loading-admin-detail-row i:last-child { width: 35%; }
+	.loading-admin-preferences { border-top: 1px solid #edf1f5; padding-top: 1.1rem; }
+	.loading-admin-section-title { width: 7rem; height: .8rem; margin-bottom: .8rem; }
+	.loading-admin-setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
+	.loading-admin-setting-row i:first-child { width: 7rem; height: .7rem; }
+	.loading-admin-setting-row i:last-child { width: 2.5rem; height: 1.3rem; border-radius: 1rem; }
+	.loading-admin-password { display: grid; gap: .75rem; }
+	.loading-admin-password-field { display: grid; gap: .35rem; }
+	.loading-admin-password-field i:first-child { width: 7rem; height: .6rem; }
+	.loading-admin-password-field i:last-child { height: 2.4rem; border-radius: .55rem; }
+	.loading-admin-password-button { width: 8rem; height: 2.2rem; margin-top: .75rem; border-radius: .5rem; }
+	@media (max-width: 560px) { .loading-admin-detail-row { gap: .65rem; }.loading-admin-detail-row i { width: 48%; }.loading-admin-detail-row i:last-child { width: 40%; } }
 
 	/* Fade + slide entrance replayed on reload (fresh mount) or right after a successful login (key bump) */
 	@keyframes dashboard-enter {
@@ -517,6 +549,8 @@
 					<div class="loading-body" class:loading-narrow={loadingKind === 'account'} class:user-account={loadingKind === 'account' && !isStaffWorkspace}>
 						{#if loadingKind === 'account'}
 							<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><section class="loading-panel loading-account"><div class="loading-panel-heading"><i></i></div><div class="loading-account-center"><i class="skeleton-block loading-profile-avatar"></i><i class="loading-block" style="width: 9rem"></i><i class="loading-block" style="width: 6rem"></i></div><div class="loading-settings-row"><i class="skeleton-block"></i><i class="skeleton-block"></i></div></section>
+						{:else if loadingKind === 'orders'}
+						<div class="loading-orders"><div class="loading-heading"><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><div class="loading-order-filters">{#each [0, 1, 2, 3] as filter (filter)}<i class="skeleton-block"></i>{/each}</div>{#each [0, 1] as order (order)}<section class="loading-panel loading-order-panel"><div class="loading-panel-heading"><i></i><i></i></div><i class="loading-block loading-order-title"></i>{#each [0, 1, 2] as item (item)}<div class="loading-order-item"><i class="skeleton-block loading-order-checkbox"></i><i class="skeleton-block loading-order-thumbnail"></i><div class="loading-order-copy"><i class="loading-block"></i><i class="loading-block"></i></div><i class="skeleton-block loading-order-quantity"></i><i class="skeleton-block loading-order-price"></i></div>{/each}</section>{/each}</div>
 						{:else if loadingKind === 'shop'}
 						<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i></div><div class="loading-cards loading-shop-grid">{#each [0, 1, 2, 3, 4, 5] as card (card)}<article class="loading-card loading-shop-card"><div class="loading-image"></div><div class="loading-card-copy"><i></i><i></i><i></i></div></article>{/each}</div>
 						{:else if loadingKind === 'products'}
@@ -525,6 +559,14 @@
 						<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><div class="loading-about-grid"><section class="loading-panel loading-about-copy">{#each [0, 1, 2, 3, 4, 5, 6, 7] as line (line)}<i class="skeleton-block"></i>{/each}</section><section class="loading-panel loading-about-copy">{#each [0, 1, 2, 3, 4] as line (line)}<i class="skeleton-block"></i>{/each}</section></div>
 						{:else if loadingKind === 'cart'}
 						<div class="loading-topbar"><i class="skeleton-block loading-mark"></i><div class="loading-card-copy"><i style="width: 8rem"></i><i style="width: 5rem"></i></div></div><div class="loading-body"><div class="loading-heading"><i class="loading-block title"></i></div><div class="loading-cart"><section class="loading-panel">{#each [0, 1, 2] as item (item)}<div class="loading-cart-item"><i class="skeleton-block loading-cart-image"></i><div class="loading-cart-copy"><i></i><i></i></div><i class="skeleton-block loading-cart-price"></i></div>{/each}</section><section class="loading-panel loading-cart-summary"><i class="skeleton-block"></i><i class="skeleton-block"></i></section></div></div>
+						{:else if loadingKind === 'admin-settings'}
+						<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div>
+						<section class="loading-panel loading-admin-settings">
+							<div class="loading-panel-heading"><i></i></div>
+							<div class="loading-admin-profile"><i class="skeleton-block loading-profile-avatar"></i><i class="loading-block" style="width: 11rem"></i><i class="loading-block" style="width: 8rem"></i></div>
+							<div class="loading-admin-details">{#each [0, 1, 2, 3] as row (row)}<div class="loading-admin-detail-row"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</div>
+							<div class="loading-admin-preferences"><i class="loading-block loading-admin-section-title"></i><div class="loading-admin-setting-row"><i class="skeleton-block"></i><i class="skeleton-block"></i></div><i class="loading-block loading-admin-section-title"></i><div class="loading-admin-password">{#each [0, 1] as field (field)}<div class="loading-admin-password-field"><i class="loading-block"></i><i class="skeleton-block"></i></div>{/each}</div><i class="skeleton-block loading-admin-password-button"></i></div>
+						</section>
 						{:else if loadingKind === 'admin-dashboard'}
 						<div class="loading-heading"><i class="loading-block short"></i><div class="loading-panel-heading"><i class="loading-block title"></i><i class="skeleton-block" style="width: 5rem"></i></div><i class="loading-block subtitle"></i></div><div class="loading-stats">{#each [0, 1, 2, 3] as stat (stat)}<article class="loading-stat"><i></i><i></i><i></i></article>{/each}</div><div class="loading-dashboard-charts"><section class="loading-panel"><div class="loading-panel-heading"><i></i><i></i></div><div class="loading-chart">{#each [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as bar (bar)}<i class="skeleton-block"></i>{/each}</div></section><section class="loading-panel"><div class="loading-panel-heading"><i></i></div><div class="loading-account-center"><i class="skeleton-block loading-profile-avatar"></i><i class="loading-block" style="width: 7rem"></i></div></section></div><section class="loading-panel"><div class="loading-panel-heading"><i></i><i></i></div><div class="loading-cards">{#each [0, 1, 2] as group (group)}<div class="loading-card-copy"><i></i><i></i><i></i><i></i></div>{/each}</div></section>
 						{:else if loadingKind === 'inventory'}
