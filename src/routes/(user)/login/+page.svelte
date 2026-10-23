@@ -12,5 +12,5 @@
 </main>
 
 <style>
-	.login-page { display: grid; min-height: calc(100vh - 4rem); place-items: center; padding: 2rem 1rem; background: #f2f6fb; }
+	.login-page { display: grid; min-height: 100vh; place-items: center; padding: 2rem 1rem; background: #f2f6fb; }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CartItem from '$lib/CartItem.svelte';
 	import { cartItems, cartTotal, removeFromCart, updateCartQuantity } from '$lib/cart';
+	import { recordPurchaseOrder } from '$lib/orders';
 	import { onMount } from 'svelte';
 
 	type CheckoutStage = 'review' | 'qr' | null;
@@ -56,6 +57,12 @@
 
 	function confirmOrder() {
 		orderReference = `QCU-${Date.now().toString().slice(-8)}`;
+		recordPurchaseOrder({
+			id: orderReference,
+			date: new Date().toISOString().slice(0, 10),
+			status: 'Ready for pickup',
+			items: checkoutCartItems.map((item) => ({ ...item }))
+		});
 		checkoutStage = 'qr';
 	}
 
