@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	let { mode, errorMessage = '', initialMode = 'login' }: { mode: 'user' | 'staff'; errorMessage?: string; initialMode?: 'login' | 'signup' } = $props();
+	let { mode, errorMessage = '', successMessage = '', initialMode = 'login' }: { mode: 'user' | 'staff'; errorMessage?: string; successMessage?: string; initialMode?: 'login' | 'signup' } = $props();
 	function getInitialMode(): 'login' | 'signup' {
 		return mode === 'user' && initialMode === 'signup' ? 'signup' : 'login';
 	}
 	let activeMode = $state<'login' | 'signup'>(getInitialMode());
 	let showPassword = $state(false);
-	let studentId = $state('');
+	let loginId = $state('');
+	let signupRole = $state<'student' | 'teacher'>('student');
 	let isDarkMode = $state(false);
 	let isLoading = $state(true);
 
@@ -26,10 +27,6 @@
 		localStorage.setItem('qcu-theme', isDarkMode ? 'dark' : 'light');
 	}
 
-	function handleStudentIdInput(event: Event) {
-		const digits = (event.currentTarget as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6);
-		studentId = digits.length <= 2 ? digits : `${digits.slice(0, 2)}-${digits.slice(2)}`;
-	}
 </script>
 
 <div class="auth-overlay">
@@ -70,14 +67,23 @@
 							<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
 						</span>
 						<h1>{activeMode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
-						<p class="form-subtitle">{mode === 'staff' ? 'Sign in with your employee credentials' : activeMode === 'login' ? 'Sign in with your student credentials' : 'Register using your student ID'}</p>
+						<p class="form-subtitle">{activeMode === 'signup' ? 'Register with your email address' : 'Sign in with your QCU account'}</p>
 					</div>
 
 					<form method="POST" class="auth-form">
-						<label class="field">
-							<span class="field-label">{mode === 'staff' ? 'Employee ID' : 'ID Number'}</span>
-							<input name="studentId" type="text" inputmode="numeric" placeholder="01-2345" maxlength="7" value={studentId} oninput={handleStudentIdInput} autocomplete="username" required />
-						</label>
+						{#if activeMode === 'signup'}
+							<label class="field"><span class="field-label">Account type</span><select name="role" bind:value={signupRole}><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
+							<div class="signup-name-row"><label class="field"><span class="field-label">First name</span><input name="firstName" autocomplete="given-name" required /></label><label class="field"><span class="field-label">Last name</span><input name="lastName" autocomplete="family-name" required /></label></div>
+							<label class="field"><span class="field-label">{signupRole === 'student' ? 'Student number' : 'Employee number'}</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} placeholder={signupRole === 'student' ? 'e.g. 23-2111' : 'Employee number'} required /></label>
+							<label class="field"><span class="field-label">Email address</span><input name="email" type="email" autocomplete="email" placeholder="name@qcu.edu.ph" required /></label>
+							<label class="field"><span class="field-label">Department</span><input name="department" required /></label>
+							{#if signupRole === 'student'}
+								<label class="field"><span class="field-label">Course / program</span><input name="course" required /></label>
+								<label class="field"><span class="field-label">Year level</span><select name="yearLevel" required><option value="">Select year level</option>{#each [1, 2, 3, 4, 5, 6] as year}<option value={year}>{year}{year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} year</option>{/each}</select></label>
+							{/if}
+						{:else}
+							<label class="field"><span class="field-label">Student / employee number</span><input name="loginId" type="text" placeholder="e.g. 23-2111" bind:value={loginId} autocomplete="username" required /></label>
+						{/if}
 
 						<label class="field">
 							<span class="field-label">Password</span>
@@ -92,6 +98,7 @@
 								</button>
 							</div>
 						</label>
+						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
 
 						{#if errorMessage}<p class="auth-error" role="alert">{errorMessage}</p>{/if}
 
@@ -167,8 +174,12 @@
 	.forgot-link { margin: .65rem auto 0; color: #2563eb; font-size: .75rem; font-weight: 700; text-decoration: none; }
 	.forgot-link:hover { text-decoration: underline; }
 	.auth-error { margin: -.25rem 0 0; color: #dc2626; font-size: .72rem; font-weight: 700; }
+	.auth-success { margin: -.25rem 0 0; color: #15803d; font-size: .72rem; font-weight: 700; line-height: 1.5; }
+	.signup-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+	.field select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--field-border); border-radius: .7rem; background: var(--field-bg); padding: .65rem .85rem; color: var(--form-text); font: inherit; font-size: .85rem; }
+	.auth-modal:has(.form-panel.signup) { height: min(90vh, 48rem); }
 	:global(html[data-theme='dark'] .auth-modal) { --form-bg: #172640; --form-text: #edf4ff; --form-muted: #b8c8dd; --field-bg: #101d35; --field-border: #415878; }
 	:global(html[data-theme='dark'] .theme-toggle-corner:hover) { background: #223957; }
 	:global(html[data-theme='dark'] .pill-outline:hover), :global(html[data-theme='dark'] .pill-outline.active) { border-color: #7ec8ff; color: #7ec8ff; }
-	@media (max-width: 640px) { .auth-modal { height: min(34rem, 94vh); } .image-panel { display: none; } .form-panel { left: 0; width: 100%; } .form-panel.signup { transform: none; } }
+	@media (max-width: 640px) { .auth-modal { height: min(90vh, 48rem); } .image-panel { display: none; } .form-panel { left: 0; width: 100%; } .form-panel.signup { transform: none; }.signup-name-row { grid-template-columns: 1fr; gap: .5rem; } }
 </style>

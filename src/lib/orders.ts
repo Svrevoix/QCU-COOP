@@ -10,6 +10,9 @@ export type PurchaseOrder = {
 	date: string;
 	status: OrderStatus;
 	items: CartItem[];
+	subtotal?: number;
+	discount?: number;
+	total?: number;
 };
 
 const storageKey = 'qcu-coop-purchase-history';

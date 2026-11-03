@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { handleImageError } from '$lib/imageFallback';
 	import { productCatalog } from '$lib/products';
@@ -15,7 +16,9 @@
 		supplies: { title: 'School supplies', desc: 'Notebooks, exam materials, and drafting kits — the everyday restock list.' }
 	};
 
-	const featuredProductIds = ['sup-1', 'unf-1', 'mer-1'];
+	// Keep the rotating hero on products with catalog artwork so it never opens
+	// on a missing-image fallback (the QCU Jacket currently has no image asset).
+	const featuredProductIds = ['sup-1', 'unf-1', 'mer-3'];
 	const featuredProducts = productCatalog.filter(p => featuredProductIds.includes(p.id));
 	const placeholderImage = 'images/attires/placeholder-shirt.png';
 
@@ -75,6 +78,11 @@
 	});
 </script>
 
+<svelte:head>
+	<title>QCU Coop Store</title>
+	<meta name="description" content="Shop QCU uniforms, school supplies, and cooperative merchandise." />
+</svelte:head>
+
 <section class="hero-section bg-blue-900 text-white pt-12 pb-24 md:pt-16 md:pb-20 px-4 font-sans relative overflow-hidden">
 	<div class="hero-inner max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
 		
@@ -87,12 +95,14 @@
 				Lanyards, uniforms, and school supplies at member pricing. Every peso you spend here counts toward your patronage refund.
 			</p>
 			<div class="flex flex-wrap gap-4 pt-2">
-				<a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg text-sm transition">
-					Login
+				<a href={page.data.user ? '/shop' : '/login'} class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg text-sm transition">
+					{page.data.user ? 'Shop now' : 'Login'}
 				</a>
-				<button class="text-white hover:text-blue-200 font-semibold px-4 py-3 text-sm transition underline underline-offset-4">
-					What to put?
-				</button>
+				{#if page.data.user}
+					<a href="/account" class="text-white hover:text-blue-200 font-semibold px-4 py-3 text-sm transition underline underline-offset-4">My profile</a>
+				{:else}
+					<button type="button" class="text-white hover:text-blue-200 font-semibold px-4 py-3 text-sm transition underline underline-offset-4">What to put?</button>
+				{/if}
 			</div>
 		</div>
 
@@ -130,9 +140,11 @@
 				{/each}
 			</div>
 			<div class="featured-controls absolute left-1/2 top-full z-10 mt-5 -translate-x-1/2">
-				<a href="/shop" class="block rounded-full bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-blue-700">
-					See all
-				</a>
+				{#if page.data.user}
+					<a href="/shop" class="block rounded-full bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-blue-700">
+						See all
+					</a>
+				{/if}
 			</div>
 		</div>
 

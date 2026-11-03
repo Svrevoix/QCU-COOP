@@ -3,6 +3,7 @@
 	import { cartItems, cartTotal, removeFromCart, updateCartQuantity } from '$lib/cart';
 	import { recordPurchaseOrder } from '$lib/orders';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 
 	type CheckoutStage = 'review' | 'qr' | null;
 
@@ -10,6 +11,7 @@
 	let orderReference = $state('');
 	let isEditingCart = $state(false);
 	let checkoutItemKeys = $state<string[]>([]);
+	const memberTeacher = $derived(page.data.user?.role === 'teacher' && page.data.user?.coopMember === true);
 	let deletionItemKeys = $state<string[]>([]);
 
 	const formatPrice = (value: number) =>
@@ -17,7 +19,9 @@
 
 	let checkoutCartItems = $derived($cartItems.filter((item) => checkoutItemKeys.includes(item.productId + item.sku)));
 	let checkoutPieceCount = $derived(checkoutCartItems.reduce((sum, item) => sum + item.quantity, 0));
-	let checkoutTotal = $derived(checkoutCartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
+	let checkoutSubtotal = $derived(checkoutCartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
+	let checkoutDiscount = $derived(memberTeacher ? Math.round(checkoutSubtotal * 0.2 * 100) / 100 : 0);
+	let checkoutTotal = $derived(checkoutSubtotal - checkoutDiscount);
 	let activeSelectionKeys = $derived(isEditingCart ? deletionItemKeys : checkoutItemKeys);
 	let qrPayload = $derived(`QCU-COOP|${orderReference}|TOTAL:${checkoutTotal.toFixed(2)}|ITEMS:${checkoutPieceCount}`);
 	let qrCodeUrl = $derived(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=svg&data=${encodeURIComponent(qrPayload)}`);
@@ -61,7 +65,10 @@
 			id: orderReference,
 			date: new Date().toISOString().slice(0, 10),
 			status: 'Ready for pickup',
-			items: checkoutCartItems.map((item) => ({ ...item }))
+			items: checkoutCartItems.map((item) => ({ ...item })),
+			subtotal: checkoutSubtotal,
+			discount: checkoutDiscount,
+			total: checkoutTotal
 		});
 		checkoutStage = 'qr';
 	}
@@ -144,6 +151,7 @@
 						<div class="checkout-line"><div><strong>{item.name}</strong><span>{item.variant} · {item.quantity} pc{item.quantity === 1 ? '' : 's'}</span></div><b>{formatPrice(item.unitPrice * item.quantity)}</b></div>
 					{/each}
 				</div>
+				{#if memberTeacher}<div class="checkout-line"><span>Items subtotal</span><b>{formatPrice(checkoutSubtotal)}</b></div><div class="checkout-line"><span>Cooperative member discount (20%)</span><b>−{formatPrice(checkoutDiscount)}</b></div>{/if}
 				<div class="checkout-total"><span>Total to pay</span><strong>{formatPrice(checkoutTotal)}</strong></div>
 				<button type="button" class="confirm-button" onclick={confirmOrder}>Confirm order <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
 			{:else}

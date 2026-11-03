@@ -8,11 +8,11 @@
 		groups,
 		selection,
 		variant = 'sidebar'
-	} = $props<{
+	}: {
 		groups: Group[];
 		selection: Selection;
 		variant?: 'sidebar' | 'light';
-	}>();
+	} = $props();
 	let catalogElement: HTMLElement;
 	let expandedGroups = $state(new Set(['Core planned reports']));
 	let reportCount = $derived(

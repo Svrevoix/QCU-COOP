@@ -7,6 +7,8 @@
 	type ReportGroup = { label: string; reports: string[] };
 	const navigation = [
 		{ href: '/staff/admin', label: 'Dashboard', icon: 'grid' },
+		{ href: '/staff/admin/accounts', label: 'Manage Accounts', icon: 'users' },
+		{ href: '/staff/admin/teachers', label: 'Teacher Membership', icon: 'users' },
 		{ href: '/staff/admin/utilities', label: 'Utilities', icon: 'utilities' },
 		{ href: '/staff/admin/inventory', label: 'Inventory Management', icon: 'box' },
 		{ href: '/staff/admin/reports', label: 'Reports Engine', icon: 'chart' },
@@ -119,6 +121,7 @@
 									height="6"
 								/></svg
 							>
+						{:else if item.icon === 'users'}<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c.5-3.2 2.5-5 6-5s5.5 1.8 6 5M16 5.5a3 3 0 0 1 0 5.8M17 15c2.2.5 3.5 2.1 4 5"/></svg>
 						{:else if item.icon === 'utilities'}<svg viewBox="0 0 24 24"
 								><path d="M9 3v5m6-5v5M7 8h10v3a5 5 0 0 1-5 5v5m-3-13v3a3 3 0 0 0 6 0V8" /></svg
 							>

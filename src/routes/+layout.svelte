@@ -16,7 +16,9 @@
 	// Fallback identity shown on the avatar badge before any session is authenticated.
 	const placeholderStudentId = '23-1111';
 	let displayedId = $derived(page.data.user?.id ?? placeholderStudentId);
+	let isAuthenticated = $derived(!!page.data.user);
 	let isAdmin = $derived(page.data.user?.role === 'admin');
+	let isPublicLanding = $derived(page.url.pathname === '/' && !isAuthenticated);
 
 	// Profile dropdown state + a reference to its wrapper so outside clicks can close it.
 	let showProfileMenu = $state(false);
@@ -168,7 +170,7 @@
 		<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
 			QCU COOP STORE
 		</a>
-		{#if !isAdmin}
+		{#if !isAdmin && isAuthenticated && !isPublicLanding}
 			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 				<input 
 					bind:this={searchInput}
@@ -186,34 +188,39 @@
 		{/if}
 
 		<div class="flex items-center gap-4 font-medium text-sm shrink-0 ml-auto">
-			{#if !isAdmin}
-				<nav class="hidden md:grid grid-cols-2 items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
+			{#if !isAdmin && !isPublicLanding}
+				<nav class="hidden md:grid {isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'} items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
 					<div class="pointer-events-none absolute"></div>
 					<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
 						{#if activeNav === 'home'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
 						Home
 					</a>
-					<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
-						{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
-						Shop
-					</a>
+					{#if isAuthenticated}
+						<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
+							{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
+							Shop
+						</a>
+					{/if}
 				</nav>
 
-				<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-					</svg>
-					<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
-						{$cartPieceCount}
-					</span>
-				</a>
-				<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
-				</a>
+				{#if isAuthenticated && !isPublicLanding}
+					<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+						</svg>
+						<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
+							{$cartPieceCount}
+						</span>
+					</a>
+					<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
+					</a>
+				{/if}
 			{/if}
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
 			<!-- Keyed on role+id so the avatar visual force-resets/remounts on every identity change. -->
+			{#if isAuthenticated && !isPublicLanding}
 			{#key `${page.data.user?.role}:${page.data.user?.id}`}
 				<div class="profile-menu-container" bind:this={profileMenuContainer}>
 					<div class="profile-trigger">
@@ -255,8 +262,11 @@
 					{/if}
 				</div>
 			{/key}
+			{:else if isPublicLanding || !page.url.pathname.startsWith('/staff')}
+				<a href="/login" class="rounded-full bg-blue-600 px-5 py-2 text-xs font-bold text-white transition hover:bg-blue-500">Login</a>
+			{/if}
 
-			<button 
+			{#if !isPublicLanding}<button 
 				class="block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition" 
 				onclick={() => showMobileMenu = !showMobileMenu}
 				aria-label="Toggle menu"
@@ -268,12 +278,12 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
 					{/if}
 				</svg>
-			</button>
+			</button>{/if}
 		</div>
 
 	</div>
 
-	{#if showMobileMenu}
+	{#if showMobileMenu && !isPublicLanding}
 		<div class="md:hidden bg-zinc-950 border-t border-zinc-800 px-4 py-3 space-y-3 font-medium text-sm shadow-inner">
 			<form class="block sm:hidden relative pb-1" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 				<input 
@@ -284,8 +294,14 @@
 				/>
 			</form>
 
-			<a href="/shop" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Shop</a>
-			<a href="/orders" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Purchase history</a>
+			{#if isAuthenticated}
+				<a href="/shop" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Shop</a>
+			{/if}
+			{#if isAuthenticated}
+				<a href="/orders" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Purchase history</a>
+			{:else}
+				<a href="/login" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Login</a>
+			{/if}
 			<a href="/about" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>About</a>
 			
 		</div>
