@@ -622,9 +622,6 @@
 	:global(.admin-shell.collapsed) :global(.staff-logout span) {
 		display: none;
 	}
-	:global(.admin-shell.collapsed) :global(.report-catalog) {
-		display: none;
-	}
 	@media (min-width: 761px) {
 		.mobile-menu-button {
 			display: none;

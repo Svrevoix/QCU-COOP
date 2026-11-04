@@ -31,12 +31,15 @@
 	let loadingTimer: ReturnType<typeof setTimeout> | undefined;
 	let loadingKind = $derived.by(() => {
 		const pathname = loadingPathname;
-		if (pathname === '/login' || pathname === '/staff/login') return 'login';
+		if (pathname === '/login') return 'login';
 		if (pathname === '/staff/pos/account' || pathname === '/account') return 'account';
 		if (pathname.startsWith('/staff/pos')) return 'cashier-pos';
 		if (pathname.startsWith('/staff/admin/inventory/profiles/') || pathname.startsWith('/staff/admin/inventory/purchases/') || pathname.startsWith('/staff/admin/inventory/adjustments/')) return 'inventory-form';
 		if (pathname.startsWith('/staff/admin/inventory')) return 'inventory';
 		if (pathname.startsWith('/staff/admin/reports')) return 'reports';
+		if (pathname === '/staff/admin/accounts') return 'admin-accounts';
+		if (pathname === '/staff/admin/teachers') return 'teacher-membership';
+		if (pathname === '/staff/admin/utilities') return 'admin-utilities';
 		if (pathname === '/staff/admin/settings') return 'admin-settings';
 		if (pathname === '/staff/admin' || pathname.startsWith('/staff/admin/dashboard')) return 'admin-dashboard';
 		if (pathname === '/cart') return 'cart';
@@ -46,7 +49,7 @@
 		if (pathname.startsWith('/about')) return 'about';
 		return 'home';
 	});
-	let isStaffWorkspace = $derived(page.url.pathname.startsWith('/staff') && loadingKind !== 'login');
+	let isStaffWorkspace = $derived(loadingPathname.startsWith('/staff') && loadingKind !== 'login');
 
 	let activeNav = $derived(
 		page.url.pathname === '/' ? 'home' : page.url.pathname.startsWith('/shop') ? 'aisle' : page.url.pathname.startsWith('/products') ? 'product' : 'product'
@@ -478,7 +481,7 @@
 	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 	@keyframes loading-sheen { to { background-position-x: -250%; } }
 	:global(html[data-theme='dark'] .page-loading-overlay) { background: #101d35; }
-	:global(html[data-theme='dark'] .loading-topbar), :global(html[data-theme='dark'] .loading-stat), :global(html[data-theme='dark'] .loading-panel), :global(html[data-theme='dark'] .loading-card) { border-color: #334866; background-color: #172640; }
+	:global(html[data-theme='dark'] .loading-topbar), :global(html[data-theme='dark'] .loading-stat), :global(html[data-theme='dark'] .loading-panel), :global(html[data-theme='dark'] .loading-card), :global(html[data-theme='dark'] .loading-utility-topbar), :global(html[data-theme='dark'] .loading-utility-stat) { border-color: #334866; background-color: #172640; }
 	:global(html[data-theme='dark'] .skeleton-block), :global(html[data-theme='dark'] .loading-block), :global(html[data-theme='dark'] .loading-stat i), :global(html[data-theme='dark'] .loading-table-row i), :global(html[data-theme='dark'] .loading-card-copy i), :global(html[data-theme='dark'] .loading-image), :global(html[data-theme='dark'] .loading-cart-item i), :global(html[data-theme='dark'] .loading-cart-summary i), :global(html[data-theme='dark'] .loading-chart i), :global(html[data-theme='dark'] .loading-filter i), :global(html[data-theme='dark'] .loading-form-field i), :global(html[data-theme='dark'] .loading-panel-heading i), :global(html[data-theme='dark'] .loading-topbar-actions i) { background-image: linear-gradient(100deg, #263b59 20%, #334866 38%, #263b59 56%); }
 	@media (max-width: 900px) { .loading-stage.staff-loading { grid-template-columns: 14rem minmax(0, 1fr); }.loading-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cart { grid-template-columns: minmax(0, 1fr) 13rem; }.loading-dashboard-charts { grid-template-columns: 1fr; } }
 	@media (max-width: 760px) { .loading-stage.staff-loading { display: block; }.loading-sidebar { min-height: auto; height: 5.75rem; flex-direction: row; align-items: center; overflow: hidden; padding: .85rem 1rem; }.loading-brand { margin: 0 .5rem 0 0; }.loading-nav-item { width: 7rem; height: 2.4rem; flex: 0 0 auto; }.loading-featured { grid-template-columns: 1fr; gap: 1.25rem; min-height: 0; }.loading-featured-art { min-height: 12rem; }.loading-report-filters { grid-template-columns: 1fr 1fr; }.loading-about-grid { grid-template-columns: 1fr; } }
@@ -511,6 +514,111 @@
 	.loading-admin-password-field i:last-child { height: 2.4rem; border-radius: .55rem; }
 	.loading-admin-password-button { width: 8rem; height: 2.2rem; margin-top: .75rem; border-radius: .5rem; }
 	@media (max-width: 560px) { .loading-admin-detail-row { gap: .65rem; }.loading-admin-detail-row i { width: 48%; }.loading-admin-detail-row i:last-child { width: 40%; } }
+
+	.loading-admin-accounts,
+	.loading-teacher-membership { min-width: 0; }
+	.loading-admin-accounts .loading-panel,
+	.loading-teacher-membership .loading-panel { overflow-x: auto; }
+	.loading-admin-accounts .loading-admin-title-actions,
+	.loading-teacher-membership .loading-admin-title-actions { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+	.loading-admin-title-copy { display: grid; gap: .65rem; }
+	.loading-admin-title-copy .loading-block.title { width: min(17rem, 70%); }
+	.loading-admin-title-actions > .skeleton-block { width: 8rem; height: 2.4rem; flex: 0 0 auto; border-radius: .55rem; }
+	.loading-signup-notice { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; border: 1px solid #dbeafe; border-radius: .6rem; background: #eff6ff; padding: .8rem 1rem; }
+	.loading-signup-notice > i:first-child { width: .65rem; height: .65rem; flex: 0 0 auto; border-radius: 50%; }
+	.loading-signup-notice > i:last-child { width: min(25rem, 80%); height: .7rem; border-radius: .3rem; }
+	.loading-admin-toolbar { display: flex; align-items: flex-end; gap: .75rem; margin-bottom: 1rem; }
+	.loading-admin-toolbar-field { display: grid; width: min(19rem, 45%); gap: .4rem; }
+	.loading-admin-toolbar-field:last-of-type { width: min(11rem, 30%); }
+	.loading-admin-toolbar-field i:first-child { width: 4.5rem; height: .55rem; border-radius: .3rem; }
+	.loading-admin-toolbar-field i:last-child { height: 2.4rem; border: 1px solid #e4eaf2; border-radius: .45rem; }
+	.loading-admin-toolbar > .loading-block { width: 5rem; margin: 0 0 .75rem auto; }
+	.loading-admin-account-table { min-width: 58rem; }
+	.loading-admin-account-row { display: grid; grid-template-columns: 1.5fr 1.25fr .85fr .65fr 1.1fr; gap: 1rem; align-items: center; border-top: 1px solid #edf1f5; padding: .95rem 0; }
+	.loading-admin-account-row.table-head { border-top: 0; padding: .2rem 0 .75rem; }
+	.loading-admin-account-row.table-head i { height: .55rem; }
+	.loading-admin-account-cell { display: grid; min-width: 0; gap: .5rem; }
+	.loading-admin-account-cell i { height: .65rem; border-radius: .3rem; }
+	.loading-admin-account-cell i:first-child { width: 76%; height: .75rem; }
+	.loading-admin-account-cell i:last-child { width: 92%; }
+	.loading-admin-account-cell:nth-child(3) i:first-child { width: 60%; }
+	.loading-admin-account-cell:nth-child(4) i { width: 68%; height: 1.25rem; border-radius: 1rem; }
+	.loading-admin-actions { display: flex; gap: .35rem; }
+	.loading-admin-actions i { width: 3rem; height: 1.8rem; border-radius: .4rem; }
+	.loading-teacher-table { min-width: 68rem; }
+	.loading-teacher-row { display: grid; grid-template-columns: 1fr .8fr 1.05fr 1.05fr 1.8fr; gap: 1rem; align-items: center; border-top: 1px solid #edf1f5; padding: .85rem 0; }
+	.loading-teacher-row.table-head { border-top: 0; padding: .15rem 0 .75rem; }
+	.loading-teacher-row.table-head i { height: .55rem; }
+	.loading-teacher-cell { display: grid; min-width: 0; gap: .5rem; }
+	.loading-teacher-cell > i { width: 78%; height: .65rem; border-radius: .3rem; }
+	.loading-teacher-cell > i:last-child { width: 56%; }
+	.loading-teacher-cell.membership-copy > i:first-child { width: 62%; height: .75rem; }
+	.loading-teacher-form { display: grid; gap: .5rem; }
+	.loading-teacher-form > i { height: 1.8rem; border: 1px solid #e4eaf2; border-radius: .4rem; }
+	.loading-teacher-form .loading-teacher-dates { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+	.loading-teacher-form .loading-teacher-dates i { height: 1.8rem; border: 1px solid #e4eaf2; border-radius: .4rem; }
+	.loading-teacher-form > i:last-child { width: 6rem; height: 1.8rem; border: 0; border-radius: .4rem; }
+
+	.loading-utility-topbar { display: flex; min-height: 3.9rem; align-items: center; justify-content: space-between; margin: -1.15rem calc(clamp(1rem, 3vw, 3rem) * -1) 1rem; border-bottom: 1px solid #e4eaf2; background: white; padding: .55rem clamp(1rem, 3vw, 3rem); }
+	.loading-utility-title { display: grid; gap: .35rem; }
+	.loading-utility-title i:first-child { width: 4.5rem; height: .9rem; }
+	.loading-utility-title i:last-child { width: 7rem; height: .55rem; }
+	.loading-utility-actions { display: flex; align-items: center; gap: .5rem; }
+	.loading-utility-actions i:first-child { width: 7rem; height: 2rem; border: 1px solid #e4eaf2; border-radius: .45rem; }
+	.loading-utility-actions i:nth-child(2),
+	.loading-utility-actions i:last-child { width: 2rem; height: 2rem; border: 1px solid #e4eaf2; border-radius: 50%; }
+	.loading-utility-actions i:last-child { background: #e7edf4; }
+	.loading-body.loading-utilities { max-width: none; padding-top: 1.15rem; }
+	.loading-utility-overview { margin-bottom: 1rem; padding: 1rem 1.1rem; }
+	.loading-utility-overview-heading { display: flex; align-items: center; gap: .65rem; }
+	.loading-utility-overview-heading > i:first-child { width: 1.65rem; height: 1.65rem; flex: 0 0 auto; border-radius: 50%; }
+	.loading-utility-overview-copy { display: grid; flex: 1; gap: .4rem; }
+	.loading-utility-overview-copy i:first-child { width: 11rem; height: .9rem; }
+	.loading-utility-overview-copy i:last-child { width: min(23rem, 90%); height: .6rem; }
+	.loading-utility-overview-heading > i:last-child { width: 7rem; height: 2rem; border: 1px solid #e4eaf2; border-radius: .45rem; }
+	.loading-utility-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin-top: .75rem; }
+	.loading-utility-stat { display: grid; min-height: 4.7rem; align-content: center; gap: .45rem; border: 1px solid #e6eaf0; border-radius: .6rem; background: #fbfcfd; padding: .7rem .8rem; }
+	.loading-utility-stat i:first-child { width: 48%; height: .55rem; }
+	.loading-utility-stat i:nth-child(2) { width: 60%; height: 1.1rem; }
+	.loading-utility-stat i:last-child { width: 36%; height: .55rem; }
+	.loading-utility-overview .loading-utility-stat i:last-child { width: 60%; height: 1.1rem; }
+	.loading-utility-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-top: .65rem; }
+	.loading-utility-link { display: grid; gap: .4rem; border: 1px solid #e4eaf2; border-radius: .6rem; padding: .65rem .8rem; }
+	.loading-utility-link i:first-child { width: 40%; height: .65rem; }
+	.loading-utility-link i:last-child { width: 72%; height: .55rem; }
+	.loading-utility-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0 .6rem; }
+	.loading-utility-section-copy { display: grid; gap: .4rem; }
+	.loading-utility-section-copy i:first-child { width: 9rem; height: .8rem; }
+	.loading-utility-section-copy i:last-child { width: 15rem; height: .55rem; }
+	.loading-utility-section-actions { display: flex; gap: .5rem; }
+	.loading-utility-section-actions i { width: 7rem; height: 2rem; border: 1px solid #e4eaf2; border-radius: .45rem; }
+	.loading-utility-section-actions i:last-child { width: 6.5rem; }
+	.loading-utility-account-stats { margin-top: 0; }
+	.loading-utility-account-layout { display: grid; grid-template-columns: minmax(0, 2.5fr) minmax(13rem, .95fr); gap: .65rem; margin-top: .65rem; }
+	.loading-utility-account,
+	.loading-utility-activity { min-width: 0; padding: .9rem; }
+	.loading-utility-account-heading { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+	.loading-utility-account-heading > i:first-child { width: 1.8rem; height: 1.8rem; border-radius: .45rem; }
+	.loading-utility-account-heading > i:last-child { width: 8rem; height: .7rem; margin-left: auto; border-radius: 1rem; }
+	.loading-utility-account-name { display: grid; gap: .4rem; }
+	.loading-utility-account-name i:first-child { width: 12rem; height: .75rem; }
+	.loading-utility-account-name i:last-child { width: 9rem; height: .55rem; }
+	.loading-utility-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+	.loading-utility-detail { display: grid; gap: .4rem; }
+	.loading-utility-detail i:first-child { width: 55%; height: .55rem; }
+	.loading-utility-detail i:nth-child(2) { width: 92%; height: .65rem; }
+	.loading-utility-detail i:last-child { width: 70%; height: .55rem; }
+	.loading-utility-service-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .8rem; }
+	.loading-utility-service-list i { width: 6rem; height: 2rem; border-radius: .55rem; }
+	.loading-utility-activity-heading { width: 70%; height: .75rem; margin-bottom: 1rem; }
+	.loading-utility-activity-item { display: grid; gap: .4rem; border-left: 2px solid #e4eaf2; padding: .1rem 0 .9rem .9rem; }
+	.loading-utility-activity-item i:first-child { width: 86%; height: .55rem; }
+	.loading-utility-activity-item i:nth-child(2) { width: 54%; height: .65rem; }
+	.loading-utility-activity-item i:last-child { width: 44%; height: .5rem; }
+	:global(html[data-theme='dark'] .loading-signup-notice) { border-color: #2f5289; background: #152b4a; }
+	@media (max-width: 900px) { .loading-utility-account-layout { grid-template-columns: 1fr; } }
+	@media (max-width: 760px) { .loading-utility-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-utility-overview-heading > i:last-child { display: none; }.loading-admin-title-actions { align-items: flex-start; }.loading-utility-details { grid-template-columns: 1fr; } }
+	@media (max-width: 560px) { .loading-admin-title-actions { flex-direction: column; }.loading-admin-toolbar { align-items: stretch; flex-wrap: wrap; }.loading-admin-toolbar-field { width: 100%; }.loading-admin-toolbar-field:last-of-type { width: calc(60% - .4rem); }.loading-admin-toolbar > .loading-block { width: 4rem; margin: 0 0 .7rem auto; }.loading-utility-section-heading { align-items: flex-start; flex-direction: column; }.loading-utility-section-actions { width: 100%; }.loading-utility-section-actions i { flex: 1; }.loading-utility-links { grid-template-columns: 1fr; } }
 
 	/* Fade + slide entrance replayed on reload (fresh mount) or right after a successful login (key bump) */
 	@keyframes dashboard-enter {
@@ -562,8 +670,89 @@
 				{:else if loadingKind === 'login'}
 					<div class="loading-login"><section class="loading-panel"><i class="skeleton-block loading-profile-avatar"></i><div class="loading-heading"><i class="loading-block title"></i><i class="loading-block subtitle"></i></div>{#each [0, 1, 2] as field (field)}<div class="loading-form-field"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</section></div>
 				{:else}
-					<div class="loading-body" class:loading-narrow={loadingKind === 'account'} class:user-account={loadingKind === 'account' && !isStaffWorkspace}>
-						{#if loadingKind === 'account'}
+					<div class="loading-body" class:loading-narrow={loadingKind === 'account'} class:user-account={loadingKind === 'account' && !isStaffWorkspace} class:loading-utilities={loadingKind === 'admin-utilities'}>
+						{#if loadingKind === 'admin-accounts'}
+							<div class="loading-admin-accounts">
+								<div class="loading-admin-title-actions">
+									<div class="loading-admin-title-copy"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div>
+									<i class="skeleton-block"></i>
+								</div>
+								<div class="loading-signup-notice"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+								<section class="loading-panel">
+									<div class="loading-admin-toolbar">
+										<div class="loading-admin-toolbar-field"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+										<div class="loading-admin-toolbar-field"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+										<i class="loading-block"></i>
+									</div>
+									<div class="loading-admin-account-table">
+										<div class="loading-admin-account-row table-head">{#each [0, 1, 2, 3, 4] as column (column)}<i class="skeleton-block"></i>{/each}</div>
+										{#each [0, 1, 2, 3, 4] as row (row)}
+											<div class="loading-admin-account-row">
+												<div class="loading-admin-account-cell"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+												<div class="loading-admin-account-cell"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+												<div class="loading-admin-account-cell"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+												<div class="loading-admin-account-cell"><i class="skeleton-block"></i></div>
+												<div class="loading-admin-actions">{#each [0, 1, 2] as action (action)}<i class="skeleton-block"></i>{/each}</div>
+											</div>
+										{/each}
+									</div>
+								</section>
+							</div>
+						{:else if loadingKind === 'teacher-membership'}
+							<div class="loading-teacher-membership">
+								<div class="loading-admin-title-actions">
+									<div class="loading-admin-title-copy"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div>
+								</div>
+								<section class="loading-panel">
+									<div class="loading-teacher-table">
+										<div class="loading-teacher-row table-head">{#each [0, 1, 2, 3, 4] as column (column)}<i class="skeleton-block"></i>{/each}</div>
+										{#each [0, 1, 2, 3] as row (row)}
+											<div class="loading-teacher-row">
+												<div class="loading-teacher-cell"><i class="skeleton-block"></i></div>
+												<div class="loading-teacher-cell"><i class="skeleton-block"></i></div>
+												<div class="loading-teacher-cell"><i class="skeleton-block"></i></div>
+												<div class="loading-teacher-cell membership-copy"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+												<div class="loading-teacher-form">
+													<i class="skeleton-block"></i>
+													<div class="loading-teacher-dates"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+													<i class="skeleton-block"></i>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</section>
+							</div>
+						{:else if loadingKind === 'admin-utilities'}
+							<header class="loading-utility-topbar">
+								<div class="loading-utility-title"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+								<div class="loading-utility-actions"><i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+							</header>
+							<section class="loading-panel loading-utility-overview">
+								<div class="loading-utility-overview-heading">
+									<i class="skeleton-block"></i>
+									<div class="loading-utility-overview-copy"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+									<i class="skeleton-block"></i>
+								</div>
+								<div class="loading-utility-stats">{#each [0, 1, 2, 3] as stat (stat)}<div class="loading-utility-stat"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</div>
+								<div class="loading-utility-links">{#each [0, 1] as link (link)}<div class="loading-utility-link"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</div>
+							</section>
+							<div class="loading-utility-section-heading">
+								<div class="loading-utility-section-copy"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+								<div class="loading-utility-section-actions"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>
+							</div>
+							<div class="loading-utility-stats loading-utility-account-stats">{#each [0, 1, 2, 3] as stat (stat)}<div class="loading-utility-stat"><i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</div>
+							<div class="loading-utility-account-layout">
+								<section class="loading-panel loading-utility-account">
+									<div class="loading-utility-account-heading"><i class="skeleton-block"></i><div class="loading-utility-account-name"><i class="skeleton-block"></i><i class="skeleton-block"></i></div><i class="skeleton-block"></i></div>
+									<div class="loading-utility-details">{#each [0, 1, 2] as detail (detail)}<div class="loading-utility-detail"><i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</div>
+									<div class="loading-utility-service-list">{#each [0, 1, 2, 3] as service (service)}<i class="skeleton-block"></i>{/each}</div>
+								</section>
+								<aside class="loading-panel loading-utility-activity">
+									<i class="skeleton-block loading-utility-activity-heading"></i>
+									{#each [0, 1, 2] as activity (activity)}<div class="loading-utility-activity-item"><i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}
+								</aside>
+							</div>
+						{:else if loadingKind === 'account'}
 							<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><section class="loading-panel loading-account"><div class="loading-panel-heading"><i></i></div><div class="loading-account-center"><i class="skeleton-block loading-profile-avatar"></i><i class="loading-block" style="width: 9rem"></i><i class="loading-block" style="width: 6rem"></i></div><div class="loading-settings-row"><i class="skeleton-block"></i><i class="skeleton-block"></i></div></section>
 						{:else if loadingKind === 'orders'}
 						<div class="loading-orders"><div class="loading-heading"><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><div class="loading-order-filters">{#each [0, 1, 2, 3] as filter (filter)}<i class="skeleton-block"></i>{/each}</div>{#each [0, 1] as order (order)}<section class="loading-panel loading-order-panel"><div class="loading-panel-heading"><i></i><i></i></div><i class="loading-block loading-order-title"></i>{#each [0, 1, 2] as item (item)}<div class="loading-order-item"><i class="skeleton-block loading-order-checkbox"></i><i class="skeleton-block loading-order-thumbnail"></i><div class="loading-order-copy"><i class="loading-block"></i><i class="loading-block"></i></div><i class="skeleton-block loading-order-quantity"></i><i class="skeleton-block loading-order-price"></i></div>{/each}</section>{/each}</div>
