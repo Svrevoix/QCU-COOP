@@ -6,6 +6,7 @@
 		type Product as CatalogProduct,
 		type ProductCategory
 	} from '$lib/products';
+	import { productMatchesTag, productSubcategories } from '$lib/productFilters';
 
 	type Product = {
 		key: string;
@@ -56,6 +57,8 @@
 	];
 
 	let activeCategory = $state<'all' | ProductCategory>('all');
+	let activeProductTag = $state('');
+	let showFilters = $state(false);
 	let search = $state('');
 	let cart = $state<CartLine[]>([
 		{ product: products[0], quantity: 1 },
@@ -78,11 +81,17 @@
 	const filteredProducts = $derived(
 		products.filter((product) => {
 			const matchesCategory = activeCategory === 'all' || product.category === activeCategory;
+			const matchesTag = !activeProductTag || productMatchesTag(product.name, activeProductTag);
 			const matchesSearch = `${product.name} ${product.sku} ${categoryLabels[product.category]}`
 				.toLowerCase()
 				.includes(search.trim().toLowerCase());
-			return matchesCategory && matchesSearch;
+			return matchesCategory && matchesTag && matchesSearch;
 		})
+	);
+	const availableSubcategories = $derived(
+		activeCategory === 'all'
+			? productSubcategories
+			: productSubcategories.filter((subcategory) => subcategory.category === activeCategory)
 	);
 	const itemCount = $derived(cart.reduce((total, line) => total + line.quantity, 0));
 	const subtotal = $derived(
@@ -168,7 +177,30 @@
 		await tick();
 		searchInput?.focus();
 	}
+
+	function selectCategory(category: 'all' | ProductCategory) {
+		activeCategory = category;
+		if (
+			activeProductTag &&
+			!productSubcategories.some(
+				(subcategory) =>
+					(category === 'all' || subcategory.category === category) &&
+					subcategory.tags.includes(activeProductTag)
+			)
+		) {
+			activeProductTag = '';
+		}
+	}
+
+	function toggleProductTag(category: ProductCategory, tag: string) {
+		activeCategory = category;
+		activeProductTag = activeProductTag === tag ? '' : tag;
+	}
 </script>
+
+<svelte:window onkeydown={(event) => {
+	if (event.key === 'Escape') showFilters = false;
+}} />
 
 <svelte:head>
 	<title>Register | QCU Coop Cashier</title>
@@ -337,20 +369,28 @@
 					>
 				</label>
 
-				<nav class="category-tabs" aria-label="Product categories">
-					{#each categories as category (category.id)}
-						<button
-							class:active={activeCategory === category.id}
-							type="button"
-							aria-pressed={activeCategory === category.id}
-							onclick={() => (activeCategory = category.id)}>{category.label}</button
-						>
-					{/each}
-				</nav>
+				<div class="filter-toolbar">
+					<button
+						type="button"
+						class="filter-trigger"
+						onclick={() => (showFilters = true)}
+						aria-expanded={showFilters}
+						aria-haspopup="dialog"
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M4 6h16M7 12h10m-7 6h4" />
+						</svg>
+						Filter products
+					</button>
+					<span class="filter-summary">
+						{activeCategory === 'all' ? 'All categories' : categoryLabels[activeCategory]}
+						{#if activeProductTag} · {activeProductTag}{/if}
+					</span>
+				</div>
 
 				<div class="product-count">
 					<strong
-						>{activeCategory === 'all' ? 'All products' : categoryLabels[activeCategory]} · {filteredProducts.length}
+						>{activeProductTag ? `${activeProductTag} · ` : ''}{activeCategory === 'all' ? 'All products' : categoryLabels[activeCategory]} · {filteredProducts.length}
 						items</strong
 					>
 					<span>Sample stock shown by selected size</span>
@@ -543,6 +583,79 @@
 	</section>
 </main>
 
+{#if showFilters}
+	<div
+		class="filter-backdrop"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget) showFilters = false;
+		}}
+	>
+		<div
+			class="register-filter-panel"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="register-filter-title"
+		>
+			<header class="filter-panel-heading">
+				<div>
+					<span>{activeCategory === 'all' ? 'All products' : categoryLabels[activeCategory]}</span>
+					<h2 id="register-filter-title">Filter products</h2>
+				</div>
+				<button type="button" aria-label="Close filters" onclick={() => (showFilters = false)}
+					>×</button
+				>
+			</header>
+			<div class="filter-panel-content">
+				<div class="filter-category-section">
+					<h3>Categories</h3>
+					<div class="filter-options">
+						{#each categories as category (category.id)}
+							<button
+								type="button"
+								class:active={activeCategory === category.id}
+								aria-pressed={activeCategory === category.id}
+								onclick={() => selectCategory(category.id)}
+							>
+								{category.id === 'all' ? 'All products' : category.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+				{#each availableSubcategories as subcategory (subcategory.name)}
+					<div class="filter-subcategory">
+						<h3>{subcategory.name}</h3>
+						<div class="filter-options">
+							{#each subcategory.tags as tag}
+								<button
+									type="button"
+									class:active={activeCategory === subcategory.category && activeProductTag === tag}
+									aria-pressed={activeCategory === subcategory.category && activeProductTag === tag}
+									onclick={() => toggleProductTag(subcategory.category, tag)}
+								>
+									{tag}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
+			<footer class="filter-panel-footer">
+				<span>Product filters</span>
+				{#if activeCategory !== 'all' || activeProductTag}
+					<button
+						type="button"
+						onclick={() => {
+							activeCategory = 'all';
+							activeProductTag = '';
+						}}>Clear filters</button
+					>
+				{/if}
+			</footer>
+		</div>
+	</div>
+{/if}
+
 <dialog bind:this={customerDialog} class="register-dialog">
 	<div class="dialog-heading">
 		<div>
@@ -621,7 +734,8 @@
 		--ink: #172033;
 		--muted: #70809a;
 		display: flex;
-		min-height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
 		background: #f7f9fb;
 		color: var(--ink);
 		font-family: 'Montserrat', sans-serif;
@@ -820,8 +934,15 @@
 	.register-main {
 		display: flex;
 		min-width: 0;
+		min-height: 0;
 		flex: 1;
 		flex-direction: column;
+		overflow: hidden;
+	}
+	@media (min-width: 1100px) {
+		.register-main {
+			zoom: 1.1;
+		}
 	}
 	.register-shell.collapsed .register-sidebar {
 		width: 4.4rem;
@@ -1014,11 +1135,14 @@
 		flex: 1;
 		grid-template-columns: minmax(0, 1fr) minmax(18rem, 29.5%);
 		min-height: 0;
+		overflow: hidden;
 	}
 	.products-area {
 		display: flex;
 		min-width: 0;
+		min-height: 0;
 		flex-direction: column;
+		overflow: hidden;
 		padding: 0.85rem 0.7rem 0.5rem;
 	}
 	.products-heading h2,
@@ -1087,28 +1211,172 @@
 		stroke-linejoin: round;
 		stroke-width: 1.8;
 	}
-	.category-tabs {
+	.filter-toolbar {
 		display: flex;
-		gap: 0.35rem;
-		overflow-x: auto;
+		align-items: center;
+		gap: 0.65rem;
 		padding: 0.55rem 0 0.35rem;
 	}
-	.category-tabs button {
-		border: 1px solid #dfe6ef;
-		border-radius: 0.42rem;
+	.filter-trigger {
+		display: inline-flex;
+		min-height: 1.9rem;
+		align-items: center;
+		gap: 0.4rem;
+		border: 1px solid #233f91;
+		border-radius: 9999px;
 		background: white;
-		color: #29364b;
-		padding: 0.45rem 0.62rem;
+		color: #233f91;
+		padding: 0.35rem 0.7rem;
 		font: inherit;
+		font-size: 0.54rem;
+		font-weight: 800;
+		cursor: pointer;
+		transition: background 150ms ease, color 150ms ease;
+	}
+	.filter-trigger:hover {
+		background: #233f91;
+		color: white;
+	}
+	.filter-trigger svg {
+		width: 0.85rem;
+		height: 0.85rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.8;
+	}
+	.filter-summary {
+		overflow: hidden;
+		color: #71809a;
+		font-size: 0.52rem;
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.filter-backdrop {
+		position: fixed;
+		z-index: 90;
+		inset: 0;
+		display: flex;
+		justify-content: flex-end;
+		overflow-y: auto;
+		background: #07152d59;
+		backdrop-filter: blur(4px);
+		padding: 1rem;
+	}
+	.register-filter-panel {
+		display: flex;
+		width: min(100%, 28rem);
+		height: min(70vh, 35rem);
+		flex-direction: column;
+		border: 1px solid #e2e8f0;
+		border-radius: 1.25rem;
+		background: white;
+		padding: 1.25rem;
+		box-shadow: 0 24px 70px #07152d40;
+	}
+	.filter-panel-heading {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.8rem;
+		border-bottom: 1px solid #edf1f5;
+		padding-bottom: 0.9rem;
+	}
+	.filter-panel-heading span,
+	.filter-panel-footer > span {
+		color: #0284c7;
 		font-size: 0.52rem;
 		font-weight: 800;
-		white-space: nowrap;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.filter-panel-heading h2 {
+		margin: 0.2rem 0 0;
+		color: #07152d;
+		font-size: 1rem;
+		font-weight: 900;
+	}
+	.filter-panel-heading > button {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		flex: 0 0 auto;
+		place-items: center;
+		border: 1px solid #e2e8f0;
+		border-radius: 50%;
+		background: white;
+		color: #07152d;
+		font-size: 1.2rem;
 		cursor: pointer;
 	}
-	.category-tabs button.active {
-		border-color: #347af5;
-		background: #347af5;
+	.filter-panel-content {
+		min-height: 0;
+		flex: 1;
+		overflow-y: auto;
+		padding-right: 0.25rem;
+	}
+	.filter-category-section,
+	.filter-subcategory {
+		border-bottom: 1px solid #edf1f5;
+		padding: 0.9rem 0;
+	}
+	.filter-category-section h3,
+	.filter-subcategory h3 {
+		margin: 0;
+		color: #172b4d;
+		font-size: 0.68rem;
+		font-weight: 900;
+	}
+	.filter-options {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.6rem;
+	}
+	.filter-options button {
+		border: 1px solid #dce3ed;
+		border-radius: 9999px;
+		background: #f8fafc;
+		color: #172b4d;
+		padding: 0.38rem 0.65rem;
+		font: inherit;
+		font-size: 0.54rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+	}
+	.filter-options button:hover {
+		border-color: #233f91;
+		color: #233f91;
+	}
+	.filter-options button.active {
+		border-color: #233f91;
+		background: #233f91;
 		color: white;
+	}
+	.filter-panel-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		border-top: 1px solid #edf1f5;
+		padding-top: 0.85rem;
+	}
+	.filter-panel-footer > span {
+		color: #8793a4;
+	}
+	.filter-panel-footer button {
+		border: 0;
+		background: transparent;
+		color: #233f91;
+		font: inherit;
+		font-size: 0.58rem;
+		font-weight: 800;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
 	}
 	.product-count {
 		display: flex;
@@ -1125,9 +1393,15 @@
 	}
 	.product-grid {
 		display: grid;
+		min-height: 0;
+		flex: 1;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-auto-rows: max-content;
 		align-content: start;
 		gap: 0.55rem;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding-right: 0.2rem;
 	}
 	.product-card {
 		min-width: 0;
@@ -1276,6 +1550,7 @@
 		display: flex;
 		min-height: 0;
 		flex-direction: column;
+		overflow: hidden;
 		border-left: 1px solid #e4eaf1;
 		background: white;
 		padding: 0.85rem 0.7rem 0.7rem;
@@ -1367,9 +1642,11 @@
 	}
 	.cart-list {
 		display: grid;
-		max-height: min(39vh, 20rem);
+		min-height: 0;
+		flex: 1;
 		gap: 0.42rem;
 		overflow-y: auto;
+		overscroll-behavior: contain;
 	}
 	.cart-item {
 		border: 1px solid #e1e7ef;
@@ -1587,8 +1864,14 @@
 		cursor: pointer;
 	}
 	.register-dialog {
-		width: min(24rem, calc(100% - 2rem));
+		position: fixed;
+		inset: 0;
+		box-sizing: border-box;
+		width: min(24rem, calc(100vw - 2rem));
 		max-width: none;
+		max-height: calc(100dvh - 2rem);
+		overflow-y: auto;
+		margin: auto;
 		border: 1px solid #e1e7ef;
 		border-radius: 0.75rem;
 		background: white;
@@ -1728,12 +2011,71 @@
 		color: #edf4ff;
 	}
 	:global(html[data-theme='dark'] .product-search),
-	:global(html[data-theme='dark'] .category-tabs button),
 	:global(html[data-theme='dark'] .cart-item),
 	:global(html[data-theme='dark'] .quantity-control),
 	:global(html[data-theme='dark'] .quantity-control button),
 	:global(html[data-theme='dark'] .customer-button),
 	:global(html[data-theme='dark'] .hold-button) {
+		border-color: #415878;
+		background: #101d35;
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .register-shell .product-image) {
+		border-color: #58718f;
+		background: #1b2e49;
+	}
+	:global(html[data-theme='dark'] .register-shell .image-placeholder) {
+		border-color: #58718f;
+		background: #263f60;
+		color: #dbeafe;
+	}
+	:global(html[data-theme='dark'] .register-shell .product-price) {
+		color: #60a5fa;
+	}
+	:global(html[data-theme='dark'] .product-variant),
+	:global(html[data-theme='dark'] .product-category),
+	:global(html[data-theme='dark'] .product-footer),
+	:global(html[data-theme='dark'] .cart-heading span),
+	:global(html[data-theme='dark'] .cart-item-top p),
+	:global(html[data-theme='dark'] .remove-item),
+	:global(html[data-theme='dark'] .totals > div),
+	:global(html[data-theme='dark'] .register-dialog > p),
+	:global(html[data-theme='dark'] .register-dialog form > p),
+	:global(html[data-theme='dark'] .change-due) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .add-to-order),
+	:global(html[data-theme='dark'] .restore-order) {
+		background: #223957;
+		color: #cfe0ff;
+	}
+	:global(html[data-theme='dark'] .add-to-order:hover:not(:disabled)),
+	:global(html[data-theme='dark'] .restore-order:hover:not(:disabled)) {
+		background: #2b4568;
+	}
+	:global(html[data-theme='dark'] .add-to-order small) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .add-to-order:disabled),
+	:global(html[data-theme='dark'] .restore-order:disabled) {
+		background: #263b59;
+		color: #9fb3ce;
+	}
+	:global(html[data-theme='dark'] .empty-cart) {
+		border-color: #415878;
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .empty-cart strong),
+	:global(html[data-theme='dark'] .totals > div strong),
+	:global(html[data-theme='dark'] .totals > .grand-total) {
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .register-dialog .payment-label),
+	:global(html[data-theme='dark'] .register-dialog .change-due strong) {
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .register-dialog .payment-label input),
+	:global(html[data-theme='dark'] .register-dialog .payment-label select) {
 		border-color: #415878;
 		background: #101d35;
 		color: #edf4ff;
@@ -1744,9 +2086,58 @@
 	:global(html[data-theme='dark'] .member-list strong) {
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .filter-summary) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .filter-trigger) {
+		border-color: #6b8bb8;
+		background: #172640;
+		color: #cfe0ff;
+	}
+	:global(html[data-theme='dark'] .filter-trigger:hover) {
+		background: #233f91;
+		color: white;
+	}
+	:global(html[data-theme='dark'] .register-filter-panel) {
+		border-color: #334866;
+		background: #172640;
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .filter-panel-heading),
+	:global(html[data-theme='dark'] .filter-category-section),
+	:global(html[data-theme='dark'] .filter-subcategory),
+	:global(html[data-theme='dark'] .filter-panel-footer) {
+		border-color: #334866;
+	}
+	:global(html[data-theme='dark'] .filter-panel-heading h2),
+	:global(html[data-theme='dark'] .filter-category-section h3),
+	:global(html[data-theme='dark'] .filter-subcategory h3) {
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .filter-panel-heading > button),
+	:global(html[data-theme='dark'] .filter-options button:not(.active)) {
+		border-color: #415878;
+		background: #101d35;
+		color: #dbe7fb;
+	}
+	:global(html[data-theme='dark'] .filter-options button:hover:not(.active)) {
+		border-color: #7cb5ff;
+		color: #7cb5ff;
+	}
+	:global(html[data-theme='dark'] .filter-panel-footer > span) {
+		color: #9fb3ce;
+	}
+	:global(html[data-theme='dark'] .dialog-heading button) {
+		background: #223957;
+		color: #cfe0ff;
+	}
 	:global(html[data-theme='dark'] .register-dialog .member-list button) {
 		border-color: #415878;
 		background: #101d35;
+	}
+	:global(html[data-theme='dark'] .register-dialog .member-list button:hover) {
+		border-color: #6b8bb8;
+		background: #223957;
 	}
 	:global(html[data-theme='dark'] .sidebar-toggle) {
 		border-color: #415878;
@@ -1756,6 +2147,9 @@
 	@media (max-width: 760px) {
 		.register-shell {
 			display: block;
+		}
+		.register-main {
+			height: 100dvh;
 		}
 		.register-sidebar {
 			position: fixed;
@@ -1844,6 +2238,18 @@
 		}
 	}
 	@media (max-width: 560px) {
+		.register-shell {
+			height: auto;
+			min-height: 100dvh;
+			overflow: visible;
+		}
+		.register-main,
+		.register-workspace {
+			overflow: visible;
+		}
+		.register-main {
+			height: auto;
+		}
 		.register-topbar {
 			align-items: flex-start;
 			flex-direction: column;
@@ -1858,14 +2264,22 @@
 			grid-template-columns: 1fr;
 		}
 		.products-area {
+			overflow: visible;
 			min-height: 25rem;
 		}
+		.product-grid {
+			flex: initial;
+			overflow: visible;
+			padding-right: 0;
+		}
 		.order-panel {
+			overflow: visible;
 			min-height: 25rem;
 			border-top: 1px solid #e4eaf1;
 			border-left: 0;
 		}
 		.cart-list {
+			flex: initial;
 			max-height: 15rem;
 		}
 		.totals {

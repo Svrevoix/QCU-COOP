@@ -458,6 +458,11 @@
 		margin: 0 auto;
 		padding: 0 clamp(1rem, 2vw, 1.5rem);
 	}
+	@media (min-width: 1100px) {
+		.cashier-content {
+			zoom: 1.1;
+		}
+	}
 	.cashier-topbar {
 		display: flex;
 		align-items: center;

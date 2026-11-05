@@ -7,10 +7,34 @@
 	}
 	let activeMode = $state<'login' | 'signup'>(getInitialMode());
 	let showPassword = $state(false);
+<<<<<<< Updated upstream
 	let studentId = $state('');
 	let isDarkMode = $state(false);
 	let isLoading = $state(true);
 
+=======
+	let loginId = $state('');
+	let signupId = $state('');
+	let signupRole = $state<'student' | 'teacher'>('student');
+	let isDarkMode = $state(false);
+	let isLoading = $state(true);
+
+	function handleIdInput(event: Event, field: 'login' | 'signup') {
+		const input = event.currentTarget as HTMLInputElement;
+		const value = input.value;
+		const digits = value.replace(/\D/g, '').slice(0, 6);
+		const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
+		const caret = input.selectionStart ?? value.length;
+		const digitsBeforeCaret = Math.min(value.slice(0, caret).replace(/\D/g, '').length, digits.length);
+		const formattedCaret = digitsBeforeCaret + (digitsBeforeCaret > 2 ? 1 : 0);
+
+		input.value = formatted;
+		input.setSelectionRange(formattedCaret, formattedCaret);
+		if (field === 'login') loginId = formatted;
+		else signupId = formatted;
+	}
+
+>>>>>>> Stashed changes
 	onMount(() => {
 		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 		const timer = window.setTimeout(() => {
@@ -74,10 +98,27 @@
 					</div>
 
 					<form method="POST" class="auth-form">
+<<<<<<< Updated upstream
 						<label class="field">
 							<span class="field-label">{mode === 'staff' ? 'Employee ID' : 'ID Number'}</span>
 							<input name="studentId" type="text" inputmode="numeric" placeholder="01-2345" maxlength="7" value={studentId} oninput={handleStudentIdInput} autocomplete="username" required />
 						</label>
+=======
+						{#if activeMode === 'signup'}
+							<label class="field"><span class="field-label">Account type</span><select name="role" bind:value={signupRole}><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
+							<div class="signup-name-row"><label class="field"><span class="field-label">First name</span><input name="firstName" autocomplete="given-name" required /></label><label class="field"><span class="field-label">Last name</span><input name="lastName" autocomplete="family-name" required /></label></div>
+							<label class="field"><span class="field-label">ID Number</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} type="text" inputmode="numeric" placeholder="e.g. 23-2111" value={signupId} oninput={(event) => handleIdInput(event, 'signup')} autocomplete="off" maxlength="7" pattern={'[0-9]{2}-[0-9]{4}'} title="Enter 2 digits, a dash, then 4 digits (for example, 23-2111)." required /></label>
+							<label class="field"><span class="field-label">Email address</span><input name="email" type="email" autocomplete="email" placeholder="name@qcu.edu.ph" required /></label>
+							{#if signupRole === 'student'}
+								<label class="field"><span class="field-label">Course / Program</span><input name="course" required /></label>
+								<label class="field"><span class="field-label">Year level</span><select name="yearLevel" required><option value="">Select year level</option>{#each [1, 2, 3, 4, 5, 6] as year}<option value={year}>{year}{year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} year</option>{/each}</select></label>
+							{:else}
+								<label class="field"><span class="field-label">Department</span><input name="department" required /></label>
+							{/if}
+						{:else}
+							<label class="field"><span class="field-label">ID Number</span><input name="loginId" type="text" inputmode="numeric" placeholder="e.g. 23-2111" value={loginId} oninput={(event) => handleIdInput(event, 'login')} autocomplete="username" maxlength="7" pattern={'[0-9]{2}-[0-9]{4}'} title="Enter 2 digits, a dash, then 4 digits (for example, 23-2111)." required /></label>
+						{/if}
+>>>>>>> Stashed changes
 
 						<label class="field">
 							<span class="field-label">Password</span>

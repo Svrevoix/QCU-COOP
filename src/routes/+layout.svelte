@@ -152,7 +152,7 @@
 {#if page.url.pathname === '/cart'}
 	<header class="cart-shell-header">
 		<div class="cart-header-inner">
-			<a href="/shop" class="cart-back-button" aria-label="Return to shop">
+			<a href="/" class="cart-back-button" aria-label="Return to home">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
 			</a>
 			<div>
@@ -161,14 +161,25 @@
 			</div>
 		</div>
 	</header>
-{:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login'}
+{:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login' && page.url.pathname !== '/orders'}
 <header class="site-header bg-[#050c1e] text-white shadow-md relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
 	<div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 		
+<<<<<<< Updated upstream
 		<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
 			QCU COOP STORE
 		</a>
 		{#if !isAdmin}
+=======
+		{#if isAuthenticated}
+			<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
+				QCU COOP STORE
+			</a>
+		{:else}
+			<span class="text-xl font-black tracking-wider shrink-0">QCU COOP STORE</span>
+		{/if}
+		{#if !isAdmin && isAuthenticated && !isPublicLanding}
+>>>>>>> Stashed changes
 			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 				<input 
 					bind:this={searchInput}
@@ -325,6 +336,29 @@
 	.cart-back-button svg { width: 1.25rem; height: 1.25rem; }
 	.cart-header-title { margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
 	.cart-header-meta { margin: 0.25rem 0 0; color: #a8bddf; font-size: 0.625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+	@media (min-width: 1024px) and (min-height: 700px) {
+		main.landing-viewport {
+			display: flex;
+			flex-direction: column;
+			height: calc(100dvh - 4rem);
+			min-height: 0;
+			overflow: hidden;
+		}
+
+		:global(main.landing-viewport > .hero-section) {
+			display: flex;
+			flex: 1 1 auto;
+			min-height: 0;
+			align-items: center;
+			padding-top: clamp(1rem, 3vh, 2.5rem);
+			padding-bottom: clamp(1rem, 3vh, 2.5rem);
+		}
+
+		:global(main.landing-viewport > footer) {
+			flex: 0 0 auto;
+		}
+	}
+
 	/* Profile trigger: student ID pill placed left of the avatar button */
 	.profile-menu-container { position: relative; display: inline-flex; }
 	.profile-trigger { display: flex; align-items: center; gap: 0.5rem; }
@@ -504,7 +538,7 @@
 	.dashboard-enter { animation: dashboard-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 </style>
 
-<main class="min-h-screen bg-zinc-50 font-sans" class:dashboard-enter={page.data.user !== null} style="font-family: 'Montserrat', sans-serif;">
+<main class="min-h-screen bg-zinc-50 font-sans" class:dashboard-enter={page.data.user !== null} class:landing-viewport={page.url.pathname === '/'} style="font-family: 'Montserrat', sans-serif;">
 	{@render children()}
 </main>
 

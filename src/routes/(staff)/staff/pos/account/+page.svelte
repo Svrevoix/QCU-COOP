@@ -41,7 +41,7 @@
 	<aside class="cashier-sidebar">
 		<a class="cashier-brand" href="/staff/pos"
 			><span class="brand-mark">Q</span><span
-				><strong>QCU COOP</strong><small>Cashier workspace</small></span
+				><strong>QCU COOP</strong><small>Cashier Workspace</small></span
 			></a
 		>
 		<p class="sidebar-label">Workspace</p>
@@ -74,7 +74,7 @@
 
 	<section class="cashier-content">
 		<section class="account-panel" aria-labelledby="account-title">
-			<h2 id="account-title">Cashier profile</h2>
+			<h2 id="account-title">Cashier Profile</h2>
 			<div class="avatar-picker">
 				<div class="avatar-frame">
 					<button
@@ -266,6 +266,11 @@
 		min-width: 0;
 		margin: 0 auto;
 		padding: 2.25rem clamp(1rem, 3vw, 3rem) 3rem;
+	}
+	@media (min-width: 1100px) {
+		.cashier-content {
+			zoom: 1.1;
+		}
 	}
 	.account-panel {
 		width: 100%;

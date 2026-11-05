@@ -78,7 +78,7 @@
 <section class="hero-section bg-blue-900 text-white pt-12 pb-24 md:pt-16 md:pb-20 px-4 font-sans relative overflow-hidden">
 	<div class="hero-inner max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
 		
-		<div class="lg:col-span-3 space-y-6">
+		<div class="lg:col-span-3 space-y-6 lg:-translate-x-12">
 			<span class="text-xs font-bold tracking-widest text-blue-300 uppercase">Member Shop • A.Y. 2026–2027</span>
 			<h1 class="text-3xl md:text-5xl font-black tracking-tight leading-tight max-w-xl">
 				Everything for the semester, plus your share back.

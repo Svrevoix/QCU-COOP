@@ -73,6 +73,13 @@
 	let sidebarCollapsed = $state(false);
 	let mobileSidebarOpen = $state(false);
 	let activePath = $derived(page.url.pathname);
+	let isDenseAdminPage = $derived(
+		activePath === '/staff/admin' ||
+			activePath.startsWith('/staff/admin/dashboard') ||
+			activePath.startsWith('/staff/admin/utilities') ||
+			activePath.startsWith('/staff/admin/inventory') ||
+			activePath.startsWith('/staff/admin/reports')
+	);
 </script>
 
 <div class="admin-shell" class:collapsed={sidebarCollapsed} class:mobile-open={mobileSidebarOpen}>
@@ -166,7 +173,7 @@
 			><span class="mobile-brand">QCU COOP</span><span class="mobile-status">LIVE</span>
 		</div>
 		{#key activePath}
-			<div class="admin-route-content">{@render children()}</div>
+			<div class="admin-route-content" class:readable-admin-page={isDenseAdminPage}>{@render children()}</div>
 		{/key}
 	</section>
 </div>
@@ -183,6 +190,7 @@
 		background: #f4f7fb;
 		color: var(--ink);
 		font-family: 'Montserrat', sans-serif;
+		zoom: 1.1;
 	}
 	:global(html[data-theme='dark'] .admin-shell) {
 		background: #101d35;
@@ -191,6 +199,7 @@
 	:global(html[data-theme='dark'] .admin-content) {
 		background: #101d35;
 		color: #edf4ff;
+		color-scheme: dark;
 	}
 	:global(html[data-theme='dark'] .admin-content .admin-title),
 	:global(html[data-theme='dark'] .admin-content h2),
@@ -232,9 +241,14 @@
 	:global(html[data-theme='dark'] .admin-content input),
 	:global(html[data-theme='dark'] .admin-content select),
 	:global(html[data-theme='dark'] .admin-content textarea) {
+		color-scheme: dark;
 		border-color: #415878;
 		background: #101d35;
 		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .admin-content input::placeholder),
+	:global(html[data-theme='dark'] .admin-content textarea::placeholder) {
+		color: #8192ab;
 	}
 	:global(html[data-theme='dark'] .admin-content .admin-button.secondary) {
 		border-color: #415878;
@@ -283,6 +297,73 @@
 		border-color: #415878;
 		background: #172640;
 		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .admin-content :is(.account-panel, .table-wrap, .toolbar, .overview-card, .account-card, .activity-card, .account-stats article, .overview-stats article, .overview-links a, .inventory-topbar, .utility-topbar, .reports-topbar, .dashboard-topbar, .date-chip, .icon-button, .notification-popover, .kpi-card, .movement-card, .welcome-card, .dashboard-card, .quick-links a, .restock-panel, .workflow-disclosure, .profile-form, .item-form-panel, .simple-profile, .report-catalog.light)) {
+		border-color: #334866;
+		background-color: #172640;
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .admin-content :is(.outline-button, .compact-button, .reports-button, .secondary)) {
+		border-color: #415878;
+		background-color: #172640;
+		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .admin-content :is(label, .search, .filter, .kpi-heading, .legend, .stock-legend, .movement-row, .result-count, .count, .profile-details dt)) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .admin-content .chart) {
+		border-color: #334866;
+		background: repeating-linear-gradient(to bottom, transparent 0, transparent 24%, #283b58 25%);
+	}
+	:global(html[data-theme='dark'] .admin-content .donut) {
+		background: radial-gradient(#172640 56%, transparent 57%), conic-gradient(#2563eb 0 78%, #ffc95f 78% 92%, #ef7478 92%);
+	}
+	:global(html[data-theme='dark'] .admin-content .report-catalog.light .group-button) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .admin-content .report-catalog.light .group-button:hover),
+	:global(html[data-theme='dark'] .admin-content .report-catalog.light .group-button.active) {
+		background: #203a60;
+		color: #8eb5ff;
+	}
+	:global(html[data-theme='dark'] .admin-content .report-catalog.light .group-count) {
+		background: #243a59;
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .admin-content .report-catalog.light .group-button.active .group-count) {
+		background: #2563eb;
+		color: #fff;
+	}
+	:global(html[data-theme='dark'] .admin-content :is(.notice, .restock-message.success)) {
+		border-color: #2f5289;
+		background: #152b4a;
+		color: #b9d5ff;
+	}
+	:global(html[data-theme='dark'] .admin-content .notice.success) {
+		border-color: #28614e;
+		background: #153b34;
+		color: #86efac;
+	}
+	:global(html[data-theme='dark'] .admin-content :is(.notice.error, .error-toast, .form-error, .restock-message.error)) {
+		border-color: #7f3039;
+		background: #3b1f27;
+		color: #fecaca;
+	}
+	:global(html[data-theme='dark'] .admin-content .status) {
+		background: #153b34;
+		color: #86efac;
+	}
+	:global(html[data-theme='dark'] .admin-content .status.pending) {
+		background: #382d16;
+		color: #fde68a;
+	}
+	:global(html[data-theme='dark'] .admin-content .status.inactive) {
+		background: #27354a;
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .admin-content .role) {
+		background: #203a60;
+		color: #8eb5ff;
 	}
 	.admin-sidebar {
 		display: flex;
@@ -418,6 +499,9 @@
 	}
 	.admin-route-content {
 		animation: admin-route-appear 220ms ease-out both;
+	}
+	.admin-route-content.readable-admin-page {
+		zoom: 1.2;
 	}
 	@keyframes admin-route-appear {
 		from {
@@ -631,6 +715,7 @@
 		.admin-shell {
 			display: block;
 			position: relative;
+			zoom: 1;
 		}
 		.admin-sidebar {
 			position: fixed;
@@ -723,6 +808,9 @@
 			background: var(--navy);
 			color: white;
 			padding: 0 0.75rem;
+		}
+		.admin-route-content.readable-admin-page {
+			zoom: 1.05;
 		}
 		.mobile-brand {
 			font-size: 0.75rem;

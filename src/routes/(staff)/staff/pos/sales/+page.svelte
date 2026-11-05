@@ -366,6 +366,11 @@
 		margin: 0 auto;
 		padding: 0 clamp(1rem, 2vw, 1.5rem);
 	}
+	@media (min-width: 1100px) {
+		.cashier-content {
+			zoom: 1.1;
+		}
+	}
 	.sales-topbar {
 		display: flex;
 		align-items: center;
@@ -722,6 +727,13 @@
 	:global(html[data-theme='dark'] .panel-heading h2) {
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .sales-metrics article > span),
+	:global(html[data-theme='dark'] .sales-metrics small i),
+	:global(html[data-theme='dark'] .panel-heading p),
+	:global(html[data-theme='dark'] .y-axis),
+	:global(html[data-theme='dark'] .x-axis) {
+		color: #b8c8dd;
+	}
 	:global(html[data-theme='dark'] .period-tabs button),
 	:global(html[data-theme='dark'] .export-button),
 	:global(html[data-theme='dark'] .icon-button) {
@@ -729,17 +741,31 @@
 		background: #172640;
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .period-tabs button:hover),
+	:global(html[data-theme='dark'] .export-button:hover) {
+		background: #223957;
+	}
 	:global(html[data-theme='dark'] .period-tabs button.active) {
 		border-color: #2863ed;
 		background: #2863ed;
+	}
+	:global(html[data-theme='dark'] .gridline) {
+		stroke: #334866;
+	}
+	:global(html[data-theme='dark'] .axisline) {
+		stroke: #7185a3;
 	}
 	:global(html[data-theme='dark'] .donut) {
 		background:
 			radial-gradient(#172640 55%, transparent 56%),
 			conic-gradient(#ff3028 0 68%, #f7d978 68% 92%, #52647c 92% 100%);
 	}
+	:global(html[data-theme='dark'] .category-legend > div) {
+		background: #223957;
+		color: #dbe7fb;
+	}
 	:global(html[data-theme='dark'] .category-legend strong) {
-		color: #1d2737;
+		color: #edf4ff;
 	}
 	@media (max-width: 850px) {
 		.cashier-sidebar {
