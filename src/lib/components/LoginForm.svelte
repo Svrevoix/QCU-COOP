@@ -28,6 +28,10 @@
 		else signupId = formatted;
 	}
 
+	function handleLoginIdInput(event: Event) {
+		handleIdInput(event, 'login');
+	}
+
 	onMount(() => {
 		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 		const timer = window.setTimeout(() => {
@@ -70,38 +74,27 @@
 				</div>
 
 				<div class="form-panel" class:signup={activeMode === 'signup'}>
-					<button type="button" class="theme-toggle-corner" onclick={toggleTheme} aria-pressed={isDarkMode} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
-						{#if isDarkMode}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
-						{/if}
-					</button>
-
 					<div class="form-header">
 						<span class="brand-logo" aria-hidden="true">
 							<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
 						</span>
 						<h1>{activeMode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
-						<p class="form-subtitle">{mode === 'staff' ? 'Sign in with your employee credentials' : activeMode === 'login' ? 'Sign in with your student credentials' : 'Register using your student ID'}</p>
+						<p class="form-subtitle">{activeMode === 'signup' ? 'Register with your email address' : 'Sign in with your QCU account'}</p>
 					</div>
 
 					<form method="POST" class="auth-form">
 						{#if activeMode === 'signup'}
 							<label class="field"><span class="field-label">Account type</span><select name="role" bind:value={signupRole}><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
 							<div class="signup-name-row"><label class="field"><span class="field-label">First name</span><input name="firstName" autocomplete="given-name" required /></label><label class="field"><span class="field-label">Last name</span><input name="lastName" autocomplete="family-name" required /></label></div>
-							<label class="field"><span class="field-label">ID Number</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} type="text" inputmode="numeric" placeholder="e.g. 23-2111" value={signupId} oninput={(event) => handleIdInput(event, 'signup')} autocomplete="off" maxlength="7" pattern={'[0-9]{2}-[0-9]{4}'} title="Enter 2 digits, a dash, then 4 digits (for example, 23-2111)." required /></label>
-							<input type="hidden" name="studentId" value={signupId} />
+							<label class="field"><span class="field-label">{signupRole === 'student' ? 'ID Number' : 'ID Number'}</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} placeholder={signupRole === 'student' ? 'e.g. 23-2111' : 'Employee number'} required /></label>
 							<label class="field"><span class="field-label">Email address</span><input name="email" type="email" autocomplete="email" placeholder="name@qcu.edu.ph" required /></label>
+							<label class="field"><span class="field-label">Department</span><input name="department" required /></label>
 							{#if signupRole === 'student'}
 								<label class="field"><span class="field-label">Course / Program</span><input name="course" required /></label>
 								<label class="field"><span class="field-label">Year level</span><select name="yearLevel" required><option value="">Select year level</option>{#each [1, 2, 3, 4, 5, 6] as year}<option value={year}>{year}{year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} year</option>{/each}</select></label>
-							{:else}
-								<label class="field"><span class="field-label">Department</span><input name="department" required /></label>
 							{/if}
 						{:else}
-							<label class="field"><span class="field-label">ID Number</span><input name="loginId" type="text" inputmode="numeric" placeholder="e.g. 23-2111" value={loginId} oninput={(event) => handleIdInput(event, 'login')} autocomplete="username" maxlength="7" pattern={'[0-9]{2}-[0-9]{4}'} title="Enter 2 digits, a dash, then 4 digits (for example, 23-2111)." required /></label>
-							<input type="hidden" name="studentId" value={loginId} />
+							<label class="field"><span class="field-label">ID Number</span><input name="loginId" type="text" placeholder="e.g. 23-2111" value={loginId} oninput={handleLoginIdInput} autocomplete="username" required /></label>
 						{/if}
 
 						<label class="field">
@@ -117,6 +110,7 @@
 								</button>
 							</div>
 						</label>
+						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
 
 						{#if errorMessage}<p class="auth-error" role="alert">{errorMessage}</p>{/if}
 						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
@@ -139,14 +133,21 @@
 						{#if mode === 'user'}<a href="/account" class="forgot-link">Forgot your password?</a>{/if}
 					</form>
 				</div>
+				<button type="button" class="theme-toggle-corner" class:signup={activeMode === 'signup'} onclick={toggleTheme} aria-pressed={isDarkMode} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
+					{#if isDarkMode}
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
+					{:else}
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+					{/if}
+				</button>
 			</div>
 		{/if}
 	</div>
 </div>
 
 <style>
-	.auth-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(5, 12, 30, .45); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding: 1.5rem; }
-	.auth-modal { --form-bg: #fff; --form-text: #111827; --form-muted: #6b7280; --field-bg: #f5f7fa; --field-border: #d9e2ec; position: relative; width: clamp(20rem, 92vw, 54rem); height: clamp(26rem, 90vh, 34rem); border: 1px solid rgba(15, 23, 42, .08); border-radius: 1.5rem; overflow: hidden; background: var(--form-bg); box-shadow: 0 32px 80px rgba(7, 21, 45, .35); }
+	.auth-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow-y: auto; background: rgba(5, 12, 30, .45); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding: clamp(.5rem, 3vw, 1.5rem); }
+	.auth-modal { --form-bg: #fff; --form-text: #111827; --form-muted: #6b7280; --field-bg: #f5f7fa; --field-border: #d9e2ec; position: relative; width: min(54rem, 100%); height: min(90dvh, 34rem); min-height: min(26rem, calc(100dvh - 1rem)); border: 1px solid rgba(15, 23, 42, .08); border-radius: 1.5rem; overflow: hidden; background: var(--form-bg); box-shadow: 0 32px 80px rgba(7, 21, 45, .35); }
 	.skeleton-panel { display: flex; width: 100%; height: 100%; flex-direction: column; justify-content: center; gap: 1.1rem; padding: 2.25rem 2rem; background: linear-gradient(135deg, #eef4fb, #f7f9fc); }
 	.skeleton-avatar { width: 6.25rem; height: 6.25rem; margin: 0 auto 1rem; border-radius: 50%; background: linear-gradient(90deg, #dfeaf5 25%, #edf3f9 50%, #dfeaf5 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 	.skeleton-line { height: 1.05rem; border-radius: .75rem; background: linear-gradient(90deg, #dfeaf5 25%, #edf3f9 50%, #dfeaf5 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
@@ -165,9 +166,10 @@
 	.edge-fade-left { left: 0; background: linear-gradient(to left, transparent, var(--form-bg)); opacity: 0; }
 	.image-panel.signup .edge-fade-right { opacity: 0; }
 	.image-panel.signup .edge-fade-left { opacity: 1; }
-	.form-panel { position: absolute; inset: 0 0 0 auto; left: 50%; display: flex; width: 50%; height: 100%; flex-direction: column; overflow-y: auto; padding: clamp(1.25rem, 4vw, 2.25rem) clamp(1.25rem, 5vw, 2.5rem); background: var(--form-bg); color: var(--form-text); transition: transform 550ms cubic-bezier(.65, 0, .35, 1); }
+	.form-panel { position: absolute; inset: 0 0 0 auto; left: 50%; display: flex; box-sizing: border-box; width: 50%; height: 100%; min-height: 0; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; padding: clamp(1.25rem, 4vw, 2.25rem) clamp(1.25rem, 5vw, 2.5rem) 5rem; background: var(--form-bg); color: var(--form-text); transition: transform 550ms cubic-bezier(.65, 0, .35, 1); }
 	.form-panel.signup { transform: translateX(-100%); }
-	.theme-toggle-corner { position: absolute; bottom: 1.25rem; left: 1.5rem; display: grid; width: 2.1rem; height: 2.1rem; place-items: center; border: 1px solid var(--field-border); border-radius: .6rem; background: var(--field-bg); color: #2563eb; cursor: pointer; transition: background 150ms ease, border-color 150ms ease; }
+	.theme-toggle-corner { position: absolute; z-index: 2; right: 1.5rem; bottom: 1.5rem; display: grid; width: 2.1rem; height: 2.1rem; place-items: center; border: 1px solid var(--field-border); border-radius: .6rem; background: var(--field-bg); color: #2563eb; cursor: pointer; transition: background 150ms ease, border-color 150ms ease; }
+	.theme-toggle-corner.signup { right: auto; left: 1.5rem; }
 	.theme-toggle-corner:hover { background: #e2e8f0; }
 	.theme-toggle-corner svg { width: 1.05rem; height: 1.05rem; }
 	.form-header { margin-bottom: clamp(1rem, 3vh, 1.4rem); text-align: center; }
@@ -175,7 +177,7 @@
 	.brand-logo img { display: block; width: 8rem; height: auto; margin: 0 auto; }
 	.form-header h1 { margin: 0; overflow-wrap: break-word; font-size: 1.15rem; font-weight: 800; }
 	.form-subtitle { margin: .35rem 0 0; color: var(--form-muted); overflow-wrap: break-word; font-size: .75rem; font-weight: 600; }
-	.auth-form { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: clamp(.75rem, 2.5vh, 1rem); }
+	.auth-form { display: flex; min-height: 0; flex: 1 0 auto; flex-direction: column; gap: clamp(.75rem, 2.5vh, 1rem); padding-bottom: 1rem; }
 	.field { display: flex; min-width: 0; flex-direction: column; gap: .4rem; color: var(--form-muted); font-size: .75rem; font-weight: 700; }
 	.field input { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--field-border); border-radius: .7rem; background: var(--field-bg); padding: .65rem .85rem; color: var(--form-text); outline: none; font-size: .85rem; font-weight: 600; transition: border-color 150ms ease; }
 	.field input:focus { border-color: #2563eb; }
@@ -190,12 +192,16 @@
 	.pill-outline:hover, .pill-outline.active { border-color: #2563eb; color: #2563eb; }
 	.pill-filled { border: 1.5px solid #2563eb; background: #2563eb; color: #fff; }
 	.pill-filled:hover { background: #1d4ed8; }
-	.forgot-link { margin: .65rem auto 0; color: #2563eb; font-size: .75rem; font-weight: 700; text-decoration: none; }
+	.forgot-link { margin: auto auto 1rem; color: #2563eb; font-size: .75rem; font-weight: 700; text-decoration: none; }
 	.forgot-link:hover { text-decoration: underline; }
 	.auth-error { margin: -.25rem 0 0; color: #dc2626; font-size: .72rem; font-weight: 700; }
-	.auth-success { margin: -.25rem 0 0; color: #15803d; font-size: .72rem; font-weight: 700; }
+	.auth-success { margin: -.25rem 0 0; color: #15803d; font-size: .72rem; font-weight: 700; line-height: 1.5; }
+	.signup-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+	.field select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--field-border); border-radius: .7rem; background: var(--field-bg); padding: .65rem .85rem; color: var(--form-text); font: inherit; font-size: .85rem; }
+	.auth-modal:has(.form-panel.signup) { height: min(90dvh, 48rem); }
 	:global(html[data-theme='dark'] .auth-modal) { --form-bg: #172640; --form-text: #edf4ff; --form-muted: #b8c8dd; --field-bg: #101d35; --field-border: #415878; }
 	:global(html[data-theme='dark'] .theme-toggle-corner:hover) { background: #223957; }
 	:global(html[data-theme='dark'] .pill-outline:hover), :global(html[data-theme='dark'] .pill-outline.active) { border-color: #7ec8ff; color: #7ec8ff; }
-	@media (max-width: 640px) { .auth-modal { height: min(34rem, 94vh); } .image-panel { display: none; } .form-panel { left: 0; width: 100%; } .form-panel.signup { transform: none; } }
+	@media (max-width: 640px) { .image-panel { display: none; } .form-panel { left: 0; width: 100%; } .form-panel.signup { transform: none; }.signup-name-row { grid-template-columns: 1fr; gap: .5rem; } }
+	@media (max-height: 540px) { .auth-modal { border-radius: 1rem; } .form-panel { padding-top: 1rem; } .form-header { margin-bottom: .75rem; } .brand-logo, .brand-logo img { width: 6rem; } .brand-logo { margin-bottom: .5rem; } .auth-form { gap: .6rem; } }
 </style>

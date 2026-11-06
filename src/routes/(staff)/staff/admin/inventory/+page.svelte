@@ -1,63 +1,25 @@
 <script lang="ts">
-	type InventoryItem = {
-		sku: string;
-		name: string;
-		category: string;
-		stock: number;
-		reorder: number;
-		price: string;
-		status: 'In stock' | 'Low stock' | 'Out of stock';
-	};
+	import { page } from '$app/state';
+	type Product = { id: number; sku: string; product_name: string; category_id: number | null; cost_price: number; selling_price: number; stock: number; reorder_level: number; status: string };
+	type Balance = { product_id: number; warehouse_id: number; quantity: number };
 
 	let activeTab = $state('Items');
 	let query = $state('');
 	let statusFilter = $state('All statuses');
-	const tabs = ['Items', 'Suppliers', 'Customers', 'Warehouses'];
-	const items: InventoryItem[] = [
-		{
-			sku: 'SKU-00142',
-			name: 'Bond Paper A4 500s',
-			category: 'Office supplies',
-			stock: 240,
-			reorder: 100,
-			price: '185.00',
-			status: 'In stock'
-		},
-		{
-			sku: 'SKU-00198',
-			name: 'Ballpen Blue Box/12',
-			category: 'Office supplies',
-			stock: 38,
-			reorder: 50,
-			price: '72.00',
-			status: 'Low stock'
-		},
-		{
-			sku: 'SKU-00311',
-			name: 'Stapler Heavy Duty',
-			category: 'Equipment',
-			stock: 15,
-			reorder: 10,
-			price: '420.00',
-			status: 'In stock'
-		},
-		{
-			sku: 'SKU-00427',
-			name: 'Whiteboard Marker Set',
-			category: 'Classroom',
-			stock: 0,
-			reorder: 20,
-			price: '95.00',
-			status: 'Out of stock'
-		}
-	];
+	const tabs = ['Items', 'Suppliers', 'Customers'];
+	let selectedProductId = $state('');
+	let products = $derived(page.data.products as Product[]);
+	let balances = $derived(page.data.balances as Balance[]);
+	let inventoryItems = $derived(products.map((product) => {
+		const warehouseRows = balances.filter((balance) => balance.product_id === product.id);
+		const stock = warehouseRows.length ? warehouseRows.reduce((sum, row) => sum + Number(row.quantity), 0) : Number(product.stock ?? 0);
+		const status = stock <= 0 ? 'Out of stock' : stock <= Number(product.reorder_level ?? 0) ? 'Low stock' : 'In stock';
+		return { ...product, stock, status };
+	}));
+	let inventoryValue = $derived(inventoryItems.reduce((sum, item) => sum + item.stock * Number(item.cost_price ?? 0), 0));
+	let reorderCount = $derived(inventoryItems.filter((item) => item.status !== 'In stock').length);
+	let categoryCount = $derived(new Set(products.map((item) => item.category_id).filter((id) => id !== null)).size);
 	const maintenance = [
-		{
-			label: 'Warehouse Profile',
-			href: '/staff/admin/inventory/profiles/warehouse',
-			detail: 'Locations, capacity, and managers',
-			icon: 'warehouse'
-		},
 		{
 			label: 'Item Profile',
 			href: '/staff/admin/inventory/profiles/item',
@@ -116,14 +78,15 @@
 		}
 	];
 	const filteredItems = $derived(
-		items.filter((item) => {
-			const matchesQuery = `${item.sku} ${item.name} ${item.category}`
+		inventoryItems.filter((item) => {
+			const matchesQuery = `${item.sku} ${item.product_name} ${item.category_id ?? ''}`
 				.toLowerCase()
 				.includes(query.trim().toLowerCase());
 			const matchesStatus = statusFilter === 'All statuses' || item.status === statusFilter;
 			return matchesQuery && matchesStatus;
 		})
 	);
+	const money = (amount: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
 		new Date()
 	);
@@ -172,18 +135,22 @@
 	</div>
 
 	<section class="inventory-stats" aria-label="Inventory summary">
-		<article>
-			<span>Total items</span><strong>1,248</strong><small>Across 8 categories</small>
-		</article>
-		<article>
-			<span>Inventory value</span><strong>2.84M</strong><small>At current cost</small>
-		</article>
-		<article>
-			<span>Reorder queue</span><strong>18</strong><small class="warn">Requires action</small>
-		</article>
-		<article>
-			<span>Active suppliers</span><strong>32</strong><small>Last updated today</small>
-		</article>
+		<article><span>Total items</span><strong>{products.length.toLocaleString()}</strong><small>Across {categoryCount} categories</small></article>
+		<article><span>Inventory value</span><strong>{money(inventoryValue)}</strong><small>At current cost</small></article>
+		<article><span>Reorder queue</span><strong>{reorderCount}</strong><small class="warn">Low or out of stock</small></article>
+		<article><span>Suppliers</span><strong>{page.data.supplierCount}</strong><small>Supplier records</small></article>
+	</section>
+
+	<section class="restock-panel" aria-labelledby="restock-title">
+		<div class="section-heading"><h2 id="restock-title">Restock inventory</h2><p>Receive stock and record the inventory movement. The default stock location is assigned automatically.</p></div>
+		{#if page.form?.restockError}<p class="restock-message error" role="alert">{page.form.restockError}</p>{/if}
+		{#if page.form?.restockSuccess}<p class="restock-message success" role="status">{page.form.restockSuccess}</p>{/if}
+		<form method="POST" action="?/restock" class="restock-form">
+			<label>Item<select name="productId" bind:value={selectedProductId} required><option value="" disabled>Select an item</option>{#each products as product}<option value={product.id}>{product.product_name} · {product.sku}</option>{/each}</select></label>
+			<label>Quantity received<input name="quantity" type="number" min="1" step="1" required /></label>
+			<label>Note<input name="remarks" maxlength="500" placeholder="Optional reference or note" /></label>
+			<button class="add-button" type="submit" disabled={!products.length}>Receive stock</button>
+		</form>
 	</section>
 
 	<section class="operations-panel" aria-labelledby="profiles-title">
@@ -262,34 +229,34 @@
 				<table>
 					<thead>
 						<tr
-							><th>Item / SKU</th><th>Category</th><th>On hand</th><th>Reorder point</th><th
+							><th>Item / SKU</th><th>Category ID</th><th>On hand</th><th>Reorder point</th><th
 								>Unit price</th
-							><th>Status</th></tr
+							><th>Status</th><th>Action</th></tr
 						>
 					</thead>
 					<tbody>
-						{#each filteredItems as item (item.sku)}
+						{#each filteredItems as item (item.id)}
 							<tr>
-								<td><strong>{item.name}</strong><small>{item.sku}</small></td>
-								<td>{item.category}</td>
+								<td><strong>{item.product_name}</strong><small>{item.sku}</small></td>
+								<td>{item.category_id ?? '—'}</td>
 								<td
 									class="number"
 									class:low-number={item.status === 'Low stock'}
 									class:zero-number={item.status === 'Out of stock'}>{item.stock}</td
 								>
-								<td class="number">{item.reorder}</td>
-								<td class="price">₱{item.price}</td>
+								<td class="number">{item.reorder_level}</td>
+								<td class="price">{money(Number(item.selling_price))}</td>
 								<td
 									><span
 										class="status"
 										class:low={item.status === 'Low stock'}
 										class:out={item.status === 'Out of stock'}><i></i>{item.status}</span
-									></td
+									></td><td><a class="row-restock" href="#restock-title" onclick={() => selectedProductId = String(item.id)}>Restock</a></td
 								>
 							</tr>
 						{:else}
 							<tr
-								><td class="no-results" colspan="6"
+								><td class="no-results" colspan="7"
 									>No items match your search and status filters.</td
 								></tr
 							>
@@ -305,8 +272,8 @@
 		{/if}
 		{#if activeTab === 'Items'}
 			<div class="directory-footer">
-				Showing {filteredItems.length} of {items.length} sample inventory items
-				<span>Demo data</span>
+				Showing {filteredItems.length} of {inventoryItems.length} inventory items
+				<span>Live inventory</span>
 			</div>
 		{/if}
 	</section>
@@ -466,7 +433,8 @@
 		color: #e77b0b;
 	}
 	.operations-panel,
-	.directory-panel {
+	.directory-panel,
+	.restock-panel {
 		margin-bottom: 0.8rem;
 		border: 1px solid #e4eaf2;
 		border-radius: 0.8rem;
@@ -476,6 +444,17 @@
 	.operations-panel {
 		padding: 0.85rem 0.95rem;
 	}
+	.restock-panel { padding: .85rem .95rem; }
+	.restock-form { display: grid; grid-template-columns: 1.5fr .8fr 1.4fr auto; align-items: end; gap: .6rem; }
+	.restock-form label { display: grid; gap: .3rem; color: #66768d; font-size: .58rem; font-weight: 700; }
+	.restock-form input, .restock-form select { min-width: 0; height: 2.35rem; border: 1px solid #e1e6ed; border-radius: .45rem; background: #fafbfc; color: #34445d; padding: .4rem .55rem; font: inherit; font-size: .62rem; }
+	.restock-form .add-button { border: 0; cursor: pointer; }
+	.restock-form .add-button:disabled { opacity: .5; cursor: not-allowed; }
+	.restock-message { margin: .5rem 0; border-radius: .45rem; padding: .5rem .65rem; font-size: .62rem; }
+	.restock-message.error { background: #fff1f2; color: #b91c1c; }
+	.restock-message.success { background: #f0fbf4; color: #187342; }
+	.row-restock { color: #347af5; font-size: .57rem; font-weight: 800; text-decoration: none; }
+	.row-restock:hover { text-decoration: underline; }
 	.section-heading {
 		margin-bottom: 0.65rem;
 	}
@@ -492,7 +471,7 @@
 	}
 	.maintenance-grid {
 		display: grid;
-		grid-template-columns: repeat(5, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 	}
 	.maintenance-grid a {
 		display: flex;
@@ -783,6 +762,7 @@
 	:global(html[data-theme='dark'] .inventory-page .inventory-stats article),
 	:global(html[data-theme='dark'] .inventory-page .operations-panel),
 	:global(html[data-theme='dark'] .inventory-page .directory-panel),
+	:global(html[data-theme='dark'] .inventory-page .restock-panel),
 	:global(html[data-theme='dark'] .inventory-page .workflow-disclosure) {
 		border-color: #334866;
 		background: #172640;
@@ -803,7 +783,9 @@
 		background: #101d35;
 	}
 	:global(html[data-theme='dark'] .inventory-page .search),
-	:global(html[data-theme='dark'] .inventory-page .toolbar select) {
+	:global(html[data-theme='dark'] .inventory-page .toolbar select),
+	:global(html[data-theme='dark'] .inventory-page .restock-form input),
+	:global(html[data-theme='dark'] .inventory-page .restock-form select) {
 		border-color: #415878;
 		background: #101d35;
 		color: #edf4ff;
@@ -858,6 +840,7 @@
 		.workflow-links {
 			grid-template-columns: repeat(2, 1fr);
 		}
+		.restock-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	@media (max-width: 420px) {
 		.date-chip {
@@ -879,5 +862,6 @@
 		.workflow-links {
 			grid-template-columns: 1fr;
 		}
+		.restock-form { grid-template-columns: 1fr; }
 	}
 </style>

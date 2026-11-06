@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { signInWithSupabase, setSessionCookie } from '$lib/server/auth';
+import { setSupabaseSession, signInWithSupabase } from '$lib/server/auth';
 import { registerApplicant } from '$lib/server/registration';
 import type { Actions } from './$types';
 
@@ -66,7 +66,10 @@ export const actions: Actions = {
 			};
 		}
 
-		if (mode !== 'login') return fail(400, { mode: 'login' as const, message: 'Invalid login request.' });
+		if (mode !== 'login') {
+			return fail(400, { mode: 'login' as const, message: 'Invalid login request.' });
+		}
+
 		const id = String(data.get('loginId') ?? data.get('studentId') ?? '').trim();
 		if (!/^\d{2}-\d{4}$/.test(id)) {
 			return fail(400, { mode: 'login' as const, message: 'Enter an ID number with 2 digits, a dash, then 4 digits (for example, 23-2111).' });
@@ -74,7 +77,7 @@ export const actions: Actions = {
 		const result = await signInWithSupabase(id, password);
 		if ('error' in result) return fail(400, { mode: 'login' as const, message: result.error });
 
-		await setSessionCookie(cookies, result.user);
+		setSupabaseSession(cookies, result.session);
 		throw redirect(
 			303,
 			result.user.role === 'admin'
