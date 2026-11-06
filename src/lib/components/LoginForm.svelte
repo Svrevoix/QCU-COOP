@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	let { mode, errorMessage = '', initialMode = 'login' }: { mode: 'user' | 'staff'; errorMessage?: string; initialMode?: 'login' | 'signup' } = $props();
+	let { mode, errorMessage = '', successMessage = '', initialMode = 'login' }: { mode: 'user' | 'staff'; errorMessage?: string; successMessage?: string; initialMode?: 'login' | 'signup' } = $props();
 	function getInitialMode(): 'login' | 'signup' {
 		return mode === 'user' && initialMode === 'signup' ? 'signup' : 'login';
 	}
@@ -119,6 +119,7 @@
 						</label>
 
 						{#if errorMessage}<p class="auth-error" role="alert">{errorMessage}</p>{/if}
+						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
 
 						<div class="action-panel" class:staff={mode === 'staff'}>
 							{#if mode === 'user'}
@@ -192,6 +193,7 @@
 	.forgot-link { margin: .65rem auto 0; color: #2563eb; font-size: .75rem; font-weight: 700; text-decoration: none; }
 	.forgot-link:hover { text-decoration: underline; }
 	.auth-error { margin: -.25rem 0 0; color: #dc2626; font-size: .72rem; font-weight: 700; }
+	.auth-success { margin: -.25rem 0 0; color: #15803d; font-size: .72rem; font-weight: 700; }
 	:global(html[data-theme='dark'] .auth-modal) { --form-bg: #172640; --form-text: #edf4ff; --form-muted: #b8c8dd; --field-bg: #101d35; --field-border: #415878; }
 	:global(html[data-theme='dark'] .theme-toggle-corner:hover) { background: #223957; }
 	:global(html[data-theme='dark'] .pill-outline:hover), :global(html[data-theme='dark'] .pill-outline.active) { border-color: #7ec8ff; color: #7ec8ff; }

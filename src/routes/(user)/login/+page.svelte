@@ -8,7 +8,12 @@
 </svelte:head>
 
 <main class="login-page">
-	<LoginForm mode="user" initialMode={form?.mode ?? 'login'} errorMessage={form?.message ?? ''} />
+	<LoginForm
+		mode="user"
+		initialMode={form?.mode ?? 'login'}
+		errorMessage={form?.message ?? ''}
+		successMessage={form?.success ?? ''}
+	/>
 </main>
 
 <style>

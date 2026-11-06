@@ -17,6 +17,8 @@
 	const placeholderStudentId = '23-1111';
 	let displayedId = $derived(page.data.user?.id ?? placeholderStudentId);
 	let isAdmin = $derived(page.data.user?.role === 'admin');
+	let isAuthenticated = $derived(Boolean(page.data.user));
+	let isPublicLanding = $derived(page.url.pathname === '/');
 
 	// Profile dropdown state + a reference to its wrapper so outside clicks can close it.
 	let showProfileMenu = $state(false);
@@ -165,12 +167,6 @@
 <header class="site-header bg-[#050c1e] text-white shadow-md relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
 	<div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 		
-<<<<<<< Updated upstream
-		<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
-			QCU COOP STORE
-		</a>
-		{#if !isAdmin}
-=======
 		{#if isAuthenticated}
 			<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
 				QCU COOP STORE
@@ -179,7 +175,6 @@
 			<span class="text-xl font-black tracking-wider shrink-0">QCU COOP STORE</span>
 		{/if}
 		{#if !isAdmin && isAuthenticated && !isPublicLanding}
->>>>>>> Stashed changes
 			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 				<input 
 					bind:this={searchInput}
@@ -225,6 +220,7 @@
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
 			<!-- Keyed on role+id so the avatar visual force-resets/remounts on every identity change. -->
+			{#if isAuthenticated}
 			{#key `${page.data.user?.role}:${page.data.user?.id}`}
 				<div class="profile-menu-container" bind:this={profileMenuContainer}>
 					<div class="profile-trigger">
@@ -266,6 +262,9 @@
 					{/if}
 				</div>
 			{/key}
+			{:else}
+				<a href="/login" class="rounded-full border border-blue-400/40 px-4 py-2 text-xs font-bold text-blue-100 hover:bg-blue-900/40">Sign in</a>
+			{/if}
 
 			<button 
 				class="block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition" 

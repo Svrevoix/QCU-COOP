@@ -34,7 +34,7 @@ export const actions: Actions = {
 		const id = String(form.get('id') ?? '').trim();
 		const status = String(form.get('status') ?? '').trim().toLowerCase();
 		if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return fail(400, { message: 'Invalid profile ID.' });
-		if (!['active', 'suspended', 'rejected', 'archived'].includes(status)) return fail(400, { message: 'Invalid account status.' });
+		if (!['approved', 'suspended', 'rejected', 'archived'].includes(status)) return fail(400, { message: 'Invalid account status.' });
 		if (id === locals.user.profileId && ['archived', 'suspended', 'rejected'].includes(status)) return fail(400, { message: 'You cannot deactivate your own administrator account.' });
 		const { url, headers } = config();
 		const query = new URLSearchParams({ id: `eq.${id}`, select: 'id,role' });
@@ -43,7 +43,7 @@ export const actions: Actions = {
 		const rows = await check.json() as Array<{ id: string; role: string }>;
 		if (!rows.length) return fail(404, { message: 'Account not found.' });
 		const changes: Record<string, unknown> = { account_status: status };
-		if (status === 'active') {
+		if (status === 'approved') {
 			changes.approved_by = locals.user.profileId;
 			changes.approved_at = new Date().toISOString();
 		}
@@ -51,7 +51,7 @@ export const actions: Actions = {
 			method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(changes)
 		});
 		if (!update.ok) return fail(502, { message: `Unable to update account status (Supabase HTTP ${update.status}).` });
-		return { success: `Account ${status === 'active' ? 'approved or reactivated' : status}.` };
+		return { success: `Account ${status === 'approved' ? 'approved or reactivated' : status}.` };
 	},
 	createAccount: async ({ request, locals }) => {
 		if (locals.user?.role !== 'admin') throw error(403, 'Administrator access required.');

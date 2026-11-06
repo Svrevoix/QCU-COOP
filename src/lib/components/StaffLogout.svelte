@@ -15,7 +15,7 @@
 	async function confirmLogout() {
 		showLogoutConfirmation = false;
 		await fetch('/logout', { method: 'POST' });
-		await goto('/staff/login', { invalidateAll: true });
+		await goto('/login', { invalidateAll: true });
 	}
 
 	$effect(() => {

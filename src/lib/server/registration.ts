@@ -45,7 +45,7 @@ export async function registerApplicant(applicant: ApplicantInput) {
 		email: applicant.email,
 		role: applicant.role,
 		registration_source: createdByAdmin ? 'admin' : 'self',
-		account_status: createdByAdmin ? 'active' : 'pending',
+		account_status: createdByAdmin ? 'approved' : 'pending',
 		avatar_path: null,
 		approved_by: applicant.createdBy || null,
 		approved_at: createdByAdmin ? new Date().toISOString() : null,

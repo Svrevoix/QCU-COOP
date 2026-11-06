@@ -53,14 +53,14 @@
 					<td><span class:pending={statusOf(account.account_status) === 'pending'} class:inactive={['suspended', 'rejected', 'inactive', 'archived'].includes(statusOf(account.account_status))} class="status">{displayStatus(account.account_status)}</span></td>
 					<td class="review-actions">
 						{#if ['student', 'teacher', 'faculty'].includes(role || '') && !isApproved(account.account_status) && statusOf(account.account_status) !== 'archived'}
-							<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="active"/><button type="submit" class="approve">Approve</button></form>
+							<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="approved"/><button type="submit" class="approve">Approve</button></form>
 						{/if}
 						{#if statusOf(account.account_status) === 'pending'}
 							<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="rejected"/><button type="submit" class="reject">Reject</button></form>
 						{:else if isApproved(account.account_status)}
 							<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="suspended"/><button type="submit" class="reject">Suspend</button></form>
 						{/if}
-						{#if statusOf(account.account_status) === 'archived'}<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="active"/><button type="submit" class="approve">Restore</button></form>
+						{#if statusOf(account.account_status) === 'archived'}<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="approved"/><button type="submit" class="approve">Restore</button></form>
 						{:else if account.id !== data.currentAdminId}<form method="POST" action="?/setStatus" use:enhance><input type="hidden" name="id" value={account.id}/><input type="hidden" name="status" value="archived"/><button type="submit" class="archive">Archive</button></form>{/if}
 					</td>
 				</tr>
