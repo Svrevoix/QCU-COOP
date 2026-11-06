@@ -231,7 +231,7 @@
 			if (event.target === event.currentTarget) addOpen = false;
 		}}
 	>
-		<section
+		<div
 			class="create-modal"
 			role="dialog"
 			aria-modal="true"
@@ -301,7 +301,7 @@
 					><button type="submit" class="add-button">Create account</button>
 				</footer>
 			</form>
-		</section>
+		</div>
 	</div>
 {/if}
 

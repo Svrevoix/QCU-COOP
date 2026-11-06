@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { isCourseForDepartment, isDepartment } from '$lib/academic-programs';
 import { setSupabaseSession, signInWithSupabase } from '$lib/server/auth';
 import { registerApplicant } from '$lib/server/registration';
 import type { Actions } from './$types';
@@ -24,8 +25,11 @@ export const actions: Actions = {
 			if (role !== 'student' && role !== 'teacher') {
 				return fail(400, { mode: 'signup' as const, message: 'Choose Student or Teacher as the account type.' });
 			}
-			if (!firstName || !lastName || !email || !password || (role === 'teacher' && !department)) {
+			if (!firstName || !lastName || !email || !password) {
 				return fail(400, { mode: 'signup' as const, message: 'Complete all required profile fields.' });
+			}
+			if (!isDepartment(department)) {
+				return fail(400, { mode: 'signup' as const, message: 'Choose a valid college.' });
 			}
 			const idNumber = role === 'student' ? schoolId : employeeNo;
 			if (!/^\d{2}-\d{4}$/.test(idNumber)) {
@@ -43,6 +47,9 @@ export const actions: Actions = {
 			) {
 				return fail(400, { mode: 'signup' as const, message: 'Enter your student number, course, and year level.' });
 			}
+			if (role === 'student' && !isCourseForDepartment(department, course)) {
+				return fail(400, { mode: 'signup' as const, message: 'Choose a course offered by your selected college.' });
+			}
 			if (role === 'teacher' && !employeeNo) {
 				return fail(400, { mode: 'signup' as const, message: 'Enter your employee number.' });
 			}
@@ -55,7 +62,7 @@ export const actions: Actions = {
 				lastName,
 				email,
 				password,
-				department: role === 'teacher' ? department : undefined,
+				department,
 				course,
 				yearLevel
 			});

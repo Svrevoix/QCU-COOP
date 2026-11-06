@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { signInWithSupabase, setSessionCookie } from '$lib/server/auth';
+import { setSupabaseSession, signInWithSupabase } from '$lib/server/auth';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
@@ -16,7 +16,7 @@ export const actions: Actions = {
 			return fail(400, { message: 'This account does not have staff access.' });
 		}
 
-		await setSessionCookie(cookies, result.user);
+		setSupabaseSession(cookies, result.session);
 		throw redirect(303, result.user.role === 'admin' ? '/staff/admin' : '/staff/pos/register');
 	}
 };
