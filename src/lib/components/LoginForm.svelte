@@ -7,6 +7,9 @@
 		return mode === 'user' && initialMode === 'signup' ? 'signup' : 'login';
 	}
 	let activeMode = $state<'login' | 'signup'>(getInitialMode());
+	$effect(() => {
+		activeMode = getInitialMode();
+	});
 	let showPassword = $state(false);
 	let loginId = $state('');
 	let signupId = $state('');
@@ -91,6 +94,7 @@
 					</div>
 
 					<form method="POST" class="auth-form">
+						<input type="hidden" name="mode" value={activeMode} />
 						{#if activeMode === 'signup'}
 							<label class="field"><span class="field-label">Account type</span><select name="role" bind:value={signupRole}><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
 							<div class="signup-name-row"><label class="field"><span class="field-label">First name</span><input name="firstName" autocomplete="given-name" required /></label><label class="field"><span class="field-label">Last name</span><input name="lastName" autocomplete="family-name" required /></label></div>
@@ -118,15 +122,13 @@
 								</button>
 							</div>
 						</label>
-						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
-
 						{#if errorMessage}<p class="auth-error" role="alert">{errorMessage}</p>{/if}
 						{#if successMessage}<p class="auth-success" role="status">{successMessage}</p>{/if}
 
 						<div class="action-panel" class:staff={mode === 'staff'}>
 							{#if mode === 'user'}
 								{#if activeMode === 'signup'}
-									<button type="submit" name="mode" value="signup" class="pill-button pill-outline active">Sign Up</button>
+									<button type="submit" class="pill-button pill-outline active">Sign Up</button>
 								{:else}
 									<button type="button" class="pill-button pill-outline" onclick={() => activeMode = 'signup'}>Sign Up</button>
 								{/if}
@@ -134,7 +136,7 @@
 							{#if mode === 'user' && activeMode === 'signup'}
 								<button type="button" class="pill-button pill-filled" onclick={() => activeMode = 'login'}>Login</button>
 							{:else}
-								<button type="submit" name="mode" value="login" class="pill-button pill-filled">Login</button>
+								<button type="submit" class="pill-button pill-filled">Login</button>
 							{/if}
 						</div>
 

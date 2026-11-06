@@ -54,18 +54,29 @@ export const actions: Actions = {
 				return fail(400, { mode: 'signup' as const, message: 'Enter your employee number.' });
 			}
 
-			const result = await registerApplicant({
-				role,
-				schoolId,
-				employeeNo,
-				firstName,
-				lastName,
-				email,
-				password,
-				department,
-				course,
-				yearLevel
-			});
+			let result: Awaited<ReturnType<typeof registerApplicant>>;
+			try {
+				result = await registerApplicant({
+					role,
+					schoolId,
+					employeeNo,
+					firstName,
+					lastName,
+					email,
+					password,
+					department,
+					course,
+					yearLevel
+				});
+			} catch (cause) {
+				return fail(502, {
+					mode: 'signup' as const,
+					message:
+						cause instanceof Error
+							? cause.message
+							: 'Unable to submit your registration. Please try again.'
+				});
+			}
 			if ('error' in result) return fail(400, { mode: 'signup' as const, message: result.error });
 			return {
 				mode: 'login' as const,

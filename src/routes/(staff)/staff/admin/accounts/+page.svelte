@@ -133,7 +133,7 @@
 							>
 							<td
 								><span class="role">{displayRole(account.role)}</span><small
-									>{#if role === 'student'}{account.course || 'Course not set'} · {account.year_level
+									>{#if role === 'student'}{account.course || 'Course not set'} · {account.department || 'Department not set'} · {account.year_level
 											? `Year ${account.year_level}`
 											: 'Year not set'}{:else}{account.department ||
 											'Department not set'}{/if}</small
@@ -277,7 +277,7 @@
 					/></label
 				>
 				<label>Email address<input type="email" name="email" required /></label>
-				{#if newRole === 'student'}<label>Course / program<input name="course" required /></label
+				{#if newRole === 'student'}<label>Department / college<input name="department" required /></label><label>Course / program<input name="course" required /></label
 					><label
 						>Year level<select name="yearLevel" required
 							><option value="">Select year</option>{#each [1, 2, 3, 4, 5, 6] as year}<option

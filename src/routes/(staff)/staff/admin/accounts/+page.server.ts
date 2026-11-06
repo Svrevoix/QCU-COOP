@@ -104,7 +104,7 @@ export const actions: Actions = {
 			.toLowerCase();
 		const password = String(form.get('password') ?? '');
 		const departmentInput = String(form.get('department') ?? '').trim();
-		const department = role === 'student' ? undefined : departmentInput;
+		const department = departmentInput;
 		const course = String(form.get('course') ?? '').trim();
 		const yearLevel = Number(form.get('yearLevel')) || undefined;
 		if (!['student', 'teacher', 'cashier', 'admin'].includes(role))
@@ -112,7 +112,7 @@ export const actions: Actions = {
 		if (
 			!firstName ||
 			!lastName ||
-			(role !== 'student' && !department) ||
+			!department ||
 			!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 		)
 			return fail(400, { message: 'Complete all required name, department, and email fields.' });

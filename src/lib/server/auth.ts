@@ -10,6 +10,11 @@ export interface AuthenticatedUser {
 	id: string;
 	profileId: string;
 	email?: string;
+	firstName?: string;
+	lastName?: string;
+	department?: string;
+	course?: string;
+	yearLevel?: number;
 	coopMember: boolean;
 	expiresAt?: number;
 }
@@ -27,6 +32,11 @@ type AccountProfile = {
 	login_id: string | null;
 	role: string | null;
 	account_status: string | null;
+	first_name: string | null;
+	last_name: string | null;
+	department: string | null;
+	course: string | null;
+	year_level: number | null;
 };
 
 type SupabaseTokenResponse = {
@@ -68,7 +78,18 @@ async function userFromProfile(profile: AccountProfile): Promise<AuthenticatedUs
 			? profile.school_id || profile.login_id || profile.employee_no || profile.email
 			: profile.employee_no || profile.login_id || profile.school_id || profile.email;
 	const coopMember = role === 'teacher' ? await teacherHasActiveMembership(profile.id) : false;
-	return { role, id, profileId: profile.id, email: profile.email, coopMember };
+	return {
+		role,
+		id,
+		profileId: profile.id,
+		email: profile.email,
+		firstName: profile.first_name ?? undefined,
+		lastName: profile.last_name ?? undefined,
+		department: profile.department ?? undefined,
+		course: profile.course ?? undefined,
+		yearLevel: profile.year_level ?? undefined,
+		coopMember
+	};
 }
 
 async function teacherHasActiveMembership(teacherId: string) {
@@ -114,7 +135,8 @@ async function findProfile(filters: Record<string, string>) {
 			'Add SUPABASE_SECRET_KEY to .env so the server can look up profile IDs securely.'
 		);
 	const query = new URLSearchParams({
-		select: 'id,email,school_id,employee_no,login_id,role,account_status',
+		select:
+			'id,email,school_id,employee_no,login_id,role,account_status,first_name,last_name,department,course,year_level',
 		limit: '2',
 		...filters
 	});

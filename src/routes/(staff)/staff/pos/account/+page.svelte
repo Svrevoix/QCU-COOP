@@ -5,6 +5,8 @@
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	const AVATAR_STORAGE_KEY = 'qcu-cashier-avatar-image';
+	const user = $derived(page.data.user);
+	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
 	let isDarkMode = $state(false);
@@ -126,24 +128,24 @@
 					class="sr-only-input"
 					onchange={handleImageSelect}
 				/>
-				<p class="account-name">Cashier account</p>
+				<p class="account-name">{fullName || 'Cashier account'}</p>
 				<p class="account-role">Point of sale access</p>
 				<dl class="profile-details">
 					<div>
 						<dt>Full Name</dt>
-						<dd>Not provided</dd>
+						<dd>{fullName || 'Not provided'}</dd>
 					</div>
 					<div>
 						<dt>Staff ID</dt>
-						<dd>{page.data.user?.id ?? 'Not provided'}</dd>
+						<dd>{user?.id ?? 'Not provided'}</dd>
 					</div>
 					<div>
-						<dt>Assigned Counter / Terminal</dt>
-						<dd>Not assigned</dd>
+						<dt>Institutional Email</dt>
+						<dd>{user?.email ?? 'Not provided'}</dd>
 					</div>
 					<div>
-						<dt>Active Shift Schedule</dt>
-						<dd>Not provided</dd>
+						<dt>Department / Office</dt>
+						<dd>{user?.department ?? 'Not provided'}</dd>
 					</div>
 				</dl>
 			</div>

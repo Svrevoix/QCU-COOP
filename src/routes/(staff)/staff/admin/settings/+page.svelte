@@ -4,6 +4,8 @@
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
 
 	const AVATAR_STORAGE_KEY = 'qcu-admin-avatar-image';
+	const user = $derived(page.data.user);
+	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
 	let avatarError = $state('');
@@ -76,13 +78,14 @@
 				</button>
 			</div>
 			<input bind:this={fileInput} type="file" accept="image/*" class="sr-only-input" onchange={handleImageSelect} />
-			<p class="account-name">Administrator account</p>
+			<p class="account-name">{fullName || 'Administrator account'}</p>
 			<p class="account-role">Admin workspace access</p>
 			{#if avatarError}<p class="avatar-error" role="alert">{avatarError}</p>{/if}
 			<dl class="profile-details">
-				<div><dt>Full Name</dt><dd>Not provided</dd></div>
-				<div><dt>Admin ID</dt><dd>{page.data.user?.id ?? 'Not provided'}</dd></div>
-				<div><dt>Department / Office</dt><dd>Not provided</dd></div>
+				<div><dt>Full Name</dt><dd>{fullName || 'Not provided'}</dd></div>
+				<div><dt>Admin ID</dt><dd>{user?.id ?? 'Not provided'}</dd></div>
+				<div><dt>Institutional Email</dt><dd>{user?.email ?? 'Not provided'}</dd></div>
+				<div><dt>Department / Office</dt><dd>{user?.department ?? 'Not provided'}</dd></div>
 				<div><dt>Access Level / Role</dt><dd>Administrator</dd></div>
 			</dl>
 		</div>

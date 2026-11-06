@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { avatarImage } from '$lib/profile';
 
-	// Placeholder student identity until real auth/profile data is wired up.
-	const studentId = '23-2111';
-	const studentName = 'Student Account';
+	const user = $derived(page.data.user);
+	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
+	const profileLabel = $derived(
+		user?.role === 'student' && user.course
+			? `${user.course}${user.department ? ` · ${user.department}` : ''}`
+			: user?.department || user?.course || 'Not provided'
+	);
 
 	let fileInput = $state<HTMLInputElement>();
 	let isDarkMode = $state(false);
@@ -94,12 +99,13 @@
 				class="sr-only-input"
 				onchange={handleImageSelect}
 			/>
-			<p class="account-name">{studentName}</p>
-			<p class="account-id">Student ID: {studentId}</p>
+			<p class="account-name">{fullName || 'Account'}</p>
+			<p class="account-id">{user?.role === 'teacher' ? 'Employee ID' : 'Student ID'}: {user?.id ?? 'Not provided'}</p>
 			<dl class="profile-details">
-				<div><dt>Full Name</dt><dd>Not provided</dd></div>
-				<div><dt>Institutional Email</dt><dd>Not provided</dd></div>
-				<div><dt>Program / Department</dt><dd>Not provided</dd></div>
+				<div><dt>Full Name</dt><dd>{fullName || 'Not provided'}</dd></div>
+				<div><dt>Institutional Email</dt><dd>{user?.email || 'Not provided'}</dd></div>
+				<div><dt>Program / Department</dt><dd>{profileLabel}</dd></div>
+				{#if user?.role === 'student'}<div><dt>Year Level</dt><dd>{user.yearLevel ? `Year ${user.yearLevel}` : 'Not provided'}</dd></div>{/if}
 			</dl>
 		</div>
 
