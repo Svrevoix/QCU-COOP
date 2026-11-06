@@ -60,7 +60,7 @@
 
 {#if addOpen}
 	<div class="modal-backdrop" role="presentation" onclick={(event) => { if (event.target === event.currentTarget) addOpen = false; }}>
-		<section class="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-account-title">
+		<div class="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-account-title">
 			<header><div><p class="admin-eyebrow">User access</p><h2 id="create-account-title">Add account</h2></div><button type="button" class="close-button" aria-label="Close" onclick={() => addOpen = false}>×</button></header>
 			<form method="POST" action="?/createAccount" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'success') addOpen = false; }}>
 				<label>Account role<select name="role" bind:value={newRole}><option value="student">Student</option><option value="teacher">Teacher</option><option value="cashier">Cashier</option><option value="admin">Admin</option></select></label>
@@ -73,7 +73,7 @@
 				{#if form?.message}<p class="form-error" role="alert">{form.message}</p>{/if}
 				<footer><button type="button" class="cancel-button" onclick={() => addOpen = false}>Cancel</button><button type="submit" class="add-button">Create account</button></footer>
 			</form>
-		</section>
+		</div>
 	</div>
 {/if}
 
