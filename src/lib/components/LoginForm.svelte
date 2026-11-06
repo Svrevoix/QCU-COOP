@@ -1,40 +1,52 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import {
+		departmentCourses,
+		maxYearLevelForCourse,
+		type Department
+	} from '$lib/academic-programs';
 
 	let { mode, errorMessage = '', successMessage = '', initialMode = 'login' }: { mode: 'user' | 'staff'; errorMessage?: string; successMessage?: string; initialMode?: 'login' | 'signup' } = $props();
 	function getInitialMode(): 'login' | 'signup' {
 		return mode === 'user' && initialMode === 'signup' ? 'signup' : 'login';
 	}
 	let activeMode = $state<'login' | 'signup'>(getInitialMode());
+	$effect(() => {
+		activeMode = getInitialMode();
+	});
 	let showPassword = $state(false);
 	let loginId = $state('');
+	let signupId = $state('');
 	let signupRole = $state<'student' | 'teacher'>('student');
+	let signupDepartment = $state<Department | ''>('');
+	let signupCourse = $state('');
+	let signupYearLevel = $state('');
+	let signupCourses = $derived(signupDepartment ? departmentCourses[signupDepartment] : []);
+	let signupMaxYearLevel = $derived(maxYearLevelForCourse(signupCourse));
 	let isDarkMode = $state(false);
 	let isLoading = $state(true);
 
-	function handleLoginIdInput(event: Event) {
+	function handleIdInput(event: Event, field: 'login' | 'signup') {
 		const input = event.currentTarget as HTMLInputElement;
 		const value = input.value;
-		if (!/^[\d-]*$/.test(value)) {
-			loginId = value;
-			return;
-		}
-
-		const digits = value.replace(/\D/g, '');
-		const formatted =
-			digits.length > 2 && digits.length <= 6
-				? `${digits.slice(0, 2)}-${digits.slice(2)}`
-				: digits;
+		const digits = value.replace(/\D/g, '').slice(0, 6);
+		const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
 		const caret = input.selectionStart ?? value.length;
-		const digitsBeforeCaret = value.slice(0, caret).replace(/\D/g, '').length;
-		const formattedCaret =
-			digitsBeforeCaret > 2 && digits.length <= 6
-				? digitsBeforeCaret + 1
-				: digitsBeforeCaret;
+		const digitsBeforeCaret = Math.min(value.slice(0, caret).replace(/\D/g, '').length, digits.length);
+		const formattedCaret = digitsBeforeCaret + (digitsBeforeCaret > 2 ? 1 : 0);
 
 		input.value = formatted;
 		input.setSelectionRange(formattedCaret, formattedCaret);
-		loginId = formatted;
+		if (field === 'login') loginId = formatted;
+		else signupId = formatted;
+	}
+
+	function handleLoginIdInput(event: Event) {
+		handleIdInput(event, 'login');
+	}
+
+	function handleSignupIdInput(event: Event) {
+		handleIdInput(event, 'signup');
 	}
 
 	onMount(() => {
@@ -88,15 +100,16 @@
 					</div>
 
 					<form method="POST" class="auth-form">
+						<input type="hidden" name="mode" value={activeMode} />
 						{#if activeMode === 'signup'}
 							<label class="field"><span class="field-label">Account type</span><select name="role" bind:value={signupRole}><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
 							<div class="signup-name-row"><label class="field"><span class="field-label">First name</span><input name="firstName" autocomplete="given-name" required /></label><label class="field"><span class="field-label">Last name</span><input name="lastName" autocomplete="family-name" required /></label></div>
-							<label class="field"><span class="field-label">{signupRole === 'student' ? 'ID Number' : 'ID Number'}</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} placeholder={signupRole === 'student' ? 'e.g. 23-2111' : 'Employee number'} required /></label>
+							<label class="field"><span class="field-label">ID Number</span><input name={signupRole === 'student' ? 'schoolId' : 'employeeNo'} type="text" inputmode="numeric" placeholder="e.g. 23-2111" value={signupId} oninput={handleSignupIdInput} required /></label>
 							<label class="field"><span class="field-label">Email address</span><input name="email" type="email" autocomplete="email" placeholder="name@qcu.edu.ph" required /></label>
-							<label class="field"><span class="field-label">Department</span><input name="department" required /></label>
+							<label class="field"><span class="field-label">Department</span><select name="department" bind:value={signupDepartment} onchange={() => { signupCourse = ''; signupYearLevel = ''; }} required><option value="" disabled>Select your college</option>{#each Object.keys(departmentCourses) as department}<option value={department}>{department}</option>{/each}</select></label>
 							{#if signupRole === 'student'}
-								<label class="field"><span class="field-label">Course / Program</span><input name="course" required /></label>
-								<label class="field"><span class="field-label">Year level</span><select name="yearLevel" required><option value="">Select year level</option>{#each [1, 2, 3, 4, 5, 6] as year}<option value={year}>{year}{year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} year</option>{/each}</select></label>
+								<label class="field"><span class="field-label">Course / Program</span><select name="course" bind:value={signupCourse} onchange={() => signupYearLevel = ''} required disabled={!signupDepartment}><option value="" disabled>{signupDepartment ? 'Select your course' : 'Select a college first'}</option>{#each signupCourses as course}<option value={course}>{course}</option>{/each}</select></label>
+								<label class="field"><span class="field-label">Year level</span><select name="yearLevel" bind:value={signupYearLevel} required disabled={!signupCourse}><option value="" disabled>{signupCourse ? 'Select year level' : 'Select a course first'}</option>{#each Array.from({ length: signupMaxYearLevel }, (_, index) => index + 1) as year}<option value={year}>{year}{year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} year</option>{/each}</select></label>
 							{/if}
 						{:else}
 							<label class="field"><span class="field-label">ID Number</span><input name="loginId" type="text" placeholder="e.g. 23-2111" value={loginId} oninput={handleLoginIdInput} autocomplete="username" required /></label>
@@ -122,7 +135,7 @@
 						<div class="action-panel" class:staff={mode === 'staff'}>
 							{#if mode === 'user'}
 								{#if activeMode === 'signup'}
-									<button type="submit" name="mode" value="signup" class="pill-button pill-outline active">Sign Up</button>
+									<button type="submit" class="pill-button pill-outline active">Sign Up</button>
 								{:else}
 									<button type="button" class="pill-button pill-outline" onclick={() => activeMode = 'signup'}>Sign Up</button>
 								{/if}
@@ -130,7 +143,7 @@
 							{#if mode === 'user' && activeMode === 'signup'}
 								<button type="button" class="pill-button pill-filled" onclick={() => activeMode = 'login'}>Login</button>
 							{:else}
-								<button type="submit" name="mode" value="login" class="pill-button pill-filled">Login</button>
+								<button type="submit" class="pill-button pill-filled">Login</button>
 							{/if}
 						</div>
 

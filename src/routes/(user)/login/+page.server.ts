@@ -1,5 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { isCourseForDepartment, isDepartment } from '$lib/academic-programs';
+import {
+	isCourseForDepartment,
+	isDepartment,
+	maxYearLevelForCourse
+} from '$lib/academic-programs';
 import { setSupabaseSession, signInWithSupabase } from '$lib/server/auth';
 import { registerApplicant } from '$lib/server/registration';
 import type { Actions } from './$types';
@@ -43,9 +47,20 @@ export const actions: Actions = {
 			}
 			if (
 				role === 'student' &&
-				(!schoolId || !course || !yearLevel || !Number.isInteger(yearLevel) || yearLevel < 1)
+				(!schoolId ||
+					!course ||
+					!yearLevel ||
+					!Number.isInteger(yearLevel) ||
+					yearLevel < 1 ||
+					yearLevel > maxYearLevelForCourse(course))
 			) {
-				return fail(400, { mode: 'signup' as const, message: 'Enter your student number, course, and year level.' });
+				return fail(400, {
+					mode: 'signup' as const,
+					message:
+						course === 'Entrepreneurship'
+							? 'Entrepreneurship students may select year levels 1 through 3.'
+							: 'Choose a valid year level from 1 through 4.'
+				});
 			}
 			if (role === 'student' && !isCourseForDepartment(department, course)) {
 				return fail(400, { mode: 'signup' as const, message: 'Choose a course offered by your selected college.' });
