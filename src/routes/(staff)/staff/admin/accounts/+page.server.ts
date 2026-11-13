@@ -17,6 +17,12 @@ type Profile = {
 	course: string | null;
 	year_level: number | null;
 	created_at: string | null;
+	last_activity_at: string | null;
+};
+
+type AuthUser = {
+	id: string;
+	last_sign_in_at: string | null;
 };
 
 function config() {
@@ -44,7 +50,26 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const response = await fetch(`${url}/rest/v1/profiles?${query}`, { headers });
 	if (!response.ok)
 		throw error(502, `Could not load user profiles (Supabase HTTP ${response.status}).`);
-	const accounts = (await response.json()) as Profile[];
+	const profiles = (await response.json()) as Omit<Profile, 'last_activity_at'>[];
+	const lastSignInById = new Map<string, string>();
+	for (let page = 1; ; page += 1) {
+		const authQuery = new URLSearchParams({ page: String(page), per_page: '1000' });
+		const authResponse = await fetch(`${url}/auth/v1/admin/users?${authQuery}`, { headers });
+		if (!authResponse.ok)
+			throw error(502, `Could not load account activity (Supabase HTTP ${authResponse.status}).`);
+		const result = (await authResponse.json()) as { users?: AuthUser[] } | AuthUser[];
+		const users = Array.isArray(result) ? result : result.users;
+		if (!Array.isArray(users))
+			throw error(502, 'Supabase returned an invalid account activity response.');
+		for (const user of users) {
+			if (user.last_sign_in_at) lastSignInById.set(user.id, user.last_sign_in_at);
+		}
+		if (users.length < 1000) break;
+	}
+	const accounts: Profile[] = profiles.map((profile) => ({
+		...profile,
+		last_activity_at: lastSignInById.get(profile.id) ?? null
+	}));
 	return {
 		accounts,
 		pendingCount: accounts.filter(
@@ -91,6 +116,50 @@ export const actions: Actions = {
 			});
 		return { success: `Account ${status === 'approved' ? 'approved or reactivated' : status}.` };
 	},
+	updateAccount: async ({ request, locals }) => {
+		if (locals.user?.role !== 'admin') throw error(403, 'Administrator access required.');
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '').trim();
+		const firstName = String(form.get('firstName') ?? '').trim();
+		const lastName = String(form.get('lastName') ?? '').trim();
+		const idNumber = String(form.get('idNumber') ?? '').trim();
+		const department = String(form.get('department') ?? '').trim();
+		const course = String(form.get('course') ?? '').trim();
+		if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+			return fail(400, { message: 'Invalid profile ID.' });
+		if (!firstName || !lastName) return fail(400, { message: 'First and last name are required.' });
+		if (!idNumber) return fail(400, { message: 'An ID number is required.' });
+		const { url, headers } = config();
+		const checkQuery = new URLSearchParams({ id: `eq.${id}`, select: 'id,role' });
+		const check = await fetch(`${url}/rest/v1/profiles?${checkQuery}`, { headers });
+		if (!check.ok)
+			return fail(502, { message: `Unable to verify profile (Supabase HTTP ${check.status}).` });
+		const rows = (await check.json()) as Array<{ id: string; role: string | null }>;
+		if (!rows.length) return fail(404, { message: 'Account not found.' });
+		const role = rows[0].role?.trim().toLowerCase();
+		const changes: Record<string, string | null> = {
+			first_name: firstName,
+			last_name: lastName,
+			department: department || null
+		};
+		if (['student', 'customer', 'user', 'member'].includes(role ?? '')) {
+			changes.school_id = idNumber || null;
+			changes.course = course || null;
+		} else {
+			changes.employee_no = idNumber || null;
+		}
+		changes.login_id = idNumber;
+		const update = await fetch(`${url}/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`, {
+			method: 'PATCH',
+			headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+			body: JSON.stringify(changes)
+		});
+		if (!update.ok)
+			return fail(502, {
+				message: `Unable to update account details (Supabase HTTP ${update.status}).`
+			});
+		return { success: 'Account details updated.' };
+	},
 	createAccount: async ({ request, locals }) => {
 		if (locals.user?.role !== 'admin') throw error(403, 'Administrator access required.');
 		const form = await request.formData();
@@ -109,12 +178,7 @@ export const actions: Actions = {
 		const yearLevel = Number(form.get('yearLevel')) || undefined;
 		if (!['student', 'teacher', 'cashier', 'admin'].includes(role))
 			return fail(400, { message: 'Choose a valid account role.' });
-		if (
-			!firstName ||
-			!lastName ||
-			!department ||
-			!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-		)
+		if (!firstName || !lastName || !department || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
 			return fail(400, { message: 'Complete all required name, department, and email fields.' });
 		if (password.length < 8)
 			return fail(400, { message: 'Set a password with at least 8 characters.' });

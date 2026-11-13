@@ -1,4 +1,4 @@
-<script lang="ts">
+ <script lang="ts">
 	import { page } from '$app/state';
 	import { addToCart } from '$lib/cart';
 	import { handleImageError } from '$lib/imageFallback';
