@@ -269,16 +269,18 @@
 
 	<div class="product-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 		{#each visibleProducts as product}
-			<article class="product-card group overflow-hidden rounded-2xl border border-[#233f91] bg-[#233f91] text-white shadow-lg shadow-blue-950/20 transition hover:-translate-y-1 hover:shadow-xl">
-				<div class="product-card-image flex h-36 items-center justify-center overflow-hidden bg-[#233f91] p-4 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-white/80">
+			<article class="product-card group flex h-full flex-col overflow-hidden rounded-2xl border border-[#233f91] bg-[#233f91] text-white shadow-lg shadow-blue-950/20 transition hover:-translate-y-1 hover:shadow-xl">
+				<div class="product-card-image flex h-36 shrink-0 items-center justify-center overflow-hidden bg-[#233f91] p-4 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-white/80">
 					<img src={product.image || placeholderImage} alt={product.name} onerror={(event) => handleImageError(event, product.name)} class="h-full w-full object-contain" />
 				</div>
-				<div class="p-4">
-					{#if product.lowStock}
-						<span class="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800">Low stock</span>
-					{/if}
-					<h2 class="mt-2 min-h-10 text-sm font-black leading-snug text-white">{product.name}</h2>
-					<div class="mt-3 flex items-end justify-between gap-3">
+				<div class="product-card-info flex flex-1 flex-col p-4">
+					<div class="mb-2 flex min-h-5 items-center">
+						{#if product.lowStock}
+							<span class="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800">Low stock</span>
+						{/if}
+					</div>
+					<h2 class="min-h-10 text-sm font-black leading-snug text-white">{product.name}</h2>
+					<div class="mt-auto flex items-end justify-between gap-3 pt-3">
 						<span class="text-lg font-black text-white">{product.price !== undefined ? `₱${product.price.toFixed(2)}` : 'Price to be set'}</span>
 						<span class="text-[10px] font-mono text-white/70">{product.sku}</span>
 					</div>
@@ -465,6 +467,7 @@
 	}
 
 	.product-grid {
+		grid-auto-rows: 1fr;
 		animation: contentSlideIn 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	}
 

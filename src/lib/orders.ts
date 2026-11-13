@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 import type { CartItem } from '$lib/cart';
 import { productCatalog } from '$lib/products';
 
-export type OrderStatus = 'Delivered' | 'Ready for pickup' | 'Cancelled';
+export type OrderStatus = 'Delivered' | 'Claimed' | 'Ready for pickup' | 'Cancelled';
 
 export type PurchaseOrder = {
 	id: string;

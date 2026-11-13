@@ -5,7 +5,7 @@
 
 	type OrderFilter = 'All orders' | OrderStatus;
 
-	const filters: OrderFilter[] = ['All orders', 'Delivered', 'Ready for pickup', 'Cancelled'];
+	const filters: OrderFilter[] = ['All orders', 'Claimed', 'Ready for pickup', 'Cancelled'];
 	let activeFilter = $state<OrderFilter>('All orders');
 	let selectedLineKeys = $state<string[]>([]);
 	let reorderQuantities = $state<Record<string, number>>({});
@@ -109,7 +109,7 @@
 					<section class="order-block" aria-labelledby={`order-${order.id}`}>
 						<header class="order-header">
 							<div class="order-meta"><p>Order <strong id={`order-${order.id}`}>{order.id}</strong><span>·</span>{new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(`${order.date}T12:00:00`))}</p><h2>Items</h2></div>
-							<div class="order-actions"><span class="order-count">{order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} pcs</span><span class="status-badge" class:delivered={order.status === 'Delivered'} class:ready={order.status === 'Ready for pickup'} class:cancelled={order.status === 'Cancelled'}>{order.status}</span><button type="button" class="select-order" onclick={() => toggleOrder(order.id, order.items)}>{orderSelectionState(order.id, order.items).allSelected ? 'Deselect all' : 'Select all'}</button></div>
+							<div class="order-actions"><span class="order-count">{order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} pcs</span><span class="status-badge" class:claimed={order.status === 'Claimed'} class:ready={order.status === 'Ready for pickup'} class:cancelled={order.status === 'Cancelled'}>{order.status}</span><button type="button" class="select-order" onclick={() => toggleOrder(order.id, order.items)}>{orderSelectionState(order.id, order.items).allSelected ? 'Deselect all' : 'Select all'}</button></div>
 						</header>
 
 						<div class="order-items">
@@ -177,7 +177,7 @@
 	.order-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .65rem; }
 	.order-count { color: #83a3cf; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .68rem; text-transform: uppercase; }
 	.status-badge { border-radius: .55rem; padding: .42rem .72rem; font-size: .65rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-	.status-badge.delivered { background: #073d3b; color: #39d99a; }
+	.status-badge.claimed { background: #073d3b; color: #39d99a; }
 	.status-badge.ready { background: #3e3212; color: #f4c85b; }
 	.status-badge.cancelled { background: #45202c; color: #ff8d9c; }
 	.select-order { border: 1px solid #dce9f8; border-radius: .65rem; background: #f5f8fc; padding: .65rem .9rem; color: #10294b; font: inherit; font-size: .74rem; font-weight: 800; cursor: pointer; }
@@ -260,7 +260,7 @@
 	:global(html:not([data-theme='dark']) .filter-tabs button.active) { border-color: #155bd8; background: #fff; color: #12365e; }
 	:global(html:not([data-theme='dark']) .order-header) { border-bottom-color: #d9e0ea; }
 	:global(html:not([data-theme='dark']) .order-item) { border-bottom-color: #d9e0ea; }
-	:global(html:not([data-theme='dark']) .status-badge.delivered) { background: #e3f7ed; color: #168251; }
+	:global(html:not([data-theme='dark']) .status-badge.claimed) { background: #e3f7ed; color: #168251; }
 	:global(html:not([data-theme='dark']) .status-badge.ready) { background: #fff4d9; color: #9b6500; }
 	:global(html:not([data-theme='dark']) .status-badge.cancelled) { background: #fdebed; color: #b42336; }
 	:global(html:not([data-theme='dark']) .item-checkbox span) { border-color: #aebdd0; background: #fff; }

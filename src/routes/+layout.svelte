@@ -171,11 +171,11 @@
 	<div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 		
 		{#if isAuthenticated}
-			<a href="/" class="text-xl font-black tracking-wider hover:text-blue-300 transition shrink-0">
+			<a href="/" class="site-brand text-xl font-black tracking-wider hover:text-blue-300 transition">
 				QCU COOP STORE
 			</a>
 		{:else}
-			<span class="text-xl font-black tracking-wider shrink-0">QCU COOP STORE</span>
+			<span class="site-brand text-xl font-black tracking-wider">QCU COOP STORE</span>
 		{/if}
 		{#if !isAdmin && isAuthenticated && !isPublicLanding}
 			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
@@ -303,6 +303,7 @@
 			</form>
 
 			{#if isAuthenticated}
+				<a href="/cart" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Cart</a>
 				<a href="/shop" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Shop</a>
 			{/if}
 			{#if isAuthenticated}
@@ -374,6 +375,7 @@
 
 	/* Profile trigger: student ID pill placed left of the avatar button */
 	.profile-menu-container { position: relative; display: inline-flex; }
+	.site-brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.profile-trigger { display: flex; align-items: center; gap: 0.5rem; }
 	.student-id-badge { background: #2563eb; color: #ffffff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1; padding: 0.35rem 0.7rem; border-radius: 9999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 	.profile-avatar-button { position: relative; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 9999px; background: #17233d; color: #d9e8ff; cursor: pointer; overflow: hidden; transition: background 150ms ease, border-color 150ms ease; }
@@ -452,10 +454,14 @@
 	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
 	:global(html[data-theme='dark'] .site-header nav) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
 	@media (max-width: 560px) {
-		:global(.site-header > div) { gap: .5rem; }
+		:global(.site-header > div) { gap: .35rem; padding-right: .625rem; padding-left: .625rem; }
 		:global(.site-header > div > .ml-auto) { gap: .35rem; }
 		:global(.site-header .student-id-badge) { display: none; }
-		:global(.site-header > div > a:first-child) { font-size: .9rem !important; letter-spacing: .08em !important; }
+		:global(.site-header .site-brand) { font-size: clamp(.8rem, 4vw, .95rem) !important; letter-spacing: .04em !important; }
+	}
+	@media (max-width: 420px) {
+		:global(.site-header a[aria-label='View Shopping Cart']),
+		:global(.site-header a[aria-label='Purchase history']) { display: none; }
 	}
 	.page-loading-overlay { position: fixed; z-index: 200; inset: 0; overflow: auto; background: #f3f6fa; color: #172b4d; }
 	.loading-stage { display: grid; min-height: 100vh; grid-template-columns: minmax(0, 1fr); }

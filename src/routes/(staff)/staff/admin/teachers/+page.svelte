@@ -40,6 +40,11 @@
 
 <style>
 	.admin-page{padding:2rem;max-width:1400px;margin:auto}.admin-eyebrow{color:#2563eb;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.admin-title{margin:.35rem 0;font-size:1.8rem;font-weight:800}.admin-subtitle{margin:0 0 1.5rem;color:#64748b}.table-wrap{overflow-x:auto;border:1px solid #dbe3ef;border-radius:.75rem;background:white}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:.9rem 1rem;border-bottom:1px solid #e8edf4;font-size:.85rem;vertical-align:top}th{color:#52647c;background:#f7f9fc;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}td{color:#1e293b}td strong{color:#1e293b}td small{display:block;margin-top:.3rem;color:#64748b}form{min-width:22rem;display:grid;gap:.55rem}label{display:grid;gap:.25rem;color:#475569;font-size:.7rem;font-weight:700}input:not([type=checkbox]){color-scheme:light;min-width:0;border:1px solid #cbd5e1;border-radius:.4rem;background:#fff;padding:.45rem .55rem;font:inherit;color:#1e293b}.dates{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.check{display:flex;align-items:center;gap:.45rem}.check input{accent-color:#2563eb}button{justify-self:start;border:0;border-radius:.45rem;background:#2563eb;padding:.55rem .8rem;color:#fff;font:inherit;font-size:.75rem;font-weight:750;cursor:pointer}.notice{margin:.75rem 0;padding:.75rem 1rem;border-radius:.5rem;background:#eff6ff;color:#1d4ed8}.notice.error{background:#fef2f2;color:#b91c1c}.empty{text-align:center;color:#64748b;padding:2rem}
+	table{min-width:58rem}
+	form input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:2.75rem}
+	form button{min-height:2.75rem;padding:.65rem .85rem}
+	.table-wrap{-webkit-overflow-scrolling:touch}
+	@media(max-width:650px){.admin-page{padding:1.25rem 1rem 2rem}.admin-subtitle{line-height:1.5}}
 	:global(html[data-theme='dark'] .table-wrap){border-color:#334866;background:#172640}
 	:global(html[data-theme='dark'] .admin-subtitle){color:#b8c8dd}
 	:global(html[data-theme='dark'] th){border-color:#334866;background:#101d35;color:#b8c8dd}

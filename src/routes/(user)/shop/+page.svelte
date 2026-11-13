@@ -372,6 +372,7 @@
 									alt={product.name}
 									loading="lazy"
 									onerror={handleProductImageError}
+									class="h-full w-full object-contain"
 								/>
 								<span class="no-image-label">No image available</span>
 							{:else}
@@ -709,6 +710,7 @@
 	}
 	.product-grid {
 		display: grid;
+		grid-auto-rows: 1fr;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.8rem;
 	}
@@ -732,6 +734,7 @@
 	}
 	.shop-product-image {
 		height: 8.5rem;
+		flex: 0 0 auto;
 		background: #233f91;
 	}
 	.shop-product-image img {
@@ -744,6 +747,7 @@
 		padding: 0.85rem;
 	}
 	.product-category-label {
+		min-height: 0.8rem;
 		color: #d3defe;
 		font-size: 0.56rem;
 		font-weight: 800;

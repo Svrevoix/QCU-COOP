@@ -570,6 +570,84 @@
 		background: white;
 		color: #395170;
 	}
+	:global(.admin-workflow-form) {
+		display: grid;
+		max-width: 64rem;
+		gap: 1rem;
+	}
+	:global(.admin-workflow-fields) {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.8rem;
+	}
+	:global(.admin-workflow-form label) {
+		display: grid;
+		min-width: 0;
+		gap: 0.35rem;
+		color: #52647c;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+	:global(.admin-workflow-form :is(input, select, textarea)) {
+		box-sizing: border-box;
+		width: 100%;
+		min-width: 0;
+		min-height: 2.75rem;
+		border: 1px solid #cbd5e1;
+		border-radius: 0.45rem;
+		background: white;
+		padding: 0.65rem 0.75rem;
+		color: #1e293b;
+		font: inherit;
+		font-size: 0.85rem;
+	}
+	:global(.admin-workflow-form textarea) {
+		min-height: 5rem;
+		resize: vertical;
+	}
+	:global(.admin-workflow-form h2) {
+		margin: 0;
+		font-size: 1rem;
+	}
+	:global(.workflow-line-items) {
+		display: grid;
+		grid-template-columns: minmax(0, 2fr) repeat(2, minmax(7rem, 1fr));
+		gap: 0.65rem;
+	}
+	:global(.workflow-actions) {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 0.6rem;
+	}
+	:global(.workflow-actions :is(a, button)) {
+		display: inline-flex;
+		min-height: 2.75rem;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid #cbd5e1;
+		border-radius: 0.45rem;
+		background: white;
+		padding: 0.65rem 1rem;
+		color: #395170;
+		font: inherit;
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	:global(.workflow-actions button) {
+		border-color: #2563eb;
+		background: #2563eb;
+		color: white;
+	}
+	:global(.workflow-notice) {
+		max-width: 64rem;
+		border-radius: 0.5rem;
+		background: #eff6ff;
+		padding: 0.75rem 1rem;
+		color: #1d4ed8;
+	}
 	.admin-sidebar {
 		position: sticky;
 		top: 0;
@@ -810,7 +888,17 @@
 			padding: 0 0.75rem;
 		}
 		.admin-route-content.readable-admin-page {
-			zoom: 1.05;
+			zoom: 1;
+		}
+		.admin-sidebar nav a {
+			min-height: 2.75rem;
+		}
+		.mobile-menu-button {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+		:global(.admin-content :is(button, input:not([type='checkbox']):not([type='radio']), select)) {
+			min-height: 2.75rem;
 		}
 		.mobile-brand {
 			font-size: 0.75rem;
@@ -826,6 +914,17 @@
 		:global(.admin-title-row) {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+		:global(.workflow-line-items) {
+			grid-template-columns: 1fr;
+		}
+		:global(.workflow-actions > *) {
+			flex: 1 1 9rem;
+		}
+	}
+	@media (max-width: 480px) {
+		:global(.admin-workflow-fields) {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
