@@ -5,6 +5,7 @@
 	type ChartPoint = { label: string; amount: number };
 
 	let period = $state<SalesPeriod>('Daily Sales');
+	let mobileSidebarOpen = $state(false);
 	const monthlyChart: ChartPoint[] = [
 		{ label: 'May', amount: 390 },
 		{ label: 'Jun', amount: 520 },
@@ -87,38 +88,44 @@
 	}
 </script>
 
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') mobileSidebarOpen = false;
+	}}
+/>
+
 <svelte:head>
 	<title>Sales | QCU Coop Cashier</title>
 	<meta name="description" content="Sales overview and trends for the cashier workspace." />
 </svelte:head>
 
-<main class="cashier-shell">
-	<aside class="cashier-sidebar">
+<main class="cashier-shell" class:mobile-open={mobileSidebarOpen}>
+	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<a class="cashier-brand" href="/staff/pos">
 			<span class="brand-mark">Q</span>
 			<span><strong>QCU COOP</strong><small>Cashier workspace</small></span>
 		</a>
 		<p class="sidebar-label">Workspace</p>
 		<nav aria-label="Cashier navigation">
-			<a href="/staff/pos/register">
+			<a href="/staff/pos/register" onclick={() => (mobileSidebarOpen = false)}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
 				>
 				<span>Register</span>
 			</a>
-			<a href="/staff/pos">
+			<a href="/staff/pos" onclick={() => (mobileSidebarOpen = false)}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
 				>
 				<span>POS Transaction Logs</span>
 			</a>
-			<a class="active" href="/staff/pos/sales" aria-current="page">
+			<a class="active" href="/staff/pos/sales" aria-current="page" onclick={() => (mobileSidebarOpen = false)}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
 				>
 				<span>Sales</span>
 			</a>
-			<a href="/staff/pos/account">
+			<a href="/staff/pos/account" onclick={() => (mobileSidebarOpen = false)}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"
 					><circle cx="12" cy="8" r="3.5" /><path
 						d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
@@ -129,12 +136,34 @@
 		</nav>
 		<StaffLogout />
 	</aside>
+	{#if mobileSidebarOpen}
+		<button
+			class="cashier-sidebar-backdrop"
+			type="button"
+			aria-label="Close navigation"
+			onclick={() => (mobileSidebarOpen = false)}
+		></button>
+	{/if}
 
 	<section class="cashier-content sales-content">
 		<header class="sales-topbar">
-			<div>
-				<h1>Sales</h1>
-				<p>Sales overview</p>
+			<div class="cashier-heading">
+				<button
+					class="cashier-mobile-menu-button"
+					type="button"
+					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={mobileSidebarOpen}
+					aria-controls="cashier-sidebar"
+					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+					</svg>
+				</button>
+				<div class="cashier-heading-copy">
+					<h1>Sales</h1>
+					<p>Sales overview</p>
+				</div>
 			</div>
 			<div class="topbar-actions">
 				<span class="date-chip">
@@ -391,6 +420,39 @@
 		margin: 0.12rem 0 0;
 		color: #7f8a9b;
 		font-size: 0.58rem;
+	}
+	.cashier-heading {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.65rem;
+	}
+	.cashier-heading-copy {
+		min-width: 0;
+	}
+	.cashier-mobile-menu-button,
+	.cashier-sidebar-backdrop {
+		display: none;
+	}
+	.cashier-mobile-menu-button {
+		flex: 0 0 2.75rem;
+		width: 2.75rem;
+		height: 2.75rem;
+		place-items: center;
+		border: 1px solid #e2e8f0;
+		border-radius: 0.65rem;
+		background: white;
+		color: #53647a;
+		cursor: pointer;
+	}
+	.cashier-mobile-menu-button svg {
+		width: 1.2rem;
+		height: 1.2rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
 	}
 	.topbar-actions {
 		display: flex;
@@ -779,53 +841,65 @@
 			min-height: 23rem;
 		}
 	}
-	@media (max-width: 680px) {
+	@media (max-width: 760px) {
 		.cashier-shell {
 			display: block;
+			position: relative;
 		}
 		.cashier-sidebar {
-			position: static;
-			width: auto;
-			height: auto;
-			min-height: 0;
-			flex-direction: row;
-			align-items: center;
-			justify-content: space-between;
-			padding: 0.55rem 0.7rem;
+			position: fixed;
+			z-index: 40;
+			inset: 0 auto 0 0;
+			box-sizing: border-box;
+			width: min(18rem, 88vw);
+			height: 100dvh;
+			flex: 0 0 auto;
+			overflow-y: auto;
+			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+			transform: translateX(-100%);
+			visibility: hidden;
+			transition: transform 180ms ease, visibility 180ms ease;
+			box-shadow: 12px 0 32px rgba(0, 0, 0, 0.28);
 		}
-		.cashier-brand {
-			padding: 0;
-		}
-		.brand-mark {
-			width: 1.9rem;
-			height: 1.9rem;
-		}
-		.cashier-brand strong {
-			font-size: 0.68rem;
-		}
-		.cashier-brand small,
-		.sidebar-label {
-			display: none;
-		}
-		.cashier-sidebar nav {
-			display: flex;
-			gap: 0.15rem;
+		.cashier-shell.mobile-open .cashier-sidebar {
+			transform: translateX(0);
+			visibility: visible;
 		}
 		.cashier-sidebar nav a {
-			gap: 0.3rem;
-			padding: 0.5rem;
-			font-size: 0.55rem;
+			min-height: 2.75rem;
 		}
-		.cashier-sidebar nav svg {
-			width: 0.9rem;
-			height: 0.9rem;
+		.cashier-sidebar-backdrop {
+			position: fixed;
+			z-index: 30;
+			inset: 0;
+			display: block;
+			border: 0;
+			background: rgba(4, 12, 26, 0.5);
 		}
-		.cashier-sidebar :global(button) {
-			display: none;
+		.cashier-mobile-menu-button {
+			display: grid;
+		}
+		:global(.cashier-content button.icon-button),
+		:global(.cashier-content button.avatar) {
+			box-sizing: border-box;
+			width: 2.75rem;
+			height: 2.75rem;
+			min-width: 2.75rem;
+			min-height: 2.75rem;
+			flex: 0 0 2.75rem;
+			aspect-ratio: 1;
+			border-radius: 50%;
+		}
+		:global(html[data-theme='dark'] .cashier-mobile-menu-button) {
+			border-color: #415878;
+			background: #172640;
+			color: #edf4ff;
 		}
 		.cashier-content {
 			padding-top: 0;
 		}
+	}
+	@media (max-width: 680px) {
 		.sales-panels {
 			grid-template-columns: 1fr;
 		}
@@ -837,17 +911,15 @@
 		}
 	}
 	@media (max-width: 460px) {
-		.cashier-sidebar {
+		.sales-topbar {
 			align-items: flex-start;
-			flex-direction: column;
-			gap: 0.55rem;
+			flex-wrap: wrap;
 		}
-		.cashier-sidebar nav {
-			width: 100%;
+		.cashier-heading {
+			flex: 1 1 9rem;
 		}
-		.cashier-sidebar nav a {
-			flex: 1;
-			justify-content: center;
+		.topbar-actions {
+			margin-left: auto;
 		}
 		.date-chip {
 			font-size: 0;

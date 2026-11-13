@@ -9,6 +9,7 @@
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
 	let notificationsOpen = $state(false);
+	let mobileSidebarOpen = $state(false);
 	const monthLabel = $derived(
 		new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(today)
 	);
@@ -136,12 +137,18 @@
 	}
 </script>
 
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') mobileSidebarOpen = false;
+	}}
+/>
+
 <svelte:head>
 	<title>POS Transaction Logs | QCU Coop Store</title>
 </svelte:head>
 
-<main class="cashier-shell">
-	<aside class="cashier-sidebar">
+<main class="cashier-shell" class:mobile-open={mobileSidebarOpen}>
+	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<a class="cashier-brand" href="/staff/pos"
 			><span class="brand-mark">Q</span><span
 				><strong>QCU COOP</strong><small>Cashier workspace</small></span
@@ -149,22 +156,22 @@
 		>
 		<p class="sidebar-label">Workspace</p>
 		<nav aria-label="Cashier navigation">
-			<a href="/staff/pos/register"
+			<a href="/staff/pos/register" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
 				><span>Register</span></a
 			>
-			<a class="active" href="/staff/pos"
+			<a class="active" href="/staff/pos" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
 				><span>POS Transaction Logs</span></a
 			>
-			<a href="/staff/pos/sales"
+			<a href="/staff/pos/sales" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
 				><span>Sales</span></a
 			>
-			<a href="/staff/pos/account"
+			<a href="/staff/pos/account" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><circle cx="12" cy="8" r="3.5" /><path
 						d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
@@ -174,12 +181,34 @@
 		</nav>
 		<StaffLogout />
 	</aside>
+	{#if mobileSidebarOpen}
+		<button
+			class="cashier-sidebar-backdrop"
+			type="button"
+			aria-label="Close navigation"
+			onclick={() => (mobileSidebarOpen = false)}
+		></button>
+	{/if}
 
 	<section class="cashier-content">
 		<header class="cashier-topbar">
-			<div>
-				<h1>POS Transaction Logs</h1>
-				<p>Dashboard / Cashier operations overview</p>
+			<div class="cashier-heading">
+				<button
+					class="cashier-mobile-menu-button"
+					type="button"
+					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={mobileSidebarOpen}
+					aria-controls="cashier-sidebar"
+					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+					</svg>
+				</button>
+				<div class="cashier-heading-copy">
+					<h1>POS Transaction Logs</h1>
+					<p>Dashboard / Cashier operations overview</p>
+				</div>
 			</div>
 			<div class="topbar-actions">
 				<span class="date-chip">
@@ -483,6 +512,39 @@
 		margin: 0.12rem 0 0;
 		color: #7f8a9b;
 		font-size: 0.58rem;
+	}
+	.cashier-heading {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.65rem;
+	}
+	.cashier-heading-copy {
+		min-width: 0;
+	}
+	.cashier-mobile-menu-button,
+	.cashier-sidebar-backdrop {
+		display: none;
+	}
+	.cashier-mobile-menu-button {
+		flex: 0 0 2.75rem;
+		width: 2.75rem;
+		height: 2.75rem;
+		place-items: center;
+		border: 1px solid #e2e8f0;
+		border-radius: 0.65rem;
+		background: white;
+		color: #53647a;
+		cursor: pointer;
+	}
+	.cashier-mobile-menu-button svg {
+		width: 1.2rem;
+		height: 1.2rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
 	}
 	.topbar-actions {
 		display: flex;
@@ -1027,36 +1089,65 @@
 			grid-template-columns: 1fr;
 		}
 	}
-	@media (max-width: 680px) {
+	@media (max-width: 760px) {
 		.cashier-shell {
 			display: block;
+			position: relative;
 		}
 		.cashier-sidebar {
-			position: static;
-			width: auto;
-			height: auto;
-			padding: 0.85rem 1rem;
+			position: fixed;
+			z-index: 40;
+			inset: 0 auto 0 0;
+			box-sizing: border-box;
+			width: min(18rem, 88vw);
+			height: 100dvh;
+			flex: 0 0 auto;
+			overflow-y: auto;
+			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+			transform: translateX(-100%);
+			visibility: hidden;
+			transition: transform 180ms ease, visibility 180ms ease;
+			box-shadow: 12px 0 32px rgba(0, 0, 0, 0.28);
 		}
-		.cashier-brand {
-			padding: 0 0 0.8rem;
-		}
-		.sidebar-label {
-			display: none;
+		.cashier-shell.mobile-open .cashier-sidebar {
+			transform: translateX(0);
+			visibility: visible;
 		}
 		.cashier-sidebar nav a {
-			padding: 0.55rem 0.7rem;
+			min-height: 2.75rem;
 		}
-		.cashier-sidebar :global(button) {
-			position: absolute;
-			top: 0.85rem;
-			right: 1rem;
-			width: auto;
-			margin: 0;
-			padding: 0.55rem 0.7rem;
+		.cashier-sidebar-backdrop {
+			position: fixed;
+			z-index: 30;
+			inset: 0;
+			display: block;
+			border: 0;
+			background: rgba(4, 12, 26, 0.5);
+		}
+		.cashier-mobile-menu-button {
+			display: grid;
+		}
+		:global(.cashier-content button.icon-button),
+		:global(.cashier-content button.topbar-avatar) {
+			box-sizing: border-box;
+			width: 2.75rem;
+			height: 2.75rem;
+			min-width: 2.75rem;
+			min-height: 2.75rem;
+			flex: 0 0 2.75rem;
+			aspect-ratio: 1;
+			border-radius: 50%;
+		}
+		:global(html[data-theme='dark'] .cashier-mobile-menu-button) {
+			border-color: #415878;
+			background: #172640;
+			color: #edf4ff;
 		}
 		.cashier-content {
 			padding-top: 0;
 		}
+	}
+	@media (max-width: 680px) {
 		.cashier-title-row {
 			flex-direction: column;
 		}
@@ -1069,6 +1160,16 @@
 		}
 	}
 	@media (max-width: 420px) {
+		.cashier-topbar {
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+		.cashier-heading {
+			flex: 1 1 11rem;
+		}
+		.topbar-actions {
+			margin-left: auto;
+		}
 		.date-chip {
 			font-size: 0;
 		}

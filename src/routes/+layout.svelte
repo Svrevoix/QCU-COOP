@@ -112,6 +112,7 @@
 	});
 
 	afterNavigate(() => {
+		showMobileMenu = false;
 		loadingPathname = page.url.pathname;
 		if (!loadingStartedAt) loadingStartedAt = Date.now();
 		finishPageLoading();
@@ -119,6 +120,17 @@
 
 	$effect(() => {
 		if (!showLogoutConfirmation) return;
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
+
+	$effect(() => {
+		if (!showMobileMenu) return;
 
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
@@ -144,7 +156,10 @@
 </script>
 
 <svelte:window onkeydown={(event) => {
-	if (event.key === 'Escape' && showLogoutConfirmation) closeLogoutConfirmation();
+	if (event.key === 'Escape') {
+		if (showLogoutConfirmation) closeLogoutConfirmation();
+		showMobileMenu = false;
+	}
 }} />
 
 <svelte:head>
@@ -209,20 +224,6 @@
 						</a>
 					{/if}
 				</nav>
-
-				{#if isAuthenticated && !isPublicLanding}
-					<a href="/cart" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="View Shopping Cart">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-						</svg>
-						<span class="absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
-							{$cartPieceCount}
-						</span>
-					</a>
-					<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
-					</a>
-				{/if}
 			{/if}
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
@@ -273,11 +274,31 @@
 				<a href="/login" class="rounded-full border border-blue-400/40 px-4 py-2 text-xs font-bold text-blue-100 hover:bg-blue-900/40">Sign in</a>
 			{/if}
 
+			{#if isAuthenticated && !isPublicLanding && !isAdmin}
+				<a
+					href="/cart"
+					class="cart-icon-button relative p-2 text-zinc-300 hover:text-blue-300 transition"
+					aria-label="View Shopping Cart"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+					</svg>
+					<span class="cart-count-badge absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
+						{$cartPieceCount}
+					</span>
+				</a>
+				<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
+				</a>
+			{/if}
+
 			{#if !isPublicLanding}
 			<button
-				class="block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition" 
+				class="mobile-menu-toggle block md:hidden p-2 focus:outline-none hover:bg-zinc-800 rounded-md transition"
 				onclick={() => showMobileMenu = !showMobileMenu}
-				aria-label="Toggle menu"
+				aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
+				aria-expanded={showMobileMenu}
+				aria-controls="mobile-navigation"
 			>
 				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					{#if showMobileMenu}
@@ -292,27 +313,35 @@
 	</div>
 
 	{#if showMobileMenu && !isPublicLanding}
-		<div class="md:hidden bg-zinc-950 border-t border-zinc-800 px-4 py-3 space-y-3 font-medium text-sm shadow-inner">
-			<form class="block sm:hidden relative pb-1" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
+		<div class="mobile-menu-layer md:hidden">
+			<button
+				class="mobile-menu-backdrop"
+				type="button"
+				aria-label="Close navigation"
+				onclick={() => (showMobileMenu = false)}
+			></button>
+			<nav id="mobile-navigation" class="mobile-menu-panel" aria-label="Mobile navigation">
+			<form class="mobile-menu-search relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
 				<input 
 					type="text" 
 					bind:value={searchQuery}
 					placeholder="Search essentials, uniforms..." 
-					class="w-full bg-zinc-900 border border-zinc-800 focus:border-blue-500 rounded-xl px-4 py-2 text-xs text-zinc-200 outline-none transition"
+					class="mobile-menu-search-input"
 				/>
 			</form>
 
 			{#if isAuthenticated}
-				<a href="/cart" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Cart</a>
-				<a href="/shop" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Shop</a>
+				<a href="/" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Home</a>
+				<a href="/shop" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Shop</a>
 			{/if}
 			{#if isAuthenticated}
-				<a href="/orders" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Purchase history</a>
+				<a href="/orders" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Purchase history</a>
 			{:else}
-				<a href="/login" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>Login</a>
+				<a href="/login" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Login</a>
 			{/if}
-			<a href="/about" class="block hover:text-blue-300 transition py-1" onclick={() => showMobileMenu = false}>About</a>
+			<a href="/about" class="mobile-menu-link" onclick={() => showMobileMenu = false}>About</a>
 			
+			</nav>
 		</div>
 	{/if}
 </header>
@@ -378,10 +407,10 @@
 	.site-brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.profile-trigger { display: flex; align-items: center; gap: 0.5rem; }
 	.student-id-badge { background: #2563eb; color: #ffffff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1; padding: 0.35rem 0.7rem; border-radius: 9999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
-	.profile-avatar-button { position: relative; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 9999px; background: #17233d; color: #d9e8ff; cursor: pointer; overflow: hidden; transition: background 150ms ease, border-color 150ms ease; }
+	.profile-avatar-button { position: relative; display: grid; flex: 0 0 2.75rem; aspect-ratio: 1; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; background: #17233d; color: #d9e8ff; cursor: pointer; overflow: hidden; transition: background 150ms ease, border-color 150ms ease; }
 	.profile-avatar-button:hover { background: #243557; }
-	.profile-avatar { width: 1.3rem; height: 1.3rem; }
-	.profile-avatar-image { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+	.profile-avatar { display: grid; flex: 0 0 auto; aspect-ratio: 1; width: 1.3rem; height: 1.3rem; place-items: center; }
+	.profile-avatar-image { display: block; flex: 0 0 auto; aspect-ratio: 1; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
 	/* Dropdown panel: minimalist light theme with subtle border + smooth transitions */
 	.profile-dropdown { position: absolute; top: calc(100% + 0.85rem); right: 0; width: 12rem; background: #ffffff; color: #1f2937; border: 1px solid #e5e9f0; border-radius: 0.85rem; box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16); padding: 0.4rem; z-index: 60; }
@@ -448,19 +477,40 @@
 	:global(html[data-theme='light'] .site-header > div > a) { color: #07152d !important; }
 	:global(html[data-theme='light'] .site-header input) { background: #f5f7fa !important; border-color: #d9e2ec !important; color: #07152d !important; }
 	:global(html[data-theme='light'] .site-header .profile-avatar-button) { background: #edf2f8 !important; border-color: #d9e2ec !important; box-shadow: none; }
-	:global(html[data-theme='light'] .site-header nav) { background: #dbeafe !important; border-color: #93c5fd !important; box-shadow: none; }
+	:global(html[data-theme='light'] .site-header nav:not(.mobile-menu-panel)) { background: #dbeafe !important; border-color: #93c5fd !important; box-shadow: none; }
 	:global(html[data-theme='light'] .site-header nav a), :global(html[data-theme='light'] .site-header nav button) { color: #1d4ed8 !important; }
 	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header a[aria-label='Purchase history']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
 	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
-	:global(html[data-theme='dark'] .site-header nav) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
+	:global(html[data-theme='dark'] .site-header nav:not(.mobile-menu-panel)) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
+	.mobile-menu-layer { position: fixed; z-index: 60; inset: 0; }
+	.mobile-menu-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(2, 6, 23, 0.58); }
+	.mobile-menu-panel { position: absolute; inset: 0 auto 0 0; display: flex; box-sizing: border-box; width: min(21rem, 88vw); height: 100vh; height: 100dvh; flex-direction: column; gap: .55rem; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid #26354d; background: #080f1f; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); color: #f8fafc; box-shadow: 12px 0 32px rgba(0, 0, 0, .3); animation: mobile-drawer-enter 180ms ease-out both; }
+	.mobile-menu-link { display: flex; min-height: 2.75rem; align-items: center; border-radius: .6rem; padding: .65rem .75rem; color: inherit; font-size: .9rem; font-weight: 650; text-decoration: none; transition: background 120ms ease, color 120ms ease; }
+	.mobile-menu-link:hover { background: #172b4d; color: #bfdbfe; }
+	.mobile-menu-search { margin-bottom: .35rem; }
+	.mobile-menu-search-input { box-sizing: border-box; width: 100%; min-height: 2.75rem; border: 1px solid #334155; border-radius: .65rem; background: #101d35; padding: .65rem .8rem; color: #f8fafc; font: inherit; font-size: .85rem; }
+	.mobile-menu-search-input::placeholder { color: #94a3b8; }
+	.mobile-menu-toggle { flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; place-items: center; }
+	.cart-icon-button { display: grid; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; aspect-ratio: 1; place-items: center; border-radius: 50%; }
+	.cart-count-badge { flex: 0 0 1rem; width: 1rem; height: 1rem; aspect-ratio: 1; }
+	:global(html[data-theme='light'] .mobile-menu-panel) { border-color: #cbd5e1; background: #f8fafc; color: #0f172a; box-shadow: 12px 0 32px rgba(15, 23, 42, .2); }
+	:global(html[data-theme='light'] .mobile-menu-link) { color: #0f172a; }
+	:global(html[data-theme='light'] .mobile-menu-link:hover) { background: #dbeafe; color: #1d4ed8; }
+	:global(html[data-theme='light'] .mobile-menu-search-input) { border-color: #cbd5e1; background: #fff; color: #0f172a; }
+	:global(html[data-theme='light'] .mobile-menu-search-input::placeholder) { color: #64748b; }
+	:global(html[data-theme='dark'] .mobile-menu-panel) { border-color: #334866; background: #080f1f; color: #edf4ff; }
+	:global(html[data-theme='dark'] .mobile-menu-link) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .mobile-menu-link:hover) { background: #223957; color: #bfdbfe; }
+	:global(html[data-theme='dark'] .mobile-menu-search-input) { border-color: #415878; background: #101d35; color: #edf4ff; }
+	@keyframes mobile-drawer-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+	@media (prefers-reduced-motion: reduce) { .mobile-menu-panel { animation: none; } }
 	@media (max-width: 560px) {
 		:global(.site-header > div) { gap: .35rem; padding-right: .625rem; padding-left: .625rem; }
 		:global(.site-header > div > .ml-auto) { gap: .35rem; }
 		:global(.site-header .student-id-badge) { display: none; }
 		:global(.site-header .site-brand) { font-size: clamp(.8rem, 4vw, .95rem) !important; letter-spacing: .04em !important; }
 	}
-	@media (max-width: 420px) {
-		:global(.site-header a[aria-label='View Shopping Cart']),
+	@media (max-width: 767px) {
 		:global(.site-header a[aria-label='Purchase history']) { display: none; }
 	}
 	.page-loading-overlay { position: fixed; z-index: 200; inset: 0; overflow: auto; background: #f3f6fa; color: #172b4d; }

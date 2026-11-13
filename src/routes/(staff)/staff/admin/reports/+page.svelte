@@ -228,8 +228,21 @@
 
 <style>
 	.reports-page {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
 		padding-top: 0;
 		padding-left: clamp(1rem, 2vw, 2rem);
+	}
+	.report-layout,
+	.catalog-column,
+	.report-main,
+	.builder,
+	.preview,
+	.filters {
+		max-width: 100%;
+		min-width: 0;
 	}
 	.reports-topbar {
 		display: flex;
@@ -306,7 +319,9 @@
 		z-index: 5;
 		top: calc(100% + 0.55rem);
 		right: 0;
-		width: 12rem;
+		box-sizing: border-box;
+		width: min(12rem, calc(100vw - 2rem));
+		max-width: calc(100vw - 2rem);
 		border: 1px solid #e2e8f0;
 		border-radius: 0.6rem;
 		background: white;
@@ -711,6 +726,9 @@
 		}
 	}
 	@media (max-width: 650px) {
+		.reports-page {
+			overflow-x: clip;
+		}
 		.reports-topbar {
 			min-height: 3.2rem;
 		}

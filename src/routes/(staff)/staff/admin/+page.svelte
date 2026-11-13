@@ -450,7 +450,21 @@
 
 <style>
 	.dashboard-page {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
 		padding-top: 0;
+	}
+	.dashboard-columns,
+	.chart-grid,
+	.side-column,
+	.panel,
+	.welcome-card,
+	.dashboard-stats,
+	.quick-links {
+		max-width: 100%;
+		min-width: 0;
 	}
 	.dashboard-topbar {
 		display: flex;
@@ -530,7 +544,9 @@
 		right: 0;
 		display: grid;
 		gap: 0.3rem;
-		width: 13rem;
+		box-sizing: border-box;
+		width: min(13rem, calc(100vw - 2rem));
+		max-width: calc(100vw - 2rem);
 		border: 1px solid #e2e8f0;
 		border-radius: 0.6rem;
 		background: white;
@@ -1150,6 +1166,9 @@
 		}
 	}
 	@media (max-width: 700px) {
+		.dashboard-page {
+			overflow-x: clip;
+		}
 		.dashboard-columns {
 			grid-template-columns: 1fr;
 		}

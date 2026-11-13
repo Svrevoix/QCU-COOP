@@ -798,13 +798,11 @@
 		.admin-sidebar {
 			position: fixed;
 			z-index: 40;
-			top: 3.5rem;
-			bottom: 0;
-			left: 0;
+			inset: 0 auto 0 0;
 			width: min(18rem, 88vw);
-			height: auto;
+			height: 100dvh;
 			min-height: 0;
-			padding: 1rem;
+			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
 			transform: translateX(-100%);
 			visibility: hidden;
 			transition:
@@ -870,7 +868,7 @@
 		.admin-backdrop {
 			position: fixed;
 			z-index: 30;
-			inset: 3.5rem 0 0;
+			inset: 0;
 			display: block;
 			border: 0;
 			background: rgba(4, 12, 26, 0.5);
@@ -899,6 +897,17 @@
 		}
 		:global(.admin-content :is(button, input:not([type='checkbox']):not([type='radio']), select)) {
 			min-height: 2.75rem;
+		}
+		:global(.admin-content button.icon-button),
+		:global(.admin-content button.avatar) {
+			box-sizing: border-box;
+			width: 2.75rem;
+			height: 2.75rem;
+			min-width: 2.75rem;
+			min-height: 2.75rem;
+			flex: 0 0 2.75rem;
+			aspect-ratio: 1;
+			border-radius: 50%;
 		}
 		.mobile-brand {
 			font-size: 0.75rem;

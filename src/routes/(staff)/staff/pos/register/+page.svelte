@@ -2224,6 +2224,19 @@
 		}
 		.mobile-menu-button {
 			display: grid;
+			width: 2.75rem;
+			height: 2.75rem;
+			flex: 0 0 2.75rem;
+			aspect-ratio: 1;
+		}
+		.header-icon,
+		.cashier-avatar {
+			box-sizing: border-box;
+			width: 2.75rem;
+			height: 2.75rem;
+			flex: 0 0 2.75rem;
+			aspect-ratio: 1;
+			border-radius: 50%;
 		}
 	}
 	@media (max-width: 760px) {

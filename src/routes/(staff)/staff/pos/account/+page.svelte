@@ -10,6 +10,7 @@
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
 	let isDarkMode = $state(false);
+	let mobileSidebarOpen = $state(false);
 
 	function handleImageSelect(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -35,12 +36,18 @@
 	});
 </script>
 
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') mobileSidebarOpen = false;
+	}}
+/>
+
 <svelte:head>
 	<title>Cashier Account | QCU Coop Store</title>
 </svelte:head>
 
-<main class="cashier-shell">
-	<aside class="cashier-sidebar">
+<main class="cashier-shell" class:mobile-open={mobileSidebarOpen}>
+	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<a class="cashier-brand" href="/staff/pos"
 			><span class="brand-mark">Q</span><span
 				><strong>QCU COOP</strong><small>Cashier Workspace</small></span
@@ -48,22 +55,22 @@
 		>
 		<p class="sidebar-label">Workspace</p>
 		<nav aria-label="Cashier navigation">
-			<a href="/staff/pos/register"
+			<a href="/staff/pos/register" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
 				><span>Register</span></a
 			>
-			<a href="/staff/pos"
+			<a href="/staff/pos" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
 				><span>POS Transaction Logs</span></a
 			>
-			<a href="/staff/pos/sales"
+			<a href="/staff/pos/sales" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
 				><span>Sales</span></a
 			>
-			<a class="active" href="/staff/pos/account"
+			<a class="active" href="/staff/pos/account" onclick={() => (mobileSidebarOpen = false)}
 				><svg viewBox="0 0 24 24" aria-hidden="true"
 					><circle cx="12" cy="8" r="3.5" /><path
 						d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
@@ -73,8 +80,31 @@
 		</nav>
 		<StaffLogout />
 	</aside>
+	{#if mobileSidebarOpen}
+		<button
+			class="cashier-sidebar-backdrop"
+			type="button"
+			aria-label="Close navigation"
+			onclick={() => (mobileSidebarOpen = false)}
+		></button>
+	{/if}
 
 	<section class="cashier-content">
+		<header class="cashier-mobile-topbar">
+			<button
+				class="cashier-mobile-menu-button"
+				type="button"
+				aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
+				aria-expanded={mobileSidebarOpen}
+				aria-controls="cashier-sidebar"
+				onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+			>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+				</svg>
+			</button>
+			<strong>Cashier workspace</strong>
+		</header>
 		<section class="account-panel" aria-labelledby="account-title">
 			<h2 id="account-title">Cashier Profile</h2>
 			<div class="avatar-picker">
@@ -269,6 +299,33 @@
 		margin: 0 auto;
 		padding: 2.25rem clamp(1rem, 3vw, 3rem) 3rem;
 	}
+	.cashier-mobile-topbar {
+		display: none;
+	}
+	.cashier-mobile-menu-button,
+	.cashier-sidebar-backdrop {
+		display: none;
+	}
+	.cashier-mobile-menu-button {
+		flex: 0 0 2.75rem;
+		width: 2.75rem;
+		height: 2.75rem;
+		place-items: center;
+		border: 1px solid #e2e8f0;
+		border-radius: 0.65rem;
+		background: white;
+		color: #53647a;
+		cursor: pointer;
+	}
+	.cashier-mobile-menu-button svg {
+		width: 1.2rem;
+		height: 1.2rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
+	}
 	@media (min-width: 1100px) {
 		.cashier-content {
 			zoom: 1.1;
@@ -298,11 +355,15 @@
 	}
 	.avatar-frame {
 		position: relative;
+		flex: 0 0 6rem;
+		aspect-ratio: 1;
 		width: 6rem;
 		height: 6rem;
 	}
 	.avatar-preview {
 		display: grid;
+		flex: 0 0 100%;
+		aspect-ratio: 1;
 		width: 100%;
 		height: 100%;
 		place-items: center;
@@ -319,6 +380,8 @@
 		height: 2.75rem;
 	}
 	.avatar-preview img {
+		display: block;
+		aspect-ratio: 1;
 		width: 100%;
 		height: 100%;
 		border-radius: 50%;
@@ -482,35 +545,67 @@
 	:global(html[data-theme='dark'] .profile-details dd) {
 		color: #edf4ff;
 	}
-	@media (max-width: 680px) {
+	@media (max-width: 760px) {
 		.cashier-shell {
 			display: block;
+			position: relative;
 		}
 		.cashier-sidebar {
-			position: static;
-			width: auto;
-			height: auto;
-			padding: 0.85rem 1rem;
+			position: fixed;
+			z-index: 40;
+			inset: 0 auto 0 0;
+			box-sizing: border-box;
+			width: min(18rem, 88vw);
+			height: 100dvh;
+			flex: 0 0 auto;
+			overflow-y: auto;
+			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+			transform: translateX(-100%);
+			visibility: hidden;
+			transition: transform 180ms ease, visibility 180ms ease;
+			box-shadow: 12px 0 32px rgba(0, 0, 0, 0.28);
 		}
-		.cashier-brand {
-			padding: 0 0 0.8rem;
-		}
-		.sidebar-label {
-			display: none;
+		.cashier-shell.mobile-open .cashier-sidebar {
+			transform: translateX(0);
+			visibility: visible;
 		}
 		.cashier-sidebar nav a {
-			padding: 0.55rem 0.7rem;
+			min-height: 2.75rem;
 		}
-		.cashier-sidebar :global(button) {
-			position: absolute;
-			top: 0.85rem;
-			right: 1rem;
-			width: auto;
-			margin: 0;
-			padding: 0.55rem 0.7rem;
+		.cashier-sidebar-backdrop {
+			position: fixed;
+			z-index: 30;
+			inset: 0;
+			display: block;
+			border: 0;
+			background: rgba(4, 12, 26, 0.5);
+		}
+		.cashier-mobile-menu-button {
+			display: grid;
+		}
+		:global(html[data-theme='dark'] .cashier-mobile-menu-button) {
+			border-color: #415878;
+			background: #172640;
+			color: #edf4ff;
 		}
 		.cashier-content {
-			padding-top: 1.5rem;
+			padding: 0 1rem 2rem;
+		}
+		.cashier-mobile-topbar {
+			display: flex;
+			min-height: 3.75rem;
+			align-items: center;
+			gap: 0.75rem;
+			margin: 0 -1rem 1.25rem;
+			border-bottom: 1px solid #e5e9ef;
+			background: white;
+			padding: 0.4rem 1rem;
+			color: #172b4d;
+		}
+		:global(html[data-theme='dark'] .cashier-mobile-topbar) {
+			border-color: #334866;
+			background: #172640;
+			color: #edf4ff;
 		}
 	}
 </style>

@@ -1,1 +1,49 @@
 @import 'tailwindcss';
+
+@layer components {
+	:where(
+		.profile-avatar-button,
+		.profile-avatar,
+		.profile-avatar-image,
+		.cart-icon-button,
+		.cart-count-badge,
+		.icon-button,
+		.topbar-avatar,
+		.avatar,
+		.header-icon,
+		.cashier-avatar,
+		.avatar-frame,
+		.avatar-preview,
+		.avatar-edit-badge,
+		.theme-toggle-corner,
+		.mobile-menu-toggle,
+		.cashier-mobile-menu-button,
+		.mobile-menu-button
+	) {
+		flex-shrink: 0;
+		aspect-ratio: 1;
+	}
+
+	:where(
+		.profile-avatar-image,
+		.avatar-preview img,
+		.avatar-frame img,
+		.avatar img,
+		.cashier-avatar img
+	) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		aspect-ratio: 1;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	:where(.header-icon, .theme-toggle-corner) {
+		border-radius: 50%;
+	}
+
+	:where(.theme-switch) {
+		flex-shrink: 0;
+	}
+}
