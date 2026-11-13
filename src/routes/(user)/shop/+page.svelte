@@ -1,3 +1,7 @@
+<script module lang="ts">
+	let shopReloadScrollResetHandled = false;
+</script>
+
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -38,6 +42,8 @@
 		categories.find((category) => category.id === activeCategory) ?? null
 	);
 	let featuredTrack = $state<HTMLDivElement>();
+	let featuredInteractionPaused = $state(false);
+	let featuredInteractionTimer: ReturnType<typeof setTimeout> | undefined;
 	let randomizedProducts = $state<Product[]>(productCatalog.slice());
 	let discoveredProducts = $derived(
 		activeCategory === 'all'
@@ -65,6 +71,19 @@
 		track.scrollBy({ left: direction * track.clientWidth * 0.78, behavior: 'smooth' });
 	}
 
+	function pauseFeatured() {
+		featuredInteractionPaused = true;
+		if (featuredInteractionTimer) clearTimeout(featuredInteractionTimer);
+	}
+
+	function resumeFeaturedSoon() {
+		if (featuredInteractionTimer) clearTimeout(featuredInteractionTimer);
+		featuredInteractionTimer = setTimeout(() => {
+			featuredInteractionPaused = false;
+			featuredInteractionTimer = undefined;
+		}, 900);
+	}
+
 	function shuffleProducts(products: Product[]) {
 		const shuffled = [...products];
 		for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -83,6 +102,31 @@
 	}
 
 	onMount(() => {
+		const navigationEntry = performance.getEntriesByType('navigation')[0] as
+			PerformanceNavigationTiming | undefined;
+		const navigationPath = navigationEntry
+			? new URL(navigationEntry.name, window.location.href).pathname
+			: '';
+		const isReload =
+			navigationEntry?.type === 'reload' &&
+			navigationPath === page.url.pathname &&
+			!shopReloadScrollResetHandled;
+		const previousScrollRestoration = history.scrollRestoration;
+		let scrollResetFrame: number | undefined;
+		if (isReload) {
+			shopReloadScrollResetHandled = true;
+			history.scrollRestoration = 'manual';
+			window.scrollTo(0, 0);
+			scrollResetFrame = window.requestAnimationFrame(() => {
+				window.scrollTo(0, 0);
+				scrollResetFrame = undefined;
+			});
+		}
+		const restoreScrollSettings = () => {
+			if (scrollResetFrame !== undefined) window.cancelAnimationFrame(scrollResetFrame);
+			if (isReload) history.scrollRestoration = previousScrollRestoration;
+		};
+
 		randomizedProducts = shuffleProducts(productCatalog);
 		const sections = document.querySelectorAll<HTMLElement>('.shop-reveal');
 		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -99,14 +143,12 @@
 		resetReveals();
 		if (!('IntersectionObserver' in window) || reducedMotion) {
 			sections.forEach((section) => section.classList.add('is-revealed'));
-			return;
+			return restoreScrollSettings;
 		}
 		const observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
-					if (!entry.isIntersecting) continue;
-					entry.target.classList.add('is-revealed');
-					observer.unobserve(entry.target);
+					entry.target.classList.toggle('is-revealed', entry.isIntersecting);
 				}
 			},
 			{ threshold: 0.12, rootMargin: '0px 0px -36px 0px' }
@@ -119,12 +161,17 @@
 		sections.forEach((section) => observer.observe(section));
 		window.addEventListener('pageshow', replayReveals);
 		let animationFrame = 0;
-		const slideFeatured = () => {
+		let previousFrameTime = 0;
+		const slideFeatured = (timestamp: number) => {
 			const track = featuredTrack;
+			const elapsed = previousFrameTime ? Math.min(timestamp - previousFrameTime, 32) : 0;
+			previousFrameTime = timestamp;
 			if (
 				track &&
 				!reducedMotion &&
-				!track.matches(':hover, :focus-within') &&
+				!featuredInteractionPaused &&
+				!(window.matchMedia('(hover: hover)').matches && track.matches(':hover')) &&
+				!track.matches(':focus-within') &&
 				document.visibilityState === 'visible'
 			) {
 				const loopStart = track.children[featuredProducts.length] as HTMLElement | undefined;
@@ -134,8 +181,8 @@
 						track.scrollLeft
 					: 0;
 				if (loopWidth > 0) {
-					track.scrollLeft += 0.45;
-					if (track.scrollLeft >= loopWidth) track.scrollLeft -= loopWidth;
+					track.scrollLeft += elapsed * 0.03;
+					if (track.scrollLeft >= loopWidth) track.scrollLeft %= loopWidth;
 				}
 			}
 			animationFrame = window.requestAnimationFrame(slideFeatured);
@@ -145,6 +192,8 @@
 			observer.disconnect();
 			window.removeEventListener('pageshow', replayReveals);
 			window.cancelAnimationFrame(animationFrame);
+			if (featuredInteractionTimer) clearTimeout(featuredInteractionTimer);
+			restoreScrollSettings();
 		};
 	});
 </script>
@@ -184,7 +233,15 @@
 				<span class="section-count">{featuredProducts.length} picks</span>
 			</div>
 			<div class="featured-mask">
-				<div class="featured-track" bind:this={featuredTrack} aria-label="Featured products">
+				<div
+					class="featured-track"
+					bind:this={featuredTrack}
+					role="region"
+					aria-label="Featured products"
+					onpointerdown={pauseFeatured}
+					onpointerup={resumeFeaturedSoon}
+					onpointercancel={resumeFeaturedSoon}
+				>
 					{#each [...featuredProducts, ...featuredProducts] as product, index (`${product.id}-${index}`)}
 						<a
 							class="featured-card"
@@ -443,10 +500,10 @@
 		display: flex;
 		gap: 1rem;
 		overflow-x: auto;
-		padding: 0.25rem 1.5rem 0.75rem;
-		scroll-behavior: smooth;
-		scroll-snap-type: x mandatory;
+		padding: 0.9rem 1.5rem 1.3rem;
 		scrollbar-width: none;
+		touch-action: pan-x;
+		overscroll-behavior-x: contain;
 	}
 	.featured-track::-webkit-scrollbar {
 		display: none;
@@ -462,16 +519,18 @@
 		background: var(--shop-card);
 		color: inherit;
 		box-shadow: 0 8px 24px rgba(27, 47, 81, 0.07);
-		scroll-snap-align: start;
+		transform-origin: center center;
 		text-decoration: none;
 		transition:
-			transform 180ms ease,
-			box-shadow 180ms ease;
+			transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+			box-shadow 220ms ease;
 	}
-	.featured-card:hover {
-		z-index: 1;
-		transform: translateY(-2px) scale(1.035);
-		box-shadow: 0 14px 30px rgba(27, 47, 81, 0.12);
+	.featured-card:hover,
+	.featured-card:active,
+	.featured-card:focus-visible {
+		z-index: 3;
+		transform: perspective(900px) translate3d(0, -5px, 22px) scale(1.045);
+		box-shadow: 0 22px 38px rgba(27, 47, 81, 0.2);
 	}
 	.featured-topline {
 		display: flex;

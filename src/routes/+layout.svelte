@@ -497,7 +497,44 @@
 	.loading-featured-copy { display: grid; gap: 1rem; }.loading-featured-copy i { width: 85%; height: .85rem; border-radius: .4rem; background: #4a6792; }.loading-featured-copy i:first-child { width: 48%; height: .55rem; }.loading-featured-copy i:nth-child(2) { width: 95%; height: 2.25rem; }.loading-featured-copy i:nth-child(3) { width: 74%; height: 1.1rem; }
 	.loading-featured-art { display: grid; min-height: 19rem; place-items: center; border-radius: 1rem; background: #e5edf8; }.loading-featured-art i { width: 55%; height: 65%; border-radius: .8rem; background: #d0dceb; }
 	.loading-section { width: min(100%, 72rem); margin: 2rem auto; padding: 0 1.25rem; }.loading-section-title { width: 12rem; height: 1.1rem; margin-bottom: 1rem; border-radius: .3rem; }
-	.loading-shop-card .loading-image { height: 14rem; }.loading-product-card .loading-image { height: 9rem; }.loading-product-card .loading-card-copy { min-height: 8rem; }
+	.loading-product-card .loading-image { height: 9rem; }.loading-product-card .loading-card-copy { min-height: 8rem; }
+	.loading-body.loading-shop-body { width: min(100%, 64rem); padding: 1.5rem 1.5rem 5rem; }
+	.loading-shop-page { width: 100%; margin: 0 auto; }
+	.loading-shop-heading { display: grid; gap: .7rem; margin-bottom: 1.5rem; }
+	.loading-shop-heading .short { width: 7rem; height: .55rem; }
+	.loading-shop-heading .title { width: min(18rem, 65%); height: 1.8rem; }
+	.loading-shop-heading .subtitle { width: min(25rem, 80%); height: .65rem; }
+	.loading-shop-section { margin-top: 2.5rem; }
+	.loading-shop-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+	.loading-shop-eyebrow { width: 7rem; height: .55rem; margin-bottom: .35rem; }
+	.loading-shop-title { width: 12rem; height: 1.1rem; }
+	.loading-shop-count { width: 3rem; height: .65rem; }
+	.loading-shop-description { width: 15rem; height: .6rem; margin-top: .4rem; }
+	.loading-shop-featured-mask { overflow: hidden; padding: .65rem 0 1.1rem; mask-image: linear-gradient(to right, transparent, #000 3.5%, #000 96.5%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, #000 3.5%, #000 96.5%, transparent); }
+	.loading-shop-featured-track { display: flex; gap: 1rem; overflow: hidden; padding: .9rem 1.5rem 1.3rem; }
+	.loading-shop-featured-card { display: flex; flex: 0 0 86%; flex-direction: column; min-width: 0; border-radius: 1.15rem; }
+	.loading-shop-featured-topline { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 1rem 1rem 0; }
+	.loading-shop-featured-badge, .loading-shop-featured-category, .loading-shop-featured-image, .loading-shop-featured-copy i, .loading-shop-count, .loading-shop-category-icon, .loading-shop-category-label, .loading-shop-product-action { display: block; border-radius: .3rem; }
+	.loading-shop-featured-badge { width: 5.5rem; height: 1rem; border-radius: 999px; }
+	.loading-shop-featured-category { width: 4rem; height: .6rem; }
+	.loading-shop-featured-image { height: 11rem; margin: .8rem 1rem 0; border: 1px solid #e4eaf2; border-radius: .75rem; }
+	.loading-shop-featured-copy { display: grid; gap: .45rem; padding: .85rem 1rem 1rem; }
+	.loading-shop-featured-copy i:first-child { width: 75%; height: .85rem; }
+	.loading-shop-featured-copy i:nth-child(2) { width: 95%; height: .65rem; }
+	.loading-shop-featured-copy i:last-child { width: 42%; height: 1rem; margin-top: .2rem; }
+	.loading-shop-controls { display: flex; justify-content: center; gap: .5rem; margin-top: .25rem; }
+	.loading-shop-controls i { width: 2.4rem; height: 2.4rem; border: 1px solid #e2e8f0; border-radius: .75rem; }
+	.loading-shop-category-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
+	.loading-shop-category { display: grid; justify-items: center; gap: .5rem; min-width: 0; }
+	.loading-shop-category-icon { width: 3.65rem; height: 3.65rem; border: 1px solid #e2e8f0; border-radius: 1.05rem; }
+	.loading-shop-category-label { width: min(100%, 5rem); height: .55rem; }
+	.loading-shop-discover-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+	.loading-shop-discover-card { border-radius: 1rem; }
+	.loading-shop-discover-card .loading-image { height: 8.5rem; }
+	.loading-shop-discover-card .loading-card-copy { min-height: 8rem; padding: .85rem; }
+	.loading-shop-discover-card .loading-card-copy i:first-child { width: 55%; }
+	.loading-shop-product-action { height: 2rem; margin-top: .2rem; border-radius: 999px; }
+	.loading-shop-discover-card .loading-card-copy .loading-shop-product-action { width: 100%; }
 	.loading-account { width: min(100%, 38rem); margin: 0 auto; }.loading-account-center { display: grid; justify-items: center; gap: .65rem; padding: 2rem 0; }.loading-profile-avatar { width: 6rem; height: 6rem; border-radius: 50%; }.loading-settings-row { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #edf1f5; padding-top: 1rem; }.loading-settings-row i:first-child { width: 7rem; height: .75rem; }.loading-settings-row i:last-child { width: 2.5rem; height: 1.3rem; border-radius: 1rem; }
 	.loading-orders { width: min(100%, 65rem); margin: 0 auto; }.loading-order-filters { display: flex; gap: .5rem; margin-bottom: 1.5rem; }.loading-order-filters i { width: 7rem; height: 2.6rem; border-radius: 2rem; }.loading-order-filters i:nth-child(3) { width: 9rem; }.loading-order-panel { margin-bottom: 1rem; }.loading-order-title { width: 5rem; height: 1rem; margin-bottom: .5rem; }.loading-order-item { display: grid; grid-template-columns: 1.15rem 4.25rem minmax(0, 1fr) 7rem 5rem; align-items: center; gap: .9rem; border-top: 1px solid #edf1f5; padding: .85rem 0; }.loading-order-checkbox { width: 1rem; height: 1rem; border-radius: .25rem; }.loading-order-thumbnail { width: 4.25rem; height: 4.25rem; border-radius: .6rem; }.loading-order-copy { display: grid; gap: .45rem; }.loading-order-copy i:first-child { width: 70%; height: .8rem; }.loading-order-copy i:last-child { width: 35%; height: .6rem; }.loading-order-quantity { width: 6.5rem; height: 2.3rem; border-radius: .5rem; }.loading-order-price { width: 4.5rem; height: .8rem; }
 	.loading-cart { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 1.5rem; }.loading-cart-item { display: grid; grid-template-columns: 5rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; border-bottom: 1px solid #edf1f5; padding: 1rem 0; }.loading-cart-image { width: 5rem; height: 5rem; border-radius: .6rem; }.loading-cart-copy { display: grid; gap: .6rem; }.loading-cart-copy i { width: 65%; height: .65rem; }.loading-cart-copy i:first-child { width: 82%; height: .85rem; }.loading-cart-price { width: 4rem; height: .85rem; }.loading-cart-summary { display: grid; align-content: start; gap: 1rem; }.loading-cart-summary i { height: .75rem; }.loading-cart-summary i:last-child { height: 2.5rem; margin-top: .5rem; border-radius: .5rem; }
@@ -513,16 +550,43 @@
 	:global(html[data-theme='dark'] .skeleton-block), :global(html[data-theme='dark'] .loading-block), :global(html[data-theme='dark'] .loading-stat i), :global(html[data-theme='dark'] .loading-table-row i), :global(html[data-theme='dark'] .loading-card-copy i), :global(html[data-theme='dark'] .loading-image), :global(html[data-theme='dark'] .loading-cart-item i), :global(html[data-theme='dark'] .loading-cart-summary i), :global(html[data-theme='dark'] .loading-chart i), :global(html[data-theme='dark'] .loading-filter i), :global(html[data-theme='dark'] .loading-form-field i), :global(html[data-theme='dark'] .loading-panel-heading i), :global(html[data-theme='dark'] .loading-topbar-actions i) { background-image: linear-gradient(100deg, #263b59 20%, #334866 38%, #263b59 56%); }
 	@media (max-width: 900px) { .loading-stage.staff-loading { grid-template-columns: 14rem minmax(0, 1fr); }.loading-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cart { grid-template-columns: minmax(0, 1fr) 13rem; }.loading-dashboard-charts { grid-template-columns: 1fr; } }
 	@media (max-width: 760px) { .loading-stage.staff-loading { display: block; }.loading-sidebar { min-height: auto; height: 5.75rem; flex-direction: row; align-items: center; overflow: hidden; padding: .85rem 1rem; }.loading-brand { margin: 0 .5rem 0 0; }.loading-nav-item { width: 7rem; height: 2.4rem; flex: 0 0 auto; }.loading-featured { grid-template-columns: 1fr; gap: 1.25rem; min-height: 0; }.loading-featured-art { min-height: 12rem; }.loading-report-filters { grid-template-columns: 1fr 1fr; }.loading-about-grid { grid-template-columns: 1fr; } }
-	@media (max-width: 560px) { .loading-cards { gap: .6rem; }.loading-shop-card .loading-image { height: 9rem; }.loading-product-card .loading-image { height: 7rem; }.loading-card-copy { padding: .75rem; }.loading-cart { grid-template-columns: 1fr; }.loading-cart-summary { position: sticky; bottom: 0; grid-template-columns: 1fr auto; align-items: center; border: 1px solid #e4eaf2; border-radius: .65rem; background: white; padding: .85rem; }.loading-cart-summary i:last-child { width: 7rem; margin: 0; }.loading-form-grid { grid-template-columns: 1fr; }.loading-table-row { grid-template-columns: 1fr 1fr; gap: .75rem; padding: .8rem 0; }.loading-table-row i:nth-child(n + 3) { display: none; } }
+	@media (max-width: 560px) { .loading-cards { gap: .6rem; }.loading-product-card .loading-image { height: 7rem; }.loading-card-copy { padding: .75rem; }.loading-cart { grid-template-columns: 1fr; }.loading-cart-summary { position: sticky; bottom: 0; grid-template-columns: 1fr auto; align-items: center; border: 1px solid #e4eaf2; border-radius: .65rem; background: white; padding: .85rem; }.loading-cart-summary i:last-child { width: 7rem; margin: 0; }.loading-form-grid { grid-template-columns: 1fr; }.loading-table-row { grid-template-columns: 1fr 1fr; gap: .75rem; padding: .8rem 0; }.loading-table-row i:nth-child(n + 3) { display: none; } }
 	.loading-products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 	.loading-cart { display: block; padding-bottom: 7rem; }
 	.loading-cart-summary { position: fixed; z-index: 2; right: 0; bottom: 0; left: 0; display: flex; min-height: 6.5rem; align-items: center; justify-content: space-between; gap: 1rem; border-right: 0; border-bottom: 0; border-left: 0; border-radius: 0; background: rgba(255,255,255,.96); padding: 0 clamp(1rem, 4vw, 3rem); }
 	.loading-cart-summary i { width: 9rem; height: .75rem; }.loading-cart-summary i:last-child { width: 11.5rem; height: 3rem; margin: 0; border-radius: .6rem; }
 	@media (max-width: 1023px) { .loading-products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-	@media (max-width: 760px) { .loading-shop-grid { grid-template-columns: 1fr; } }
 	@media (max-width: 639px) { .loading-products-grid { grid-template-columns: 1fr; } }
 	@media (max-width: 560px) { .loading-cart-summary { min-height: 5.75rem; }.loading-cart-summary i:first-child { width: 7rem; }.loading-cart-summary i:last-child { width: 7rem; height: 2.75rem; } }
 	@media (prefers-reduced-motion: reduce) { .skeleton-block, .loading-block, .loading-stat i, .loading-table-row i, .loading-card-copy i, .loading-image, .loading-cart-item i, .loading-cart-summary i, .loading-chart i, .loading-filter i, .loading-form-field i, .loading-panel-heading i, .loading-topbar-actions i { animation: none; } }
+
+	@media (min-width: 600px) {
+		.loading-shop-featured-card { flex-basis: calc(50% - .5rem); }
+		.loading-shop-category-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+		.loading-shop-category-icon { width: 4rem; height: 4rem; }
+		.loading-shop-discover-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		.loading-shop-discover-card .loading-image { height: 10rem; }
+	}
+	@media (min-width: 900px) {
+		.loading-shop-featured-card { flex-basis: calc(33.333% - .68rem); }
+		.loading-shop-discover-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+		.loading-shop-discover-card .loading-image { height: 11rem; }
+	}
+	@media (min-width: 640px) {
+		.loading-body.loading-shop-body { padding-right: 2rem; padding-left: 2rem; }
+	}
+	@media (min-width: 1024px) {
+		.loading-body.loading-shop-body { padding-right: 2.5rem; padding-left: 2.5rem; }
+	}
+	@media (min-width: 1200px) {
+		.loading-shop-featured-card { flex-basis: calc(25% - .75rem); }
+	}
+	@media (max-width: 420px) {
+		.loading-body.loading-shop-body { padding-right: .85rem; padding-left: .85rem; }
+		.loading-shop-category-grid { gap: .65rem .35rem; }
+		.loading-shop-category-icon { width: 3.2rem; height: 3.2rem; }
+		.loading-shop-discover-card .loading-image { height: 7rem; }
+	}
 
 	.loading-admin-settings { width: min(100%, 38rem); margin: 0; }
 	.loading-admin-profile { display: grid; justify-items: center; gap: .65rem; padding: .75rem 0 1rem; }
@@ -698,7 +762,7 @@
 				{:else if loadingKind === 'login'}
 					<div class="loading-login"><section class="loading-panel"><i class="skeleton-block loading-profile-avatar"></i><div class="loading-heading"><i class="loading-block title"></i><i class="loading-block subtitle"></i></div>{#each [0, 1, 2] as field (field)}<div class="loading-form-field"><i class="skeleton-block"></i><i class="skeleton-block"></i></div>{/each}</section></div>
 				{:else}
-					<div class="loading-body" class:loading-narrow={loadingKind === 'account'} class:user-account={loadingKind === 'account' && !isStaffWorkspace} class:loading-utilities={loadingKind === 'admin-utilities'}>
+					<div class="loading-body" class:loading-narrow={loadingKind === 'account'} class:user-account={loadingKind === 'account' && !isStaffWorkspace} class:loading-utilities={loadingKind === 'admin-utilities'} class:loading-shop-body={loadingKind === 'shop'}>
 						{#if loadingKind === 'admin-accounts'}
 							<div class="loading-admin-accounts">
 								<div class="loading-admin-title-actions">
@@ -785,7 +849,85 @@
 						{:else if loadingKind === 'orders'}
 						<div class="loading-orders"><div class="loading-heading"><i class="loading-block title"></i><i class="loading-block subtitle"></i></div><div class="loading-order-filters">{#each [0, 1, 2, 3] as filter (filter)}<i class="skeleton-block"></i>{/each}</div>{#each [0, 1] as order (order)}<section class="loading-panel loading-order-panel"><div class="loading-panel-heading"><i></i><i></i></div><i class="loading-block loading-order-title"></i>{#each [0, 1, 2] as item (item)}<div class="loading-order-item"><i class="skeleton-block loading-order-checkbox"></i><i class="skeleton-block loading-order-thumbnail"></i><div class="loading-order-copy"><i class="loading-block"></i><i class="loading-block"></i></div><i class="skeleton-block loading-order-quantity"></i><i class="skeleton-block loading-order-price"></i></div>{/each}</section>{/each}</div>
 						{:else if loadingKind === 'shop'}
-						<div class="loading-heading"><i class="loading-block short"></i><i class="loading-block title"></i></div><div class="loading-cards loading-shop-grid">{#each [0, 1, 2, 3, 4, 5] as card (card)}<article class="loading-card loading-shop-card"><div class="loading-image"></div><div class="loading-card-copy"><i></i><i></i><i></i></div></article>{/each}</div>
+						<div class="loading-shop-page">
+							<div class="loading-shop-heading">
+								<i class="loading-block short"></i>
+								<i class="loading-block title"></i>
+								<i class="loading-block subtitle"></i>
+							</div>
+
+							<section class="loading-shop-section">
+								<div class="loading-shop-section-heading">
+									<div>
+										<i class="loading-block loading-shop-eyebrow"></i>
+										<i class="loading-block loading-shop-title"></i>
+									</div>
+									<i class="loading-block loading-shop-count"></i>
+								</div>
+								<div class="loading-shop-featured-mask">
+									<div class="loading-shop-featured-track">
+										{#each [0, 1, 2, 3, 4, 5, 6, 7] as card (card)}
+											<article class="loading-card loading-shop-featured-card">
+												<div class="loading-shop-featured-topline">
+													<i class="skeleton-block loading-shop-featured-badge"></i>
+													<i class="skeleton-block loading-shop-featured-category"></i>
+												</div>
+												<i class="skeleton-block loading-shop-featured-image"></i>
+												<div class="loading-shop-featured-copy">
+													<i class="skeleton-block"></i>
+													<i class="skeleton-block"></i>
+													<i class="skeleton-block"></i>
+												</div>
+											</article>
+										{/each}
+									</div>
+								</div>
+								<div class="loading-shop-controls">
+									<i class="skeleton-block"></i>
+									<i class="skeleton-block"></i>
+								</div>
+							</section>
+
+							<section class="loading-shop-section">
+								<div class="loading-shop-section-heading">
+									<div>
+										<i class="loading-block loading-shop-eyebrow"></i>
+										<i class="loading-block loading-shop-title"></i>
+									</div>
+								</div>
+								<div class="loading-shop-category-grid">
+									{#each [0, 1, 2, 3, 4, 5, 6, 7] as category (category)}
+										<div class="loading-shop-category">
+											<i class="skeleton-block loading-shop-category-icon"></i>
+											<i class="skeleton-block loading-shop-category-label"></i>
+										</div>
+									{/each}
+								</div>
+							</section>
+
+							<section class="loading-shop-section">
+								<div class="loading-shop-section-heading">
+									<div>
+										<i class="loading-block loading-shop-eyebrow"></i>
+										<i class="loading-block loading-shop-title"></i>
+										<i class="loading-block loading-shop-description"></i>
+									</div>
+								</div>
+								<div class="loading-shop-discover-grid">
+									{#each [0, 1, 2, 3] as card (card)}
+										<article class="loading-card loading-shop-discover-card">
+											<i class="loading-image"></i>
+											<div class="loading-card-copy">
+												<i></i>
+												<i></i>
+												<i></i>
+												<i class="loading-shop-product-action"></i>
+											</div>
+										</article>
+									{/each}
+								</div>
+							</section>
+						</div>
 						{:else if loadingKind === 'products'}
 						<div class="loading-heading"><i class="loading-block short"></i><div class="loading-panel-heading"><i class="loading-block title"></i><i class="skeleton-block" style="width: 8rem"></i></div><i class="loading-block subtitle"></i></div><div class="loading-cards loading-products-grid">{#each [0, 1, 2, 3, 4, 5, 6, 7] as card (card)}<article class="loading-card loading-product-card"><div class="loading-image"></div><div class="loading-card-copy"><i></i><i></i><i></i></div></article>{/each}</div>
 						{:else if loadingKind === 'about'}
