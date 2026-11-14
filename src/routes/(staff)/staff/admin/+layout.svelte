@@ -75,6 +75,16 @@
 	let sidebarCollapsed = $state(false);
 	let mobileSidebarOpen = $state(false);
 	let activePath = $derived(page.url.pathname);
+	$effect(() => {
+		if (!mobileSidebarOpen) return;
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
 	let isDenseAdminPage = $derived(
 		activePath === '/staff/admin' ||
 			activePath.startsWith('/staff/admin/dashboard') ||

@@ -34,6 +34,17 @@
 		avatar = localStorage.getItem(AVATAR_STORAGE_KEY);
 		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 	});
+
+	$effect(() => {
+		if (!mobileSidebarOpen) return;
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
 </script>
 
 <svelte:window

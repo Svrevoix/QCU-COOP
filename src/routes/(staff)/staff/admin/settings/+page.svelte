@@ -73,7 +73,7 @@
 						</svg>
 					{/if}
 				</button>
-				<button type="button" class="avatar-edit-badge" onclick={() => fileInput?.click()} aria-label="Upload or edit profile picture">
+				<button type="button" class="avatar-edit-badge aspect-square shrink-0 rounded-full" onclick={() => fileInput?.click()} aria-label="Upload or edit profile picture">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5h2l1.5 2H21v12H3V7h3.5L8 5h2"/><circle cx="12" cy="13" r="3.5"/></svg>
 				</button>
 			</div>
@@ -134,7 +134,7 @@
 	.settings-section h3 { margin: 0 0 .85rem; color: #111827; font-size: .85rem; font-weight: 800; }
 	.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: #1f2937; font-size: .85rem; font-weight: 700; }
 	.settings-row p { margin: .25rem 0 0; color: #718096; font-size: .72rem; font-weight: 500; }
-	.theme-switch { position: relative; width: 2.4rem; height: 1.3rem; flex: 0 0 auto; border: 1px solid #d3dae6; border-radius: 9999px; background: #e2e8f0; padding: 0; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+	.theme-switch { position: relative; display: block; box-sizing: border-box; width: 2.4rem; min-width: 2.4rem; height: 1.3rem; min-height: 1.3rem; flex: 0 0 2.4rem; border: 1px solid #d3dae6; border-radius: 9999px; background: #e2e8f0; padding: 0; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
 	.theme-switch[aria-pressed='true'] { border-color: #2563eb; background: #2563eb; }
 	.switch-thumb { position: absolute; top: 1px; left: 1px; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform 160ms ease; }
 	.theme-switch[aria-pressed='true'] .switch-thumb { transform: translateX(1.1rem); }

@@ -139,7 +139,7 @@
 					</div>
 				{/each}
 			</div>
-			<div class="featured-controls absolute left-1/2 top-full z-10 mt-5 -translate-x-1/2">
+			<div class="featured-controls">
 				{#if page.data.user}
 					<a href="/shop" class="block rounded-full bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-blue-700">
 						See all
@@ -291,6 +291,12 @@
 	}
 
 	.featured-controls {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		z-index: 10;
+		margin-top: 1.25rem;
+		transform: translateX(-50%);
 		white-space: nowrap;
 	}
 
@@ -346,8 +352,6 @@
 
 		.featured-controls {
 			margin-top: 1rem;
-			transform: translateX(-50%) scale(0.9);
-			transform-origin: top center;
 		}
 	}
 </style>

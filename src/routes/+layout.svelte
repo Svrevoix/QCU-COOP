@@ -487,6 +487,7 @@
 	.mobile-menu-panel { position: absolute; inset: 0 auto 0 0; display: flex; box-sizing: border-box; width: min(21rem, 88vw); height: 100vh; height: 100dvh; flex-direction: column; gap: .55rem; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid #26354d; background: #080f1f; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); color: #f8fafc; box-shadow: 12px 0 32px rgba(0, 0, 0, .3); animation: mobile-drawer-enter 180ms ease-out both; }
 	.mobile-menu-link { display: flex; min-height: 2.75rem; align-items: center; border-radius: .6rem; padding: .65rem .75rem; color: inherit; font-size: .9rem; font-weight: 650; text-decoration: none; transition: background 120ms ease, color 120ms ease; }
 	.mobile-menu-link:hover { background: #172b4d; color: #bfdbfe; }
+	.mobile-menu-link:active { background: #294574; color: #fff; }
 	.mobile-menu-search { margin-bottom: .35rem; }
 	.mobile-menu-search-input { box-sizing: border-box; width: 100%; min-height: 2.75rem; border: 1px solid #334155; border-radius: .65rem; background: #101d35; padding: .65rem .8rem; color: #f8fafc; font: inherit; font-size: .85rem; }
 	.mobile-menu-search-input::placeholder { color: #94a3b8; }
@@ -496,11 +497,13 @@
 	:global(html[data-theme='light'] .mobile-menu-panel) { border-color: #cbd5e1; background: #f8fafc; color: #0f172a; box-shadow: 12px 0 32px rgba(15, 23, 42, .2); }
 	:global(html[data-theme='light'] .mobile-menu-link) { color: #0f172a; }
 	:global(html[data-theme='light'] .mobile-menu-link:hover) { background: #dbeafe; color: #1d4ed8; }
+	:global(html[data-theme='light'] .mobile-menu-link:active) { background: #bfdbfe; color: #1d4ed8; }
 	:global(html[data-theme='light'] .mobile-menu-search-input) { border-color: #cbd5e1; background: #fff; color: #0f172a; }
 	:global(html[data-theme='light'] .mobile-menu-search-input::placeholder) { color: #64748b; }
 	:global(html[data-theme='dark'] .mobile-menu-panel) { border-color: #334866; background: #080f1f; color: #edf4ff; }
 	:global(html[data-theme='dark'] .mobile-menu-link) { color: #edf4ff; }
 	:global(html[data-theme='dark'] .mobile-menu-link:hover) { background: #223957; color: #bfdbfe; }
+	:global(html[data-theme='dark'] .mobile-menu-link:active) { background: #294574; color: #fff; }
 	:global(html[data-theme='dark'] .mobile-menu-search-input) { border-color: #415878; background: #101d35; color: #edf4ff; }
 	@keyframes mobile-drawer-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 	@media (prefers-reduced-motion: reduce) { .mobile-menu-panel { animation: none; } }

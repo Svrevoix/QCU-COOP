@@ -218,12 +218,10 @@ export async function signInWithSupabase(loginId: string, password: string) {
 export function setSupabaseSession(cookies: Cookies, session: SupabaseTokenResponse) {
 	const common = { httpOnly: true, secure: !dev, sameSite: 'lax' as const, path: '/' };
 	cookies.set(ACCESS_TOKEN_COOKIE, session.access_token, {
-		...common,
-		maxAge: session.expires_in ?? 3600
+		...common
 	});
 	cookies.set(REFRESH_TOKEN_COOKIE, session.refresh_token, {
-		...common,
-		maxAge: 60 * 60 * 24 * 30
+		...common
 	});
 }
 

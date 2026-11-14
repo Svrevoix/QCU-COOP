@@ -21,5 +21,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	if (
+		(pathname === '/shop' ||
+			pathname.startsWith('/shop/') ||
+			pathname === '/products' ||
+			pathname.startsWith('/products/') ||
+			pathname === '/cart') &&
+		!event.locals.user
+	) {
+		throw redirect(303, `/login?next=${encodeURIComponent(`${pathname}${event.url.search}`)}`);
+	}
+
 	return resolve(event);
 };

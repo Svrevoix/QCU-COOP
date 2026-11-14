@@ -1152,7 +1152,7 @@
 			flex-direction: column;
 		}
 		.live-clock {
-			align-self: flex-end;
+			align-self: flex-start;
 		}
 		.panel-heading {
 			align-items: flex-start;
