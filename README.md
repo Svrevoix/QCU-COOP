@@ -49,4 +49,4 @@ The profile's `role` determines the destination: `admin` goes to `/staff/admin`,
 
 ## Teacher cooperative membership
 
-Teacher profiles use `role = 'teacher'` (or `faculty`) and link to their cooperative membership records through `memberships.teacher_id = profiles.id`. Admins can manage the membership number, dates, and active status at `/staff/admin/teachers`. Only teachers with an active membership whose start and end dates include today receive the 20% online cart discount. The server checks membership records using the `SUPABASE_SECRET_KEY`.
+Teacher profiles use `role = 'teacher'` (or `faculty`) and link to their cooperative membership records through `teacher_memberships.teacher_id = profiles.id`. Admins can manage the membership number, dates, and active status at `/staff/admin/teachers`. Only teachers with an active membership whose start and end dates include today receive the 20% online cart discount. The server checks membership records using the `SUPABASE_SECRET_KEY`.

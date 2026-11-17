@@ -14,7 +14,7 @@
 		variant?: 'sidebar' | 'light';
 	} = $props();
 	let catalogElement: HTMLElement;
-	let expandedGroups = $state(new Set(['Core planned reports']));
+	let expandedGroups = $state(new Set(['Sales Reports']));
 	let reportCount = $derived(
 		groups.reduce((total: number, group: Group) => total + group.reports.length, 0)
 	);

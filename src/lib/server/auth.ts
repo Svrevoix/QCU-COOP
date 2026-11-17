@@ -100,12 +100,12 @@ async function teacherHasActiveMembership(teacherId: string) {
 		);
 	}
 	const query = new URLSearchParams({
-		select: 'status,start_date,end_date',
+		select: 'active_membership,start_date,end_date',
 		teacher_id: `eq.${teacherId}`,
 		order: 'start_date.desc',
 		limit: '50'
 	});
-	const response = await fetch(`${url}/rest/v1/memberships?${query}`, {
+	const response = await fetch(`${url}/rest/v1/teacher_memberships?${query}`, {
 		headers: {
 			apikey: secretKey,
 			Authorization: `Bearer ${secretKey}`
@@ -113,18 +113,18 @@ async function teacherHasActiveMembership(teacherId: string) {
 	});
 	if (!response.ok) {
 		throw new Error(
-			`Unable to check teacher membership (HTTP ${response.status}). Check the memberships table schema.`
+			`Unable to check teacher membership (HTTP ${response.status}). Check the teacher_memberships table schema.`
 		);
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	const memberships = (await response.json()) as Array<{
-		status: string | null;
+		active_membership: boolean | null;
 		start_date: string | null;
 		end_date: string | null;
 	}>;
 	return memberships.some(
 		(membership) =>
-			membership.status?.trim().toLowerCase() === 'active' &&
+			membership.active_membership === true &&
 			(!membership.start_date || membership.start_date <= today) &&
 			(!membership.end_date || membership.end_date >= today)
 	);

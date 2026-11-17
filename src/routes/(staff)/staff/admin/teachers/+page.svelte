@@ -21,14 +21,14 @@
 					<td>{[teacher.first_name, teacher.last_name].filter(Boolean).join(' ') || 'Unnamed teacher'}</td>
 					<td>{teacher.employee_no || teacher.school_id || '—'}</td>
 					<td>{teacher.email || '—'}</td>
-					<td><strong>{membership?.status || 'No record'}</strong>{#if membership}<small>{membership.membership_no} · {membership.start_date} to {membership.end_date || 'No end date'}</small>{/if}</td>
+					<td><strong>{membership ? (membership.active_membership ? 'active' : 'inactive') : 'No record'}</strong>{#if membership}<small>{membership.membership_number} · {membership.start_date} to {membership.end_date || 'No end date'}</small>{/if}</td>
 					<td>
 						<form method="POST" action="?/saveMembership" use:enhance>
 							<input type="hidden" name="teacherId" value={teacher.id}/>
 							{#if membership}<input type="hidden" name="membershipId" value={membership.id}/>{/if}
-							<label>Membership number<input name="membershipNo" required value={membership?.membership_no || ''} placeholder="e.g. M-000123"/></label>
-							<div class="dates"><label>Start date<input name="startDate" type="date" required value={membership?.start_date || today}/></label><label>End date<input name="endDate" type="date" value={membership?.end_date || ''}/></label></div>
-							<label class="check"><input name="active" type="checkbox" value="true" checked={membership?.status?.toLowerCase() === 'active'}/><span>Active membership</span></label>
+							<label>Membership number<input name="membershipNo" required value={membership?.membership_number || ''} placeholder="e.g. M-000123"/></label>
+							<div class="dates"><label>Start date<input name="startDate" type="date" required value={membership?.start_date || today}/></label><label>End date<input name="endDate" type="date" required value={membership?.end_date || ''}/></label></div>
+							<label class="check"><input name="active" type="checkbox" value="true" checked={membership?.active_membership}/><span>Active membership</span></label>
 							<button type="submit">{membership ? 'Save membership' : 'Add membership'}</button>
 						</form>
 					</td>
