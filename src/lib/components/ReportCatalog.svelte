@@ -97,18 +97,21 @@
 <style>
 	.report-catalog {
 		min-width: 0;
-		margin: 0.3rem 0 0.2rem 1.1rem;
-		border-left: 1px solid #233858;
-		padding-left: 0.6rem;
+		margin: 0;
+		border: 1px solid #263b5b;
+		border-radius: 0.75rem;
+		background: #07152d;
+		padding: 0.75rem;
+		box-shadow: 0 8px 24px rgba(4, 12, 26, 0.12);
 	}
 	.catalog-heading {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.4rem;
-		padding: 0.5rem 0.45rem;
+		padding: 0.25rem 0.45rem 0.65rem;
 		color: #dbe7fb;
-		font-size: 0.62rem;
+		font-size: 0.7rem;
 		font-weight: 900;
 	}
 	.catalog-heading b,
@@ -116,12 +119,14 @@
 		flex: 0 0 auto;
 		border-radius: 9999px;
 		background: #172b4d;
-		color: #9aacca;
-		padding: 0.15rem 0.35rem;
+		color: #b8c8dd;
+		padding: 0.18rem 0.4rem;
 		font-size: 0.52rem;
 	}
 	.report-catalog section {
-		margin-top: 0.25rem;
+		margin-top: 0.35rem;
+		border-top: 1px solid #1c3153;
+		padding-top: 0.3rem;
 	}
 	.group-button {
 		display: flex;
@@ -131,14 +136,14 @@
 		justify-content: space-between;
 		gap: 0.35rem;
 		border: 0;
-		border-radius: 0.4rem;
+		border-radius: 0.65rem;
 		background: transparent;
 		color: #9aacca;
-		padding: 0.5rem 0.45rem;
+		padding: 0.65rem 0.75rem;
 		font: inherit;
-		font-size: 0.59rem;
-		font-weight: 800;
-		line-height: 1.35;
+		font-size: 0.68rem;
+		font-weight: 700;
+		line-height: 1.25;
 		text-align: left;
 		cursor: pointer;
 	}
@@ -173,18 +178,18 @@
 	}
 	.report-list {
 		display: grid;
-		gap: 0.1rem;
-		padding: 0.15rem 0 0.3rem 0.35rem;
+		gap: 0.08rem;
+		padding: 0.15rem 0.25rem 0.3rem 0.75rem;
 	}
 	.report-list button {
 		min-width: 0;
 		border: 0;
 		border-left: 2px solid transparent;
 		background: transparent;
-		color: #8da1c3;
-		padding: 0.42rem 0.45rem;
+		color: #9aacca;
+		padding: 0.45rem 0.55rem;
 		font: inherit;
-		font-size: 0.58rem;
+		font-size: 0.6rem;
 		line-height: 1.35;
 		text-align: left;
 		overflow-wrap: anywhere;
@@ -195,6 +200,8 @@
 	}
 	.report-list button.chosen {
 		border-color: #3b82f6;
+		border-radius: 0 0.38rem 0.38rem 0;
+		background: #12274b;
 		color: #fff;
 	}
 	.report-catalog.light {

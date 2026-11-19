@@ -1,6 +1,8 @@
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { readSession } from '$lib/server/auth';
 
+const customerAccountRoutes = ['/shop', '/products', '/cart', '/orders', '/account'];
+
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = await readSession(event.cookies);
 	const pathname = event.url.pathname;
@@ -21,14 +23,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	if (
-		(pathname === '/shop' ||
-			pathname.startsWith('/shop/') ||
-			pathname === '/products' ||
-			pathname.startsWith('/products/') ||
-			pathname === '/cart') &&
-		!event.locals.user
-	) {
+	const requiresCustomerAccount = customerAccountRoutes.some(
+		(route) => pathname === route || pathname.startsWith(`${route}/`)
+	);
+	if (requiresCustomerAccount && !event.locals.user) {
 		throw redirect(303, `/login?next=${encodeURIComponent(`${pathname}${event.url.search}`)}`);
 	}
 

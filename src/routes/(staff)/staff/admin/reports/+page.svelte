@@ -124,10 +124,6 @@
 	</div>
 
 	<div class="report-layout">
-		<div class="catalog-column">
-			<ReportCatalog groups={reportGroups} {selection} variant="light" />
-		</div>
-
 		<div class="report-main">
 			<section class="builder">
 				<div class="builder-heading">
@@ -222,6 +218,10 @@
 					>
 				</div>
 			</section>
+		</div>
+
+		<div class="catalog-column">
+			<ReportCatalog groups={reportGroups} {selection} />
 		</div>
 	</div>
 </main>
@@ -390,7 +390,7 @@
 	}
 	.report-layout {
 		display: grid;
-		grid-template-columns: minmax(12rem, 17rem) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) minmax(12rem, 17rem);
 		align-items: stretch;
 		gap: 0.65rem;
 		min-height: calc(100vh - 15rem);
@@ -653,8 +653,7 @@
 	:global(html[data-theme='dark'] .reports-page .builder),
 	:global(html[data-theme='dark'] .reports-page .preview),
 	:global(html[data-theme='dark'] .reports-page .metrics article),
-	:global(html[data-theme='dark'] .reports-page .notification-popover),
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light) {
+	:global(html[data-theme='dark'] .reports-page .notification-popover) {
 		border-color: #334866;
 		background: #172640;
 	}
@@ -667,25 +666,8 @@
 	:global(html[data-theme='dark'] .reports-page h1),
 	:global(html[data-theme='dark'] .reports-page h2),
 	:global(html[data-theme='dark'] .reports-page .metrics strong),
-	:global(html[data-theme='dark'] .reports-page td.amount),
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .catalog-heading) {
+	:global(html[data-theme='dark'] .reports-page td.amount) {
 		color: #edf4ff;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .group-button) {
-		color: #b8c8dd;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .group-button:hover),
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .group-button.active) {
-		background: #203a60;
-		color: #8eb5ff;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .group-count) {
-		background: #243a59;
-		color: #b8c8dd;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .group-button.active .group-count) {
-		background: #2563eb;
-		color: #fff;
 	}
 	:global(html[data-theme='dark'] .reports-page .filters select),
 	:global(html[data-theme='dark'] .reports-page .filters input),
@@ -701,19 +683,9 @@
 	:global(html[data-theme='dark'] .reports-page td) {
 		border-color: #334866;
 	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light section) {
-		border-color: #334866;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .report-list button) {
-		color: #b8c8dd;
-	}
-	:global(html[data-theme='dark'] .reports-page .report-catalog.light .report-list button.chosen) {
-		background: #203a60;
-		color: #8eb5ff;
-	}
 	@media (max-width: 900px) {
 		.report-layout {
-			grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+			grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
 		}
 		.filters {
 			grid-template-columns: repeat(2, minmax(0, 1fr));

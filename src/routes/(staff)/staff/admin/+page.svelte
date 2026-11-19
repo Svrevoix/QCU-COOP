@@ -73,27 +73,6 @@
 		},
 		{ title: 'Sales report exported', meta: '06:48 AM · Reports', status: 'Exported', tone: 'blue' }
 	];
-	const maintenanceSchedule = [
-		{
-			title: 'Refrigerator inspection',
-			date: '18 Oct · 09:00 AM',
-			status: 'Due soon',
-			tone: 'amber'
-		},
-		{ title: 'POS software update', date: '21 Oct · 06:00 PM', status: 'Scheduled', tone: 'blue' },
-		{
-			title: 'Utility meter calibration',
-			date: '26 Oct · 10:30 AM',
-			status: 'Scheduled',
-			tone: 'blue'
-		},
-		{
-			title: 'Quarterly inventory audit',
-			date: '31 Oct · 08:00 AM',
-			status: 'Due soon',
-			tone: 'amber'
-		}
-	];
 	const services = ['Point of sale', 'Inventory sync', 'Reporting engine', 'Member portal'];
 	const salesBars = [52, 76, 62, 88, 100, 73, 100];
 	const weekDays = $derived.by(() => {
@@ -426,23 +405,6 @@
 					</div>
 				</section>
 
-				<section class="dashboard-card maintenance-card">
-					<div class="card-heading">
-						<div>
-							<h2>Upcoming maintenance</h2>
-							<p>Scheduled tasks</p>
-						</div>
-						<span class="status-badge amber-badge">2 due soon</span>
-					</div>
-					<div class="activity-list">
-						{#each maintenanceSchedule as task (task.title)}
-							<div class="activity-row">
-								<span><strong>{task.title}</strong><small>{task.date}</small></span>
-								<b class={`status-badge ${task.tone}-badge`}>{task.status}</b>
-							</div>
-						{/each}
-					</div>
-				</section>
 			</aside>
 		</div>
 	{/if}

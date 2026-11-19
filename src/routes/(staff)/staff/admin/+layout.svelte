@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { setContext } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	let { children } = $props();
+	const sidebarPreferenceKey = 'qcu-admin-sidebar-collapsed';
 	type ReportGroup = { label: string; reports: string[] };
 	const navigation = [
 		{ href: '/staff/admin', label: 'Dashboard', icon: 'grid' },
@@ -72,9 +73,38 @@
 	});
 	setContext('adminReportSelection', reportSelection);
 	setContext('adminReportGroups', reportGroups);
-	let sidebarCollapsed = $state(false);
+	let sidebarCollapsed = $state(page.url.pathname === '/staff/admin/reports');
+	let sidebarPreferenceLoaded = $state(false);
 	let mobileSidebarOpen = $state(false);
 	let activePath = $derived(page.url.pathname);
+	let activeNavigationIndex = $derived(
+		navigation.findIndex(
+			(item) =>
+				activePath === item.href ||
+				(item.href !== '/staff/admin' && activePath.startsWith(`${item.href}/`)) ||
+				(item.href === '/staff/admin' && activePath.startsWith('/staff/admin/dashboard'))
+		)
+	);
+	onMount(() => {
+		const savedPreference = localStorage.getItem(sidebarPreferenceKey);
+		if (savedPreference === 'true' || savedPreference === 'false') {
+			sidebarCollapsed = savedPreference === 'true';
+		}
+		sidebarPreferenceLoaded = true;
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key === sidebarPreferenceKey && (event.newValue === 'true' || event.newValue === 'false')) {
+				sidebarCollapsed = event.newValue === 'true';
+			}
+		};
+		window.addEventListener('storage', handleStorage);
+		return () => window.removeEventListener('storage', handleStorage);
+	});
+	$effect(() => {
+		if (sidebarPreferenceLoaded) {
+			localStorage.setItem(sidebarPreferenceKey, String(sidebarCollapsed));
+		}
+	});
 	$effect(() => {
 		if (!mobileSidebarOpen) return;
 
@@ -117,9 +147,16 @@
 		</div>
 		<div class="sidebar-label">Workspace</div>
 		<nav aria-label="Admin navigation">
-			{#each navigation as item}
+			{#if activeNavigationIndex >= 0}
+				<span
+					class="nav-active-indicator"
+					style={`--active-nav-index: ${activeNavigationIndex}`}
+					aria-hidden="true"
+				></span>
+			{/if}
+			{#each navigation as item, index (item.href)}
 				<a
-					class:active={activePath === item.href}
+					class:active={activeNavigationIndex === index}
 					href={item.href}
 					title={sidebarCollapsed ? item.label : undefined}
 					onclick={() => (mobileSidebarOpen = false)}
@@ -429,7 +466,11 @@
 		text-transform: uppercase;
 	}
 	nav {
+		position: relative;
+		--nav-item-height: 2.65rem;
+		--nav-item-step: 3rem;
 		display: grid;
+		grid-auto-rows: var(--nav-item-height);
 		flex: 1;
 		min-height: 0;
 		align-content: start;
@@ -439,8 +480,26 @@
 		scrollbar-color: #344968 transparent;
 		scrollbar-width: thin;
 	}
+	.nav-active-indicator {
+		position: absolute;
+		z-index: 0;
+		top: 0;
+		right: 0;
+		left: 0;
+		height: var(--nav-item-height);
+		transform: translateY(calc(var(--active-nav-index) * var(--nav-item-step)));
+		border-radius: 0.65rem;
+		background: #2563eb;
+		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
+		pointer-events: none;
+		transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
 	nav a {
+		position: relative;
+		z-index: 1;
 		display: flex;
+		box-sizing: border-box;
+		height: var(--nav-item-height);
 		align-items: center;
 		gap: 0.75rem;
 		border-radius: 0.65rem;
@@ -450,18 +509,14 @@
 		font-weight: 700;
 		line-height: 1.25;
 		text-decoration: none;
-		transition:
-			background 150ms ease,
-			color 150ms ease;
+		transition: color 150ms ease;
 	}
-	nav a:hover {
+	nav a:hover:not(.active) {
 		background: #12274b;
 		color: white;
 	}
 	nav a.active {
-		background: #2563eb;
 		color: white;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 	}
 	.nav-icon {
 		display: grid;
@@ -696,6 +751,11 @@
 		color: #b8c8dd;
 		cursor: pointer;
 	}
+	.sidebar-toggle {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
 	.sidebar-toggle:hover,
 	.mobile-menu-button:hover {
 		background: #12274b;
@@ -703,6 +763,7 @@
 	}
 	.sidebar-toggle svg,
 	.mobile-menu-button svg {
+		display: block;
 		width: 1.1rem;
 		height: 1.1rem;
 		fill: none;
@@ -753,10 +814,17 @@
 		padding-left: 0.65rem;
 	}
 	:global(.admin-shell.collapsed) .sidebar-top {
+		box-sizing: border-box;
+		width: 100%;
+		align-items: center;
 		flex-direction: column;
 		gap: 0.75rem;
 		margin-bottom: 1.5rem;
 		padding: 0.25rem 0 0;
+	}
+	:global(.admin-shell.collapsed) .sidebar-toggle {
+		align-self: center;
+		justify-self: center;
 	}
 	:global(.admin-shell.collapsed) .brand-copy,
 	:global(.admin-shell.collapsed) .nav-label,
@@ -774,6 +842,7 @@
 		visibility: hidden;
 	}
 	:global(.admin-shell.collapsed) .admin-brand {
+		width: 100%;
 		justify-content: center;
 	}
 	:global(.admin-shell.collapsed) .admin-sidebar nav a {
@@ -898,7 +967,12 @@
 		.admin-route-content.readable-admin-page {
 			zoom: 1;
 		}
+		.admin-sidebar nav {
+			--nav-item-height: 2.75rem;
+			--nav-item-step: 3.1rem;
+		}
 		.admin-sidebar nav a {
+			height: var(--nav-item-height);
 			min-height: 2.75rem;
 		}
 		.mobile-menu-button {

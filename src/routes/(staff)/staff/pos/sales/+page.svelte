@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
+	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	type SalesPeriod = 'Daily Sales' | 'Weekly' | 'Monthly';
 	type ChartPoint = { label: string; amount: number };
 
+	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
 	let period = $state<SalesPeriod>('Daily Sales');
 	let mobileSidebarOpen = $state(false);
 	const monthlyChart: ChartPoint[] = [
@@ -14,6 +18,7 @@
 		{ label: 'Sep', amount: 610 },
 		{ label: 'Oct', amount: 840 }
 	];
+
 	const weeklyChart: ChartPoint[] = [
 		{ label: 'Mon', amount: 420 },
 		{ label: 'Tue', amount: 570 },
@@ -99,41 +104,18 @@
 	<meta name="description" content="Sales overview and trends for the cashier workspace." />
 </svelte:head>
 
-<main class="cashier-shell" class:mobile-open={mobileSidebarOpen}>
+<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed} class:mobile-open={mobileSidebarOpen}>
 	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
-		<a class="cashier-brand" href="/staff/pos">
-			<span class="brand-mark">Q</span>
-			<span><strong>QCU COOP</strong><small>Cashier workspace</small></span>
-		</a>
+		<CashierSidebarHeader
+			collapsed={cashierSidebar.collapsed}
+			sidebarId="cashier-sidebar"
+			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
+		/>
 		<p class="sidebar-label">Workspace</p>
-		<nav aria-label="Cashier navigation">
-			<a href="/staff/pos/register" onclick={() => (mobileSidebarOpen = false)}>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
-				>
-				<span>Register</span>
-			</a>
-			<a href="/staff/pos" onclick={() => (mobileSidebarOpen = false)}>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
-				>
-				<span>POS Transaction Logs</span>
-			</a>
-			<a class="active" href="/staff/pos/sales" aria-current="page" onclick={() => (mobileSidebarOpen = false)}>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
-				>
-				<span>Sales</span>
-			</a>
-			<a href="/staff/pos/account" onclick={() => (mobileSidebarOpen = false)}>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><circle cx="12" cy="8" r="3.5" /><path
-						d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
-					/></svg
-				>
-				<span>Account</span>
-			</a>
-		</nav>
+		<CashierNavigation
+			collapsed={cashierSidebar.collapsed}
+			onNavigate={() => (mobileSidebarOpen = false)}
+		/>
 		<StaffLogout />
 	</aside>
 	{#if mobileSidebarOpen}
@@ -306,43 +288,17 @@
 		position: sticky;
 		top: 0;
 		display: flex;
+		box-sizing: border-box;
 		width: 17rem;
 		height: 100vh;
 		flex: 0 0 17rem;
 		flex-direction: column;
 		background: var(--navy);
 		padding: 1.5rem 1rem 1rem;
-	}
-	.cashier-brand {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.25rem 0.7rem 2.25rem;
-		color: white;
-		text-decoration: none;
-	}
-	.brand-mark {
-		display: grid;
-		width: 2.25rem;
-		height: 2.25rem;
-		place-items: center;
-		border-radius: 0.65rem;
-		background: #2d6cff;
-		font-size: 1.1rem;
-		font-weight: 900;
-	}
-	.cashier-brand strong,
-	.cashier-brand small {
-		display: block;
-	}
-	.cashier-brand strong {
-		font-size: 0.8rem;
-		letter-spacing: 0.12em;
-	}
-	.cashier-brand small {
-		margin-top: 0.2rem;
-		color: #8da1c3;
-		font-size: 0.65rem;
+		transition:
+			width 180ms ease,
+			flex-basis 180ms ease,
+			padding 180ms ease;
 	}
 	.sidebar-label {
 		margin: 0;
@@ -353,40 +309,7 @@
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 	}
-	.cashier-sidebar nav {
-		display: grid;
-		gap: 0.35rem;
-	}
-	.cashier-sidebar nav a {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		border-radius: 0.65rem;
-		color: #9aacca;
-		padding: 0.75rem;
-		font-size: 0.72rem;
-		font-weight: 700;
-		text-decoration: none;
-	}
-	.cashier-sidebar nav a:hover {
-		background: #12274b;
-		color: white;
-	}
-	.cashier-sidebar nav a.active {
-		background: #2563eb;
-		color: white;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
-	}
-	.cashier-sidebar nav svg {
-		width: 1.15rem;
-		height: 1.15rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 1.8;
-	}
-	.cashier-sidebar :global(button) {
+	.cashier-sidebar :global(.staff-logout) {
 		margin-top: auto;
 	}
 	.cashier-content {
@@ -854,7 +777,7 @@
 			width: min(18rem, 88vw);
 			height: 100dvh;
 			flex: 0 0 auto;
-			overflow-y: auto;
+			overflow: hidden;
 			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
 			transform: translateX(-100%);
 			visibility: hidden;
@@ -864,9 +787,6 @@
 		.cashier-shell.mobile-open .cashier-sidebar {
 			transform: translateX(0);
 			visibility: visible;
-		}
-		.cashier-sidebar nav a {
-			min-height: 2.75rem;
 		}
 		.cashier-sidebar-backdrop {
 			position: fixed;

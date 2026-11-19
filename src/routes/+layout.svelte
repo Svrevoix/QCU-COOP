@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { fly } from 'svelte/transition';
-	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import './layout.css';
-	import { cartItemCount, cartPieceCount } from '$lib/cart';
+	import { cartItemCount, cartPieceCount, setCartAccount } from '$lib/cart';
 	import { avatarImage } from '$lib/profile';
+	import { setPurchaseHistoryAccount } from '$lib/orders';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
@@ -15,10 +16,27 @@
 
 	// Fallback identity shown on the avatar badge before any session is authenticated.
 	const placeholderStudentId = '23-1111';
+	const cashierSidebarPreferenceKey = 'qcu-cashier-sidebar-collapsed';
+	let cashierSidebarState = $state({ collapsed: true });
+	let cashierSidebarPreferenceLoaded = $state(false);
+	setContext('cashierSidebar', cashierSidebarState);
 	let displayedId = $derived(page.data.user?.id ?? placeholderStudentId);
 	let isAuthenticated = $derived(!!page.data.user);
 	let isAdmin = $derived(page.data.user?.role === 'admin');
 	let isPublicLanding = $derived(page.url.pathname === '/' && !isAuthenticated);
+
+	$effect(() => {
+		if (cashierSidebarPreferenceLoaded) {
+			localStorage.setItem(cashierSidebarPreferenceKey, String(cashierSidebarState.collapsed));
+		}
+	});
+
+	$effect(() => {
+		const profileId = page.data.user?.profileId ?? null;
+		avatarImage.setAccount(profileId);
+		setCartAccount(profileId);
+		setPurchaseHistoryAccount(profileId);
+	});
 
 	// Profile dropdown state + a reference to its wrapper so outside clicks can close it.
 	let showProfileMenu = $state(false);
@@ -111,6 +129,21 @@
 		showLoadingSkeleton = true;
 	});
 
+	onNavigate((navigation) => {
+		const from = navigation.from?.url.pathname;
+		const to = navigation.to?.url.pathname;
+		const isCashierRoute = (pathname: string | undefined) =>
+			pathname === '/staff/pos' || pathname?.startsWith('/staff/pos/') === true;
+		if (!isCashierRoute(from) || !isCashierRoute(to) || !document.startViewTransition) return;
+
+		return new Promise<void>((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
+
 	afterNavigate(() => {
 		showMobileMenu = false;
 		loadingPathname = page.url.pathname;
@@ -144,12 +177,27 @@
 		// Applies the previously saved theme (set from the Account page) on load.
 		const savedTheme = localStorage.getItem('qcu-theme');
 		if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+		const savedSidebarPreference = localStorage.getItem(cashierSidebarPreferenceKey);
+		if (savedSidebarPreference === 'true' || savedSidebarPreference === 'false') {
+			cashierSidebarState.collapsed = savedSidebarPreference === 'true';
+		}
+		cashierSidebarPreferenceLoaded = true;
 		loadingStartedAt = Date.now();
 		finishPageLoading();
 
+		const handleStorage = (event: StorageEvent) => {
+			if (
+				event.key === cashierSidebarPreferenceKey &&
+				(event.newValue === 'true' || event.newValue === 'false')
+			) {
+				cashierSidebarState.collapsed = event.newValue === 'true';
+			}
+		};
+		window.addEventListener('storage', handleStorage);
 		window.addEventListener('click', handleWindowClick);
 		return () => {
 			clearTimeout(loadingTimer);
+			window.removeEventListener('storage', handleStorage);
 			window.removeEventListener('click', handleWindowClick);
 		};
 	});
@@ -517,12 +565,23 @@
 		:global(.site-header a[aria-label='Purchase history']) { display: none; }
 	}
 	.page-loading-overlay { position: fixed; z-index: 200; inset: 0; overflow: auto; background: #f3f6fa; color: #172b4d; }
+	:global(::view-transition-group(cashier-nav-active)) {
+		animation-duration: 260ms;
+		animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	:global(::view-transition-old(root)),
+	:global(::view-transition-new(root)) {
+		animation: none;
+	}
+	.page-loading-overlay.staff-loading { left: 0; }
+	:global(body:has(.admin-shell) .page-loading-overlay.staff-loading) { left: calc(17rem * 1.1); }
+	:global(body:has(.admin-shell.collapsed) .page-loading-overlay.staff-loading) { left: calc(5rem * 1.1); }
+	:global(body:has(.cashier-shell) .page-loading-overlay.staff-loading) { left: 17rem; }
+	:global(body:has(.cashier-shell.collapsed) .page-loading-overlay.staff-loading) { left: 5rem; }
+	:global(body:has(.register-shell) .page-loading-overlay.staff-loading) { left: 17rem; }
+	:global(body:has(.register-shell.collapsed) .page-loading-overlay.staff-loading) { left: 5rem; }
 	.loading-stage { display: grid; min-height: 100vh; grid-template-columns: minmax(0, 1fr); }
-	.loading-stage.staff-loading { grid-template-columns: 17rem minmax(0, 1fr); }
-	.loading-sidebar { display: flex; min-height: 100vh; flex-direction: column; gap: 1.1rem; background: #07152d; padding: 1.5rem 1rem; }
-	.loading-brand { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 	.loading-mark { width: 2.25rem; height: 2.25rem; flex: 0 0 auto; border-radius: .6rem; }
-	.loading-nav-item { height: 2.65rem; border-radius: .6rem; }
 	.loading-content { min-width: 0; }
 	.loading-topbar { display: flex; height: 4rem; align-items: center; justify-content: space-between; border-bottom: 1px solid #e4eaf2; background: white; padding: 0 clamp(1rem, 4vw, 3rem); }
 	.loading-topbar-brand { width: 10rem; height: 1.25rem; }
@@ -607,8 +666,19 @@
 	:global(html[data-theme='dark'] .page-loading-overlay) { background: #101d35; }
 	:global(html[data-theme='dark'] .loading-topbar), :global(html[data-theme='dark'] .loading-stat), :global(html[data-theme='dark'] .loading-panel), :global(html[data-theme='dark'] .loading-card), :global(html[data-theme='dark'] .loading-utility-topbar), :global(html[data-theme='dark'] .loading-utility-stat) { border-color: #334866; background-color: #172640; }
 	:global(html[data-theme='dark'] .skeleton-block), :global(html[data-theme='dark'] .loading-block), :global(html[data-theme='dark'] .loading-stat i), :global(html[data-theme='dark'] .loading-table-row i), :global(html[data-theme='dark'] .loading-card-copy i), :global(html[data-theme='dark'] .loading-image), :global(html[data-theme='dark'] .loading-cart-item i), :global(html[data-theme='dark'] .loading-cart-summary i), :global(html[data-theme='dark'] .loading-chart i), :global(html[data-theme='dark'] .loading-filter i), :global(html[data-theme='dark'] .loading-form-field i), :global(html[data-theme='dark'] .loading-panel-heading i), :global(html[data-theme='dark'] .loading-topbar-actions i) { background-image: linear-gradient(100deg, #263b59 20%, #334866 38%, #263b59 56%); }
-	@media (max-width: 900px) { .loading-stage.staff-loading { grid-template-columns: 14rem minmax(0, 1fr); }.loading-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cart { grid-template-columns: minmax(0, 1fr) 13rem; }.loading-dashboard-charts { grid-template-columns: 1fr; } }
-	@media (max-width: 760px) { .loading-stage.staff-loading { display: block; }.loading-sidebar { min-height: auto; height: 5.75rem; flex-direction: row; align-items: center; overflow: hidden; padding: .85rem 1rem; }.loading-brand { margin: 0 .5rem 0 0; }.loading-nav-item { width: 7rem; height: 2.4rem; flex: 0 0 auto; }.loading-featured { grid-template-columns: 1fr; gap: 1.25rem; min-height: 0; }.loading-featured-art { min-height: 12rem; }.loading-report-filters { grid-template-columns: 1fr 1fr; }.loading-about-grid { grid-template-columns: 1fr; } }
+	@media (max-width: 900px) { .loading-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }.loading-cart { grid-template-columns: minmax(0, 1fr) 13rem; }.loading-dashboard-charts { grid-template-columns: 1fr; } }
+	@media (max-width: 760px) {
+		:global(body:has(.admin-shell) .page-loading-overlay.staff-loading),
+		:global(body:has(.admin-shell.collapsed) .page-loading-overlay.staff-loading),
+		:global(body:has(.cashier-shell) .page-loading-overlay.staff-loading),
+		:global(body:has(.register-shell) .page-loading-overlay.staff-loading),
+		:global(body:has(.register-shell.collapsed) .page-loading-overlay.staff-loading) { left: 0; }
+		:global(body:has(.admin-shell) .page-loading-overlay.staff-loading) { top: 3.5rem; }
+		.loading-featured { grid-template-columns: 1fr; gap: 1.25rem; min-height: 0; }
+		.loading-featured-art { min-height: 12rem; }
+		.loading-report-filters { grid-template-columns: 1fr 1fr; }
+		.loading-about-grid { grid-template-columns: 1fr; }
+	}
 	@media (max-width: 560px) { .loading-cards { gap: .6rem; }.loading-product-card .loading-image { height: 7rem; }.loading-card-copy { padding: .75rem; }.loading-cart { grid-template-columns: 1fr; }.loading-cart-summary { position: sticky; bottom: 0; grid-template-columns: 1fr auto; align-items: center; border: 1px solid #e4eaf2; border-radius: .65rem; background: white; padding: .85rem; }.loading-cart-summary i:last-child { width: 7rem; margin: 0; }.loading-form-grid { grid-template-columns: 1fr; }.loading-table-row { grid-template-columns: 1fr 1fr; gap: .75rem; padding: .8rem 0; }.loading-table-row i:nth-child(n + 3) { display: none; } }
 	.loading-products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 	.loading-cart { display: block; padding-bottom: 7rem; }
@@ -802,15 +872,9 @@
 {/if}
 
 {#if showLoadingSkeleton}
-	<div class="page-loading-overlay" role="status" aria-live="polite" aria-label="Loading page">
+	<div class="page-loading-overlay" class:staff-loading={isStaffWorkspace} role="status" aria-live="polite" aria-label="Loading page">
 		<span class="sr-only">Loading page</span>
-		<div class="loading-stage" class:staff-loading={isStaffWorkspace} aria-hidden="true">
-			{#if isStaffWorkspace}
-				<aside class="loading-sidebar">
-					<div class="loading-brand"><i class="skeleton-block loading-mark"></i><i class="skeleton-block loading-line" style="width: 7rem"></i></div>
-					<i class="skeleton-block loading-nav-item"></i><i class="skeleton-block loading-nav-item"></i><i class="skeleton-block loading-nav-item"></i>
-				</aside>
-			{/if}
+		<div class="loading-stage" aria-hidden="true">
 			<section class="loading-content">
 				{#if !isStaffWorkspace && loadingKind !== 'login' && loadingKind !== 'cart'}
 					<div class="loading-topbar"><i class="skeleton-block loading-topbar-brand"></i><div class="loading-topbar-actions"><i></i><i></i></div></div>

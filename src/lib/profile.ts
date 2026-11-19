@@ -2,18 +2,32 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 const AVATAR_STORAGE_KEY = 'qcu-avatar-image';
+let activeProfileId: string | null = null;
 
-/** Shared, persisted avatar image (data URL) so header + account page stay in sync. */
+export function avatarStorageKey(profileId: string) {
+	return `${AVATAR_STORAGE_KEY}:${profileId}`;
+}
+
+/** Account-scoped avatar image (data URL) shared by the header and account page. */
 function createAvatarStore() {
-	const initial = browser ? localStorage.getItem(AVATAR_STORAGE_KEY) : null;
-	const { subscribe, set } = writable<string | null>(initial);
+	const { subscribe, set } = writable<string | null>(null);
 
 	return {
 		subscribe,
+		setAccount(profileId: string | null) {
+			if (activeProfileId === profileId) return;
+			activeProfileId = profileId;
+			set(
+				browser && profileId
+					? localStorage.getItem(avatarStorageKey(profileId))
+					: null
+			);
+		},
 		set(value: string | null) {
-			if (browser) {
-				if (value) localStorage.setItem(AVATAR_STORAGE_KEY, value);
-				else localStorage.removeItem(AVATAR_STORAGE_KEY);
+			if (browser && activeProfileId) {
+				const key = avatarStorageKey(activeProfileId);
+				if (value) localStorage.setItem(key, value);
+				else localStorage.removeItem(key);
 			}
 			set(value);
 		}

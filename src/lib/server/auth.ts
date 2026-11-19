@@ -65,14 +65,32 @@ function roleFromProfile(profile: AccountProfile): AuthenticatedUser['role'] | n
 	return null;
 }
 
+function customerRoleFromId(id: string | null): 'student' | 'teacher' | null {
+	const prefix = id?.replace(/\D/g, '').slice(0, 2);
+	if (prefix === '23') return 'student';
+	if (prefix === '10') return 'teacher';
+	return null;
+}
+
 function accountIsEnabled(profile: AccountProfile) {
 	const status = profile.account_status?.trim().toLowerCase() ?? '';
 	return !/(pending|inactive|suspend|disabled|blocked|locked|rejected|archived)/.test(status);
 }
 
 async function userFromProfile(profile: AccountProfile): Promise<AuthenticatedUser | null> {
-	const role = roleFromProfile(profile);
-	if (!role || !profile.email) return null;
+	const profileRole = roleFromProfile(profile);
+	if (!profileRole || !profile.email) return null;
+	const customerId =
+		profileRole === 'student'
+			? profile.school_id || profile.login_id || profile.employee_no
+			: profileRole === 'teacher'
+				? profile.employee_no || profile.login_id || profile.school_id
+				: null;
+	const role =
+		profileRole === 'admin' || profileRole === 'cashier'
+			? profileRole
+			: customerRoleFromId(customerId);
+	if (!role) return null;
 	const id =
 		role === 'student'
 			? profile.school_id || profile.login_id || profile.employee_no || profile.email

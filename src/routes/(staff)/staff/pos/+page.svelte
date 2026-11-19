@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
+	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
+	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
 	let loading = $state(true);
 	let activeRegister = $state('All registers');
 	let localTime = $state('');
@@ -34,35 +37,6 @@
 		return () => clearInterval(interval);
 	});
 
-	const sessions = [
-		{
-			initials: 'MS',
-			cashier: 'Maria Santos',
-			register: 'Register 01',
-			status: 'Open',
-			started: '08:02 AM',
-			sales: '18,420',
-			transactions: 64
-		},
-		{
-			initials: 'JDC',
-			cashier: 'John Dela Cruz',
-			register: 'Register 02',
-			status: 'Open',
-			started: '08:16 AM',
-			sales: '12,870',
-			transactions: 42
-		},
-		{
-			initials: 'AR',
-			cashier: 'Anna Reyes',
-			register: 'Register 03',
-			status: 'Closed',
-			started: '07:51 AM',
-			sales: '9,440',
-			transactions: 31
-		}
-	];
 	const transactions = [
 		{
 			id: '#TX-10482',
@@ -147,38 +121,18 @@
 	<title>POS Transaction Logs | QCU Coop Store</title>
 </svelte:head>
 
-<main class="cashier-shell" class:mobile-open={mobileSidebarOpen}>
+<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed} class:mobile-open={mobileSidebarOpen}>
 	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
-		<a class="cashier-brand" href="/staff/pos"
-			><span class="brand-mark">Q</span><span
-				><strong>QCU COOP</strong><small>Cashier workspace</small></span
-			></a
-		>
+		<CashierSidebarHeader
+			collapsed={cashierSidebar.collapsed}
+			sidebarId="cashier-sidebar"
+			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
+		/>
 		<p class="sidebar-label">Workspace</p>
-		<nav aria-label="Cashier navigation">
-			<a href="/staff/pos/register" onclick={() => (mobileSidebarOpen = false)}
-				><svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
-				><span>Register</span></a
-			>
-			<a class="active" href="/staff/pos" onclick={() => (mobileSidebarOpen = false)}
-				><svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
-				><span>POS Transaction Logs</span></a
-			>
-			<a href="/staff/pos/sales" onclick={() => (mobileSidebarOpen = false)}
-				><svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
-				><span>Sales</span></a
-			>
-			<a href="/staff/pos/account" onclick={() => (mobileSidebarOpen = false)}
-				><svg viewBox="0 0 24 24" aria-hidden="true"
-					><circle cx="12" cy="8" r="3.5" /><path
-						d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
-					/></svg
-				><span>Account</span></a
-			>
-		</nav>
+		<CashierNavigation
+			collapsed={cashierSidebar.collapsed}
+			onNavigate={() => (mobileSidebarOpen = false)}
+		/>
 		<StaffLogout />
 	</aside>
 	{#if mobileSidebarOpen}
@@ -247,7 +201,6 @@
 				<div class="skeleton-kpis">
 					{#each [1, 2, 3, 4] as item (item)}<div class="skeleton-block"></div>{/each}
 				</div>
-				<div class="skeleton-panel"></div>
 				<div class="skeleton-panel activity"></div>
 			</div>
 		{:else}
@@ -282,32 +235,6 @@
 						>
 					</article>
 				</div>
-
-				<section class="panel" in:fade={{ duration: 250, delay: 80 }}>
-					<div class="panel-heading">
-						<div>
-							<h2>Cashier sessions</h2>
-							<p>Current register states and shift totals</p>
-						</div>
-						<span class="refresh-note"><i></i> Registers online</span>
-					</div>
-					<div class="session-grid">
-						{#each sessions as session (session.register)}
-							<article class="session-card">
-								<div class="session-top">
-									<span class="cashier-avatar">{session.initials}</span><span class="cashier-name"
-										><strong>{session.cashier}</strong><small>{session.register}</small></span
-									><b class:closed={session.status === 'Closed'}>{session.status}</b>
-								</div>
-								<div class="session-data">
-									<span>Started<strong>{session.started}</strong></span><span
-										>Transactions<strong>{session.transactions}</strong></span
-									><span>Gross sales<strong>{session.sales}</strong></span>
-								</div>
-							</article>
-						{/each}
-					</div>
-				</section>
 
 				<section class="panel activity-panel" in:fade={{ duration: 250, delay: 120 }}>
 					<div class="panel-heading">
@@ -398,43 +325,17 @@
 		position: sticky;
 		top: 0;
 		display: flex;
+		box-sizing: border-box;
 		width: 17rem;
 		height: 100vh;
 		flex: 0 0 17rem;
 		flex-direction: column;
 		background: var(--navy);
 		padding: 1.5rem 1rem 1rem;
-	}
-	.cashier-brand {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.25rem 0.7rem 2.25rem;
-		color: white;
-		text-decoration: none;
-	}
-	.brand-mark {
-		display: grid;
-		width: 2.25rem;
-		height: 2.25rem;
-		place-items: center;
-		border-radius: 0.65rem;
-		background: #2d6cff;
-		font-size: 1.1rem;
-		font-weight: 900;
-	}
-	.cashier-brand strong,
-	.cashier-brand small {
-		display: block;
-	}
-	.cashier-brand strong {
-		font-size: 0.8rem;
-		letter-spacing: 0.12em;
-	}
-	.cashier-brand small {
-		margin-top: 0.2rem;
-		color: #8da1c3;
-		font-size: 0.65rem;
+		transition:
+			width 180ms ease,
+			flex-basis 180ms ease,
+			padding 180ms ease;
 	}
 	.sidebar-label {
 		margin: 0;
@@ -445,36 +346,7 @@
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 	}
-	.cashier-sidebar nav {
-		display: grid;
-		gap: 0.35rem;
-	}
-	.cashier-sidebar nav a {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		border-radius: 0.65rem;
-		color: #9aacca;
-		padding: 0.75rem;
-		font-size: 0.72rem;
-		font-weight: 700;
-		text-decoration: none;
-	}
-	.cashier-sidebar nav a.active {
-		background: #2563eb;
-		color: white;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
-	}
-	.cashier-sidebar nav svg {
-		width: 1.15rem;
-		height: 1.15rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 1.8;
-	}
-	.cashier-sidebar :global(button) {
+	.cashier-sidebar :global(.staff-logout) {
 		margin-top: auto;
 	}
 	.cashier-content {
@@ -786,9 +658,6 @@
 		padding: 1.25rem;
 		box-shadow: 0 8px 24px rgba(32, 55, 88, 0.04);
 	}
-	.panel + .panel {
-		margin-top: 0.85rem;
-	}
 	.panel-heading {
 		display: flex;
 		align-items: flex-start;
@@ -805,85 +674,6 @@
 		margin: 0.3rem 0 0;
 		color: #8b99ab;
 		font-size: 0.65rem;
-	}
-	.session-grid {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 0.75rem;
-		margin-top: 1.1rem;
-	}
-	.session-card {
-		min-width: 0;
-		border: 1px solid #e7edf4;
-		border-radius: 0.6rem;
-		padding: 0.85rem;
-	}
-	.session-top {
-		display: flex;
-		min-width: 0;
-		align-items: center;
-		gap: 0.6rem;
-	}
-	.cashier-avatar {
-		display: grid;
-		width: 2rem;
-		height: 2rem;
-		flex: 0 0 2rem;
-		place-items: center;
-		border-radius: 50%;
-		background: #dbeafe;
-		color: #2563eb;
-		font-size: 0.62rem;
-		font-weight: 900;
-	}
-	.cashier-name {
-		min-width: 0;
-	}
-	.cashier-name strong,
-	.cashier-name small {
-		display: block;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.cashier-name strong {
-		color: #29405f;
-		font-size: 0.68rem;
-	}
-	.cashier-name small {
-		margin-top: 0.2rem;
-		color: #8a99ab;
-		font-size: 0.57rem;
-	}
-	.session-top > b {
-		margin-left: auto;
-		border-radius: 1rem;
-		background: #e5f8ee;
-		color: #168251;
-		padding: 0.28rem 0.5rem;
-		font-size: 0.56rem;
-	}
-	.session-top > b.closed {
-		background: #f1f3f6;
-		color: #8291a4;
-	}
-	.session-data {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.7rem;
-		margin-top: 1rem;
-		border-top: 1px solid #edf1f5;
-		padding-top: 0.8rem;
-	}
-	.session-data span {
-		color: #8291a4;
-		font-size: 0.58rem;
-	}
-	.session-data strong {
-		display: block;
-		margin-top: 0.3rem;
-		color: #29405f;
-		font-size: 0.67rem;
 	}
 	.table-actions {
 		display: flex;
@@ -989,14 +779,9 @@
 		border-color: #334866;
 		background: #172640;
 	}
-	:global(html[data-theme='dark'] .session-card) {
-		border-color: #415878;
-		background: #101d35;
-	}
 	:global(html[data-theme='dark'] .cashier-title),
 	:global(html[data-theme='dark'] .panel h2),
 	:global(html[data-theme='dark'] .kpi-grid strong),
-	:global(html[data-theme='dark'] .session-data strong),
 	:global(html[data-theme='dark'] td strong) {
 		color: #edf4ff;
 	}
@@ -1004,13 +789,8 @@
 	:global(html[data-theme='dark'] .panel-heading p),
 	:global(html[data-theme='dark'] .kpi-grid span),
 	:global(html[data-theme='dark'] .kpi-grid em:not(.up):not(.warn)),
-	:global(html[data-theme='dark'] .session-data span),
-	:global(html[data-theme='dark'] .cashier-name small),
 	:global(html[data-theme='dark'] td) {
 		color: #b8c8dd;
-	}
-	:global(html[data-theme='dark'] .cashier-name strong) {
-		color: #edf4ff;
 	}
 	:global(html[data-theme='dark'] .live-clock) {
 		border-color: #334866;
@@ -1021,9 +801,6 @@
 	}
 	:global(html[data-theme='dark'] .live-clock time) {
 		color: #edf4ff;
-	}
-	:global(html[data-theme='dark'] .session-data) {
-		border-color: #334866;
 	}
 	:global(html[data-theme='dark'] .table-actions select),
 	:global(html[data-theme='dark'] .export-button) {
@@ -1044,10 +821,6 @@
 	}
 	:global(html[data-theme='dark'] td.amount) {
 		color: #edf4ff;
-	}
-	:global(html[data-theme='dark'] .session-top > b.closed) {
-		background: #263b59;
-		color: #b8c8dd;
 	}
 	:global(html[data-theme='dark'] .cashier-topbar),
 	:global(html[data-theme='dark'] .cashier-footer),
@@ -1085,9 +858,6 @@
 		.skeleton-kpis {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
-		.session-grid {
-			grid-template-columns: 1fr;
-		}
 	}
 	@media (max-width: 760px) {
 		.cashier-shell {
@@ -1102,7 +872,7 @@
 			width: min(18rem, 88vw);
 			height: 100dvh;
 			flex: 0 0 auto;
-			overflow-y: auto;
+			overflow: hidden;
 			padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
 			transform: translateX(-100%);
 			visibility: hidden;
@@ -1112,9 +882,6 @@
 		.cashier-shell.mobile-open .cashier-sidebar {
 			transform: translateX(0);
 			visibility: visible;
-		}
-		.cashier-sidebar nav a {
-			min-height: 2.75rem;
 		}
 		.cashier-sidebar-backdrop {
 			position: fixed;

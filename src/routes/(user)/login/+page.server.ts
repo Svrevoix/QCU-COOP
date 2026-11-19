@@ -39,6 +39,17 @@ export const actions: Actions = {
 			if (!/^\d{2}-\d{4}$/.test(idNumber)) {
 				return fail(400, { mode: 'signup' as const, message: 'Enter an ID number with 2 digits, a dash, then 4 digits (for example, 23-2111).' });
 			}
+			const idRole = idNumber.startsWith('23')
+				? 'student'
+				: idNumber.startsWith('10')
+					? 'teacher'
+					: null;
+			if (idRole !== role) {
+				return fail(400, {
+					mode: 'signup' as const,
+					message: 'Student IDs must start with 23 and teacher IDs must start with 10.'
+				});
+			}
 			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 				return fail(400, { mode: 'signup' as const, message: 'Enter a valid email address.' });
 			}

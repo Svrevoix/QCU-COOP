@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { getContext, tick } from 'svelte';
+	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
+	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 	import {
 		productCatalog,
@@ -75,7 +77,7 @@
 	let toast = $state('');
 	let heldOrders = $state<CartLine[][]>([]);
 	let lastHeldOrder = $state<CartLine[] | null>(null);
-	let sidebarCollapsed = $state(false);
+	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
 	let mobileSidebarOpen = $state(false);
 
 	const filteredProducts = $derived(
@@ -209,83 +211,21 @@
 
 <main
 	class="register-shell"
-	class:collapsed={sidebarCollapsed}
+	class:collapsed={cashierSidebar.collapsed}
 	class:mobile-open={mobileSidebarOpen}
 >
 	<aside class="register-sidebar" id="register-sidebar" aria-label="Cashier workspace sidebar">
-		<div class="sidebar-top">
-			<a class="cashier-brand" href="/staff/pos/register">
-				<span class="brand-mark">Q</span>
-				<span class="brand-copy"><strong>QCU COOP</strong><small>Cashier workspace</small></span>
-			</a>
-			<button
-				class="sidebar-toggle"
-				type="button"
-				aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-				aria-expanded={!sidebarCollapsed}
-				aria-controls="register-sidebar"
-				title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-				onclick={() => (sidebarCollapsed = !sidebarCollapsed)}
-			>
-				<svg viewBox="0 0 24 24" aria-hidden="true">
-					<path d={sidebarCollapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} />
-				</svg>
-			</button>
-		</div>
+		<CashierSidebarHeader
+			collapsed={cashierSidebar.collapsed}
+			sidebarId="register-sidebar"
+			href="/staff/pos/register"
+			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
+		/>
 		<div class="sidebar-label">Workspace</div>
-		<nav aria-label="Cashier navigation">
-			<a
-				class="active"
-				href="/staff/pos/register"
-				aria-current="page"
-				title={sidebarCollapsed ? 'Register' : undefined}
-				onclick={() => (mobileSidebarOpen = false)}
-			>
-				<span class="nav-icon" aria-hidden="true"
-					><svg viewBox="0 0 24 24"
-						><path d="M3 5h18v14H3zM7 9h4m-4 4h2m4-4h4m-4 4h4" /><path d="M7 16h10" /></svg
-					></span
-				>
-				<span class="nav-label">Register</span>
-			</a>
-			<a
-				href="/staff/pos"
-				title={sidebarCollapsed ? 'POS Transaction Logs' : undefined}
-				onclick={() => (mobileSidebarOpen = false)}
-			>
-				<span class="nav-icon" aria-hidden="true"
-					><svg viewBox="0 0 24 24"
-						><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" /><path d="M8 8h8M8 12h8M8 16h4" /></svg
-					></span
-				>
-				<span class="nav-label">POS Transaction Logs</span>
-			</a>
-			<a
-				href="/staff/pos/sales"
-				title={sidebarCollapsed ? 'Sales' : undefined}
-				onclick={() => (mobileSidebarOpen = false)}
-			>
-				<span class="nav-icon" aria-hidden="true"
-					><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17" /><path d="m7 15 4-5 3 2 5-7" /></svg
-					></span
-				>
-				<span class="nav-label">Sales</span>
-			</a>
-			<a
-				href="/staff/pos/account"
-				title={sidebarCollapsed ? 'Account' : undefined}
-				onclick={() => (mobileSidebarOpen = false)}
-			>
-				<span class="nav-icon" aria-hidden="true"
-					><svg viewBox="0 0 24 24"
-						><circle cx="12" cy="8" r="3.5" /><path
-							d="M5 20c1.2-3.6 4.2-5.5 7-5.5s5.8 1.9 7 5.5"
-						/></svg
-					></span
-				>
-				<span class="nav-label">Account</span>
-			</a>
-		</nav>
+		<CashierNavigation
+			collapsed={cashierSidebar.collapsed}
+			onNavigate={() => (mobileSidebarOpen = false)}
+		/>
 		<div class="sidebar-footer">
 			<span class="online-dot"></span><span class="sidebar-footer-copy"
 				><strong>Register online</strong><small>Register 01 · Open</small></span
@@ -745,91 +685,18 @@
 		z-index: 20;
 		top: 0;
 		display: flex;
-		width: 15rem;
+		box-sizing: border-box;
+		width: 17rem;
 		height: 100vh;
-		flex: 0 0 15rem;
+		flex: 0 0 17rem;
 		flex-direction: column;
 		background: #07152d;
 		color: #dbe7fb;
-		padding: 1.15rem 0.8rem 0.8rem;
+		padding: 1.5rem 1rem 1rem;
 		transition:
 			width 180ms ease,
 			flex-basis 180ms ease,
 			padding 180ms ease;
-	}
-	.sidebar-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.4rem;
-		margin-bottom: 1.7rem;
-		padding: 0.15rem 0.25rem;
-	}
-	.cashier-brand {
-		display: flex;
-		min-width: 0;
-		align-items: center;
-		gap: 0.6rem;
-		color: white;
-		text-decoration: none;
-	}
-	.brand-mark {
-		display: grid;
-		width: 2rem;
-		height: 2rem;
-		flex: 0 0 auto;
-		place-items: center;
-		border-radius: 0.55rem;
-		background: #2d6cff;
-		font-size: 1rem;
-		font-weight: 900;
-	}
-	.brand-copy {
-		overflow: hidden;
-		max-width: 10rem;
-		opacity: 1;
-		transition:
-			max-width 180ms ease,
-			opacity 140ms ease;
-	}
-	.brand-copy strong,
-	.brand-copy small {
-		display: block;
-		white-space: nowrap;
-	}
-	.brand-copy strong {
-		font-size: 0.68rem;
-		letter-spacing: 0.1em;
-	}
-	.brand-copy small {
-		margin-top: 0.15rem;
-		color: #8da1c3;
-		font-size: 0.55rem;
-	}
-	.sidebar-toggle {
-		display: grid;
-		width: 1.7rem;
-		height: 1.7rem;
-		flex: 0 0 auto;
-		place-items: center;
-		border: 1px solid #283b5a;
-		border-radius: 0.4rem;
-		background: #122440;
-		color: #b8c8dd;
-		cursor: pointer;
-	}
-	.sidebar-toggle:hover {
-		background: #1a3153;
-		color: white;
-	}
-	.sidebar-toggle svg {
-		width: 0.85rem;
-		height: 0.85rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 2;
 	}
 	.sidebar-label {
 		margin: 0;
@@ -839,61 +706,6 @@
 		font-weight: 800;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-	}
-	.register-sidebar nav {
-		display: grid;
-		flex: 1;
-		align-content: start;
-		gap: 0.3rem;
-	}
-	.register-sidebar nav a {
-		display: flex;
-		min-width: 0;
-		align-items: center;
-		gap: 0.65rem;
-		border-radius: 0.55rem;
-		color: #9aacca;
-		padding: 0.65rem;
-		font-size: 0.61rem;
-		font-weight: 700;
-		line-height: 1.25;
-		text-decoration: none;
-		transition:
-			background 150ms ease,
-			color 150ms ease;
-	}
-	.register-sidebar nav a:hover {
-		background: #12274b;
-		color: white;
-	}
-	.register-sidebar nav a.active {
-		background: #2563eb;
-		color: white;
-		box-shadow: 0 7px 14px #2563eb35;
-	}
-	.nav-icon {
-		display: grid;
-		width: 1rem;
-		height: 1rem;
-		flex: 0 0 auto;
-		place-items: center;
-	}
-	.nav-icon svg {
-		width: 100%;
-		height: 100%;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 1.8;
-	}
-	.nav-label {
-		overflow: hidden;
-		max-width: 12rem;
-		white-space: nowrap;
-		transition:
-			max-width 180ms ease,
-			opacity 140ms ease;
 	}
 	.sidebar-footer {
 		display: flex;
@@ -944,50 +756,10 @@
 			zoom: 1.1;
 		}
 	}
-	.register-shell.collapsed .register-sidebar {
-		width: 4.4rem;
-		flex-basis: 4.4rem;
-		padding-right: 0.55rem;
-		padding-left: 0.55rem;
-	}
-	.register-shell.collapsed .sidebar-top {
-		flex-direction: column;
-		gap: 0.6rem;
-		padding: 0.15rem 0;
-	}
-	.register-shell.collapsed .brand-copy,
-	.register-shell.collapsed .nav-label,
-	.register-shell.collapsed .sidebar-footer-copy {
-		max-width: 0;
-		opacity: 0;
-		visibility: hidden;
-	}
-	.register-shell.collapsed .sidebar-label {
-		max-height: 0;
-		overflow: hidden;
-		padding: 0;
-		opacity: 0;
-	}
-	.register-shell.collapsed .cashier-brand {
-		justify-content: center;
-	}
-	.register-shell.collapsed .register-sidebar nav a {
-		justify-content: center;
-		padding: 0.65rem 0;
-	}
 	.register-shell.collapsed .sidebar-footer {
 		justify-content: center;
 		padding-right: 0;
 		padding-left: 0;
-	}
-	.register-shell.collapsed .register-sidebar :global(.staff-logout) {
-		justify-content: center;
-		padding-right: 0;
-		padding-left: 0;
-		text-align: center;
-	}
-	.register-shell.collapsed .register-sidebar :global(.staff-logout span) {
-		display: none;
 	}
 	.sidebar-backdrop,
 	.mobile-menu-button {
@@ -2139,11 +1911,6 @@
 		border-color: #6b8bb8;
 		background: #223957;
 	}
-	:global(html[data-theme='dark'] .sidebar-toggle) {
-		border-color: #415878;
-		background: #122440;
-		color: #dbe7fb;
-	}
 	@media (max-width: 760px) {
 		.register-shell {
 			display: block;
@@ -2155,7 +1922,7 @@
 			position: fixed;
 			z-index: 40;
 			inset: 0 auto 0 0;
-			width: min(17rem, 88vw);
+			width: min(18rem, 88vw);
 			height: 100dvh;
 			padding: 1rem;
 			transform: translateX(-100%);
@@ -2170,11 +1937,9 @@
 			visibility: visible;
 		}
 		.register-shell.collapsed .register-sidebar {
-			width: min(17rem, 88vw);
+			width: min(18rem, 88vw);
 			flex-basis: auto;
 		}
-		.register-shell.collapsed .brand-copy,
-		.register-shell.collapsed .nav-label,
 		.register-shell.collapsed .sidebar-footer-copy {
 			max-width: 12rem;
 			opacity: 1;
@@ -2182,21 +1947,8 @@
 		}
 		.register-shell.collapsed .sidebar-label {
 			max-height: 1.5rem;
-			padding: 0 0.65rem 0.5rem;
+			padding: 0 0.75rem 0.7rem;
 			opacity: 1;
-		}
-		.register-shell.collapsed .sidebar-top {
-			flex-direction: row;
-			gap: 0.4rem;
-			margin-bottom: 1.7rem;
-			padding: 0.15rem 0.25rem;
-		}
-		.register-shell.collapsed .cashier-brand {
-			justify-content: flex-start;
-		}
-		.register-shell.collapsed .register-sidebar nav a {
-			justify-content: flex-start;
-			padding: 0.65rem;
 		}
 		.register-shell.collapsed .sidebar-footer {
 			justify-content: flex-start;
@@ -2207,12 +1959,6 @@
 			padding-right: 0.75rem;
 			padding-left: 0.75rem;
 			text-align: left;
-		}
-		.register-shell.collapsed .register-sidebar :global(.staff-logout span) {
-			display: inline;
-		}
-		.sidebar-toggle {
-			display: none;
 		}
 		.sidebar-backdrop {
 			position: fixed;

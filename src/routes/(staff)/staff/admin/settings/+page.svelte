@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
+	import { avatarStorageKey } from '$lib/profile';
 
-	const AVATAR_STORAGE_KEY = 'qcu-admin-avatar-image';
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
@@ -16,6 +16,9 @@
 		const file = input.files?.[0];
 		if (!file) return;
 
+		const storageKey = user?.profileId
+			? avatarStorageKey(user.profileId)
+			: null;
 		avatarError = '';
 		const reader = new FileReader();
 		reader.onload = () => {
@@ -25,7 +28,7 @@
 			}
 
 			avatar = reader.result;
-			localStorage.setItem(AVATAR_STORAGE_KEY, reader.result);
+			if (storageKey) localStorage.setItem(storageKey, reader.result);
 		};
 		reader.onerror = () => {
 			avatarError = 'The selected image could not be loaded.';
@@ -41,7 +44,9 @@
 	}
 
 	onMount(() => {
-		avatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+		avatar = user?.profileId
+			? localStorage.getItem(avatarStorageKey(user.profileId))
+			: null;
 		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 	});
 </script>

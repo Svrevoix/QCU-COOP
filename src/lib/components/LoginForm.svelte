@@ -38,7 +38,11 @@
 		input.value = formatted;
 		input.setSelectionRange(formattedCaret, formattedCaret);
 		if (field === 'login') loginId = formatted;
-		else signupId = formatted;
+		else {
+			signupId = formatted;
+			if (digits.startsWith('23')) signupRole = 'student';
+			else if (digits.startsWith('10')) signupRole = 'teacher';
+		}
 	}
 
 	function handleLoginIdInput(event: Event) {

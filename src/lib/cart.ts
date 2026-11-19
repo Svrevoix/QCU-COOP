@@ -14,30 +14,40 @@ export type CartItem = {
 
 type CartProduct = Omit<CartItem, 'quantity'> & { quantity?: number };
 
-const storageKey = 'qcu-coop-cart';
+const STORAGE_KEY = 'qcu-coop-cart';
+let activeProfileId: string | null = null;
 
-function readCart(): CartItem[] {
+function readCart(profileId: string): CartItem[] {
 	if (!browser) return [];
 
 	try {
-		const savedCart = localStorage.getItem(storageKey);
+		const savedCart = localStorage.getItem(`${STORAGE_KEY}:${profileId}`);
 		return savedCart ? JSON.parse(savedCart) : [];
 	} catch {
 		return [];
 	}
 }
 
-export const cartItems = writable<CartItem[]>(readCart());
+export const cartItems = writable<CartItem[]>([]);
 
 cartItems.subscribe((items) => {
-	if (browser) localStorage.setItem(storageKey, JSON.stringify(items));
+	if (browser && activeProfileId) {
+		localStorage.setItem(`${STORAGE_KEY}:${activeProfileId}`, JSON.stringify(items));
+	}
 });
 
 export const cartItemCount = derived(cartItems, (items) => items.length);
 export const cartPieceCount = derived(cartItems, (items) => items.reduce((sum, item) => sum + item.quantity, 0));
 export const cartTotal = derived(cartItems, (items) => items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
 
+export function setCartAccount(profileId: string | null) {
+	if (!browser || activeProfileId === profileId) return;
+	activeProfileId = profileId;
+	cartItems.set(profileId ? readCart(profileId) : []);
+}
+
 export function addToCart(product: CartProduct) {
+	if (!activeProfileId) throw new Error('Sign in before adding items to your cart.');
 	cartItems.update((items) => {
 		const existingIndex = items.findIndex((item) => item.productId === product.productId && item.sku === product.sku);
 		if (existingIndex === -1) return [...items, { ...product, quantity: product.quantity ?? 1 }];
