@@ -17,26 +17,12 @@
 	];
 	const reportGroups: ReportGroup[] = [
 		{
-			label: 'Core planned reports',
+			label: 'Sales Reports',
 			reports: [
 				'Daily Cashier Cash-Out',
 				'Weekly Summary',
 				'Monthly Summary',
-				'Supplier per Item',
-				'Customer per Item',
-				'Supplier by Total Amount',
-				'Customer by Total Amount',
 				'Detailed Sales Report',
-				'Inventory Balance Report'
-			]
-		},
-		{
-			label: 'Legacy statistical and sales',
-			reports: [
-				'Inventory Cost by Item',
-				'Warehouse Inventory',
-				'Branch Inventory',
-				'Detailed Receiving by Item',
 				'Detailed Sales by Item',
 				'Summarized Sales',
 				'Monthly Sales Analysis',
@@ -45,27 +31,32 @@
 			]
 		},
 		{
-			label: 'Warehouse transaction summary',
+			label: 'Inventory Reports',
 			reports: [
-				'Received from Supplier to Warehouse',
-				'Returned from Supplier to Warehouse',
-				'Issued from Warehouse to Branch',
-				'Returned from Branch to Warehouse',
-				'Inter-Warehouse Transfers'
+				'Inventory Balance Report',
+				'Inventory Cost by Item',
+				'Inventory Movement Report',
+				'Stock Level Report',
+				'Detailed Receiving by Item',
+				'Product Alert Report'
 			]
 		},
 		{
-			label: 'Audit, control and exceptions',
-			reports: [
-				'Variance Report',
-				'Audit Trail Logs',
-				'Product Alert',
-				'Daily Sales Report (DSR)',
-				'Hourly Sales Summary',
-				'Paid Out Logs'
-			]
+			label: 'Utilities Reports',
+			reports: ['Utility Expense Report', 'Monthly Utility Summary', 'Utility Payment History']
 		},
-		{ label: 'System listings', reports: ['Dynamic Price Lists', 'Historical Posted Transactions'] }
+		{
+			label: 'Membership Reports',
+			reports: ['Membership Summary Report', 'Active Members Report']
+		},
+		{
+			label: 'Audit Reports',
+			reports: ['Audit Trail Logs', 'Variance Report', 'Paid Out Logs']
+		},
+		{
+			label: 'System Reports',
+			reports: ['Historical Posted Transactions', 'Dynamic Price Lists']
+		}
 	];
 	const reportSelection = $state({
 		group: reportGroups[0].label,
