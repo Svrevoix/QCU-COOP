@@ -168,7 +168,7 @@
 {/if}
 
 <style>
-	:global(body) { margin: 0; background: #f9fbff; font-family: 'Montserrat', sans-serif; color: #061d42; }
+	:global(body) { margin: 0; background: #f9fbff; font-family: 'Manrope', sans-serif; color: #061d42; }
 	.cart-page { min-height: calc(100vh - 10.25rem); padding: 2.25rem 1.25rem 10rem; background: #fff; }
 	.cart-content { max-width: 62rem; margin: 0 auto; }
 	.cart-heading { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid #d9e0ea; }

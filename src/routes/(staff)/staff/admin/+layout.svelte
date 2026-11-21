@@ -76,6 +76,15 @@
 				(item.href === '/staff/admin' && activePath.startsWith('/staff/admin/dashboard'))
 		)
 	);
+	let isDarkMode = $state(false);
+
+	function toggleTheme() {
+		isDarkMode = !isDarkMode;
+		const nextTheme = isDarkMode ? 'dark' : 'light';
+		document.documentElement.dataset.theme = nextTheme;
+		localStorage.setItem('qcu-theme', nextTheme);
+	}
+
 	onMount(() => {
 		const savedPreference = localStorage.getItem(sidebarPreferenceKey);
 		if (savedPreference === 'true' || savedPreference === 'false') {
@@ -83,9 +92,17 @@
 		}
 		sidebarPreferenceLoaded = true;
 
+		isDarkMode =
+			localStorage.getItem('qcu-theme') === 'dark' ||
+			document.documentElement.dataset.theme === 'dark';
+
 		const handleStorage = (event: StorageEvent) => {
 			if (event.key === sidebarPreferenceKey && (event.newValue === 'true' || event.newValue === 'false')) {
 				sidebarCollapsed = event.newValue === 'true';
+			}
+			if (event.key === 'qcu-theme') {
+				isDarkMode = event.newValue === 'dark';
+				document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
 			}
 		};
 		window.addEventListener('storage', handleStorage);
@@ -113,6 +130,30 @@
 			activePath.startsWith('/staff/admin/inventory') ||
 			activePath.startsWith('/staff/admin/reports')
 	);
+
+	let notificationsOpen = $state(false);
+
+	let currentPageMeta = $derived.by(() => {
+		if (activePath.startsWith('/staff/admin/teachers')) {
+			return { title: 'Teacher Membership', breadcrumb: 'Administration / Teacher Membership' };
+		}
+		if (activePath.startsWith('/staff/admin/accounts')) {
+			return { title: 'Manage Accounts', breadcrumb: 'Administration / Manage Accounts' };
+		}
+		if (activePath.startsWith('/staff/admin/inventory')) {
+			return { title: 'Inventory Management', breadcrumb: 'Directory / Inventory Control' };
+		}
+		if (activePath.startsWith('/staff/admin/reports')) {
+			return { title: 'Reports Engine', breadcrumb: 'Dashboard / Reports / Reports Engine' };
+		}
+		if (activePath.startsWith('/staff/admin/utilities')) {
+			return { title: 'Utilities', breadcrumb: 'Operations / Utilities Overview' };
+		}
+		if (activePath.startsWith('/staff/admin/settings')) {
+			return { title: 'Settings', breadcrumb: 'Workspace preferences / Settings' };
+		}
+		return { title: 'Dashboard', breadcrumb: 'Dashboard / Operations overview' };
+	});
 </script>
 
 <div class="admin-shell" class:collapsed={sidebarCollapsed} class:mobile-open={mobileSidebarOpen}>
@@ -199,24 +240,80 @@
 			aria-label="Close navigation"
 			onclick={() => (mobileSidebarOpen = false)}
 		></button>{/if}
-	<section class="admin-content">
-		<div class="admin-mobile-bar">
-			<button
-				class="mobile-menu-button"
-				type="button"
-				aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
-				aria-expanded={mobileSidebarOpen}
-				aria-controls="admin-sidebar"
-				onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
-				><svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg
-				></button
-			><span class="mobile-brand">QCU COOP</span><span class="mobile-status">LIVE</span>
-		</div>
-		{#key activePath}
-			<div class="admin-route-content" class:readable-admin-page={isDenseAdminPage}>{@render children()}</div>
-		{/key}
-	</section>
+	<div class="admin-main-wrap">
+		<header class="admin-topbar">
+			<div class="topbar-left">
+				<button
+					class="mobile-menu-button"
+					type="button"
+					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={mobileSidebarOpen}
+					aria-controls="admin-sidebar"
+					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true"
+						><path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg
+					>
+				</button>
+				<div class="topbar-title-wrap">
+					<h1>{currentPageMeta.title}</h1>
+					<p>{currentPageMeta.breadcrumb}</p>
+				</div>
+			</div>
+
+			<div class="topbar-actions">
+				<button
+					class="theme-toggle-chip"
+					type="button"
+					aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+					title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+					onclick={toggleTheme}
+				>
+					{#if isDarkMode}
+						<svg viewBox="0 0 24 24" aria-hidden="true" class="theme-icon sun">
+							<circle cx="12" cy="12" r="4" />
+							<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+						</svg>
+						<span>Light Mode</span>
+					{:else}
+						<svg viewBox="0 0 24 24" aria-hidden="true" class="theme-icon moon">
+							<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+						</svg>
+						<span>Dark Mode</span>
+					{/if}
+				</button>
+
+				<div class="notification-wrap">
+					<button
+						class="icon-button"
+						type="button"
+						aria-label="Notifications"
+						aria-expanded={notificationsOpen}
+						onclick={() => (notificationsOpen = !notificationsOpen)}
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true"
+							><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
+						>
+					</button>
+					{#if notificationsOpen}
+						<div class="notification-popover" role="status">
+							<strong>Dashboard alerts</strong>
+							<span>18 inventory items need restocking.</span>
+							<a href="/staff/admin/inventory" onclick={() => (notificationsOpen = false)}>Review low stock</a>
+						</div>
+					{/if}
+				</div>
+
+				<a href="/staff/admin/settings" class="avatar" aria-label="Administrator account settings">QC</a>
+			</div>
+		</header>
+
+		<section class="admin-content-scroll admin-content" tabindex="-1">
+			{#key activePath}
+				<div class="admin-route-content" class:readable-admin-page={isDenseAdminPage}>{@render children()}</div>
+			{/key}
+		</section>
+	</div>
 </div>
 
 <style>
@@ -227,11 +324,17 @@
 		--line: #e2e8f0;
 		--blue: #2563eb;
 		display: flex;
-		min-height: 100vh;
+		zoom: 1.1;
+		width: calc(100vw / 1.1);
+		max-width: calc(100vw / 1.1);
+		height: calc(100vh / 1.1);
+		height: calc(100dvh / 1.1);
+		max-height: calc(100vh / 1.1);
+		max-height: calc(100dvh / 1.1);
+		overflow: hidden;
 		background: #f4f7fb;
 		color: var(--ink);
-		font-family: 'Montserrat', sans-serif;
-		zoom: 1.1;
+		font-family: 'Manrope', sans-serif;
 	}
 	:global(html[data-theme='dark'] .admin-shell) {
 		background: #101d35;
@@ -339,7 +442,7 @@
 		background: #172640;
 		color: #edf4ff;
 	}
-	:global(html[data-theme='dark'] .admin-content :is(.account-panel, .table-wrap, .toolbar, .overview-card, .account-card, .activity-card, .account-stats article, .overview-stats article, .overview-links a, .inventory-topbar, .utility-topbar, .reports-topbar, .dashboard-topbar, .date-chip, .icon-button, .notification-popover, .kpi-card, .movement-card, .welcome-card, .dashboard-card, .quick-links a, .restock-panel, .workflow-disclosure, .profile-form, .item-form-panel, .simple-profile, .report-catalog.light)) {
+	:global(html[data-theme='dark'] .admin-content :is(.account-panel, .table-wrap, .toolbar, .overview-card, .account-card, .activity-card, .account-stats article, .overview-stats article, .overview-links a, .inventory-topbar, .utility-topbar, .reports-topbar, .dashboard-topbar, .icon-button, .notification-popover, .kpi-card, .movement-card, .welcome-card, .dashboard-card, .quick-links a, .restock-panel, .workflow-disclosure, .profile-form, .item-form-panel, .simple-profile, .report-catalog.light)) {
 		border-color: #334866;
 		background-color: #172640;
 		color: #edf4ff;
@@ -408,18 +511,28 @@
 	}
 	.admin-sidebar {
 		display: flex;
-		width: 17rem;
+		width: 16.5rem;
+		height: 100%;
+		max-height: 100%;
 		flex-shrink: 0;
 		flex-direction: column;
 		background: var(--navy);
 		color: #dbe7fb;
-		padding: 1.5rem 1rem 1rem;
+		padding: 1.25rem 0.85rem 1rem;
+		overflow-y: auto;
+		scrollbar-width: thin;
+		scrollbar-color: #344968 transparent;
+		box-sizing: border-box;
+		transition:
+			width 180ms ease,
+			flex-basis 180ms ease,
+			padding 180ms ease;
 	}
 	.admin-brand {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.25rem 0.7rem 2.25rem;
+		padding: 0.25rem 0.7rem 1.25rem;
 	}
 	.brand-mark {
 		display: grid;
@@ -449,7 +562,7 @@
 		font-size: 0.65rem;
 	}
 	.sidebar-label {
-		padding: 0 0.75rem 0.7rem;
+		padding: 0 0.75rem 0.5rem;
 		color: #6e82a5;
 		font-size: 0.6rem;
 		font-weight: 800;
@@ -458,8 +571,8 @@
 	}
 	nav {
 		position: relative;
-		--nav-item-height: 2.65rem;
-		--nav-item-step: 3rem;
+		--nav-item-height: 2.45rem;
+		--nav-item-step: 2.8rem;
 		display: grid;
 		grid-auto-rows: var(--nav-item-height);
 		flex: 1;
@@ -481,7 +594,6 @@
 		transform: translateY(calc(var(--active-nav-index) * var(--nav-item-step)));
 		border-radius: 0.65rem;
 		background: #2563eb;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 		pointer-events: none;
 		transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
@@ -531,7 +643,7 @@
 		gap: 0.6rem;
 		margin-top: auto;
 		border-top: 1px solid #1c3153;
-		padding: 1rem 0.7rem 0.25rem;
+		padding: 0.75rem 0.7rem 0.25rem;
 	}
 	.online-dot {
 		width: 0.5rem;
@@ -549,18 +661,211 @@
 		color: #7086a9;
 		font-size: 0.58rem;
 	}
-	.admin-content {
-		min-width: 0;
+
+	.admin-main-wrap {
+		display: flex;
+		flex-direction: column;
 		flex: 1;
+		min-width: 0;
+		height: 100%;
+		max-height: 100%;
+		overflow: hidden;
+		background: #f4f7fb;
 	}
-	.admin-mobile-bar {
-		display: none;
+	:global(html[data-theme='dark'] .admin-main-wrap) {
+		background: #101d35;
+	}
+	.admin-topbar {
+		position: sticky;
+		top: 0;
+		z-index: 40;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		min-height: 3.65rem;
+		flex-shrink: 0;
+		border-bottom: 1px solid #e5e9ef;
+		background: rgba(255, 255, 255, 0.96);
+		backdrop-filter: blur(12px);
+		padding: 0.45rem clamp(1rem, 3vw, 3rem);
+		box-sizing: border-box;
+		width: 100%;
+	}
+	:global(html[data-theme='dark'] .admin-topbar) {
+		background: rgba(23, 38, 64, 0.96);
+		border-color: #334866;
+	}
+	.topbar-left {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+	.topbar-title-wrap h1 {
+		margin: 0;
+		color: #172b4d;
+		font-size: 0.88rem;
+		font-weight: 900;
+	}
+	:global(html[data-theme='dark'] .topbar-title-wrap h1) {
+		color: #edf4ff;
+	}
+	.topbar-title-wrap p {
+		margin: 0.1rem 0 0;
+		color: #7f8a9b;
+		font-size: 0.6rem;
+		font-weight: 500;
+	}
+	:global(html[data-theme='dark'] .topbar-title-wrap p) {
+		color: #8fa0b8;
+	}
+	.topbar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.theme-toggle-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.38rem;
+		border: 1px solid #e2e6ec;
+		border-radius: 0.45rem;
+		background: #f8f9fb;
+		color: #5d6b82;
+		padding: 0.38rem 0.55rem;
+		font-size: 0.62rem;
+		font-weight: 600;
+		cursor: pointer;
+		line-height: 1;
+		transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+	}
+	.theme-toggle-chip:hover {
+		background: #eef2f6;
+		border-color: #cbd5e1;
+		color: #1e293b;
+	}
+	:global(html[data-theme='dark'] .theme-toggle-chip) {
+		border-color: #334866;
+		background: #172640;
+		color: #dbe7fb;
+	}
+	:global(html[data-theme='dark'] .theme-toggle-chip:hover) {
+		background: #203657;
+		border-color: #456188;
+		color: #ffffff;
+	}
+	.theme-toggle-chip svg {
+		width: 0.85rem;
+		height: 0.85rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.8;
+		flex-shrink: 0;
+	}
+	.theme-toggle-chip .theme-icon.sun {
+		color: #f59e0b;
+	}
+	.theme-toggle-chip .theme-icon.moon {
+		color: #475569;
+	}
+	:global(html[data-theme='dark'] .theme-toggle-chip .theme-icon.moon) {
+		color: #94a3b8;
+	}
+	.icon-button svg {
+		width: 0.85rem;
+		height: 0.85rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.8;
+	}
+	.icon-button,
+	.avatar {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		place-items: center;
+		border: 1px solid #e3e8ef;
+		border-radius: 50%;
+		background: #fff;
+		color: #6d7c91;
+		cursor: pointer;
+		text-decoration: none;
+		transition: background-color 150ms ease;
+	}
+	:global(html[data-theme='dark'] .icon-button) {
+		border-color: #334866;
+		background: #172640;
+		color: #b8c8dd;
+	}
+	.avatar {
+		border: 0;
+		background: #2563eb;
+		color: white;
+		font-size: 0.6rem;
+		font-weight: 900;
+	}
+	.notification-wrap {
+		position: relative;
+	}
+	.notification-popover {
+		position: absolute;
+		z-index: 50;
+		top: calc(100% + 0.55rem);
+		right: 0;
+		display: grid;
+		gap: 0.35rem;
+		box-sizing: border-box;
+		width: min(14rem, calc(100vw - 2rem));
+		border: 1px solid #e2e8f0;
+		border-radius: 0.6rem;
+		background: white;
+		box-shadow: 0 12px 30px rgba(24, 43, 71, 0.12);
+		padding: 0.85rem;
+	}
+	:global(html[data-theme='dark'] .notification-popover) {
+		border-color: #334866;
+		background: #172640;
+		color: #edf4ff;
+	}
+	.notification-popover strong {
+		color: #1d2c47;
+		font-size: 0.68rem;
+	}
+	:global(html[data-theme='dark'] .notification-popover strong) {
+		color: #edf4ff;
+	}
+	.notification-popover span {
+		color: #64748b;
+		font-size: 0.62rem;
+	}
+	:global(html[data-theme='dark'] .notification-popover span) {
+		color: #94a3b8;
+	}
+	.notification-popover a {
+		color: #2563eb;
+		font-size: 0.62rem;
+		font-weight: 700;
+		text-decoration: underline;
+	}
+	.admin-content-scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		scrollbar-width: thin;
+		scrollbar-color: #cbd5e1 transparent;
+	}
+	:global(html[data-theme='dark'] .admin-content-scroll) {
+		scrollbar-color: #334866 transparent;
 	}
 	.admin-route-content {
 		animation: admin-route-appear 220ms ease-out both;
 	}
 	.admin-route-content.readable-admin-page {
-		zoom: 1.2;
+		zoom: 1;
 	}
 	@keyframes admin-route-appear {
 		from {
@@ -576,9 +881,11 @@
 		}
 	}
 	:global(.admin-page) {
-		max-width: 88rem;
-		margin: 0 auto;
-		padding: 2.25rem clamp(1rem, 3vw, 3rem) 3rem;
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
+		margin: 0;
+		padding: 1.5rem clamp(1rem, 3vw, 3rem) 3rem;
 	}
 	:global(.admin-eyebrow) {
 		margin: 0 0 0.5rem;
@@ -704,25 +1011,12 @@
 		padding: 0.75rem 1rem;
 		color: #1d4ed8;
 	}
-	.admin-sidebar {
-		position: sticky;
-		top: 0;
-		align-self: flex-start;
-		box-sizing: border-box;
-		height: 100vh;
-		min-height: 100vh;
-		overflow: visible;
-		transition:
-			width 180ms ease,
-			flex-basis 180ms ease,
-			padding 180ms ease;
-	}
 	.sidebar-top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
-		margin-bottom: 2.25rem;
+		margin-bottom: 1.85rem;
 		padding: 0.25rem 0.25rem 0 0.7rem;
 	}
 	.admin-brand {
@@ -861,13 +1155,20 @@
 	}
 	@media (max-width: 760px) {
 		.admin-shell {
-			display: block;
+			display: flex;
+			flex-direction: column;
+			height: 100dvh;
+			max-height: 100dvh;
 			position: relative;
 			zoom: 1;
 		}
+		.admin-main-wrap {
+			height: 100%;
+			max-height: 100%;
+		}
 		.admin-sidebar {
 			position: fixed;
-			z-index: 40;
+			z-index: 50;
 			inset: 0 auto 0 0;
 			width: min(18rem, 88vw);
 			height: 100dvh;
@@ -943,18 +1244,6 @@
 			border: 0;
 			background: rgba(4, 12, 26, 0.5);
 		}
-		.admin-mobile-bar {
-			position: sticky;
-			z-index: 29;
-			top: 0;
-			display: flex;
-			height: 3.5rem;
-			align-items: center;
-			justify-content: space-between;
-			background: var(--navy);
-			color: white;
-			padding: 0 0.75rem;
-		}
 		.admin-route-content.readable-admin-page {
 			zoom: 1;
 		}
@@ -983,17 +1272,6 @@
 			flex: 0 0 2.75rem;
 			aspect-ratio: 1;
 			border-radius: 50%;
-		}
-		.mobile-brand {
-			font-size: 0.75rem;
-			font-weight: 900;
-			letter-spacing: 0.12em;
-		}
-		.mobile-status {
-			color: #63e6a1;
-			font-size: 0.58rem;
-			font-weight: 800;
-			letter-spacing: 0.12em;
 		}
 		:global(.admin-title-row) {
 			align-items: flex-start;

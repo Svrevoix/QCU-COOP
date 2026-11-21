@@ -5,7 +5,6 @@
 	let localTime = $state('');
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
-	let notificationsOpen = $state(false);
 
 	const recentTransactions = [
 		{
@@ -84,9 +83,6 @@
 			return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(day);
 		});
 	});
-	const monthLabel = $derived(
-		new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(today)
-	);
 	const dateLabel = $derived(
 		new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(today)
 	);
@@ -123,44 +119,6 @@
 </svelte:head>
 
 <main class="admin-page dashboard-page">
-	<header class="dashboard-topbar">
-		<div>
-			<h1>Dashboard</h1>
-			<p>Dashboard / Operations overview</p>
-		</div>
-		<div class="topbar-actions">
-			<span class="date-chip">
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><rect x="3.5" y="5" width="17" height="15" rx="2" /><path
-						d="M7.5 3v4M16.5 3v4M3.5 9h17"
-					/></svg
-				>
-				{monthLabel}
-			</span>
-			<div class="notification-wrap">
-				<button
-					class="icon-button"
-					type="button"
-					aria-label="Notifications"
-					aria-expanded={notificationsOpen}
-					onclick={() => (notificationsOpen = !notificationsOpen)}
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true"
-						><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
-					>
-				</button>
-				{#if notificationsOpen}
-					<div class="notification-popover" role="status">
-						<strong>Dashboard alerts</strong>
-						<span>18 inventory items need restocking.</span>
-						<a href="/staff/admin/inventory">Review low stock</a>
-					</div>
-				{/if}
-			</div>
-			<button class="avatar" type="button" aria-label="Administrator account">QC</button>
-		</div>
-	</header>
-
 	{#if loading}
 		<div class="dashboard-skeleton" aria-label="Loading dashboard" aria-busy="true">
 			<div class="skeleton-header"></div>
@@ -416,7 +374,6 @@
 		width: 100%;
 		max-width: 100%;
 		min-width: 0;
-		padding-top: 0;
 	}
 	.dashboard-columns,
 	.chart-grid,
@@ -428,45 +385,6 @@
 		max-width: 100%;
 		min-width: 0;
 	}
-	.dashboard-topbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		min-height: 3.35rem;
-		margin: 0 calc(clamp(1rem, 3vw, 3rem) * -1) 0.75rem;
-		border-bottom: 1px solid #e5e9ef;
-		background: #fff;
-		padding: 0.45rem clamp(1rem, 3vw, 3rem);
-	}
-	.dashboard-topbar h1 {
-		margin: 0;
-		color: #172b4d;
-		font-size: 0.83rem;
-		font-weight: 900;
-	}
-	.dashboard-topbar p {
-		margin: 0.08rem 0 0;
-		color: #7f8a9b;
-		font-size: 0.57rem;
-	}
-	.topbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-	}
-	.date-chip {
-		display: flex;
-		align-items: center;
-		gap: 0.38rem;
-		border: 1px solid #e2e6ec;
-		border-radius: 0.45rem;
-		background: #f8f9fb;
-		color: #778397;
-		padding: 0.38rem 0.55rem;
-		font-size: 0.56rem;
-	}
-	.date-chip svg,
-	.icon-button svg,
 	.reports-button svg,
 	.compact-button svg {
 		width: 0.78rem;
@@ -476,57 +394,6 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 		stroke-width: 1.8;
-	}
-	.icon-button,
-	.avatar {
-		display: grid;
-		width: 1.9rem;
-		height: 1.9rem;
-		place-items: center;
-		border: 1px solid #e3e8ef;
-		border-radius: 50%;
-		background: #fff;
-		color: #6d7c91;
-		cursor: pointer;
-	}
-	.avatar {
-		border: 0;
-		background: #2563eb;
-		color: white;
-		font-size: 0.55rem;
-		font-weight: 900;
-	}
-	.notification-wrap {
-		position: relative;
-	}
-	.notification-popover {
-		position: absolute;
-		z-index: 5;
-		top: calc(100% + 0.55rem);
-		right: 0;
-		display: grid;
-		gap: 0.3rem;
-		box-sizing: border-box;
-		width: min(13rem, calc(100vw - 2rem));
-		max-width: calc(100vw - 2rem);
-		border: 1px solid #e2e8f0;
-		border-radius: 0.6rem;
-		background: white;
-		box-shadow: 0 12px 30px #182b471c;
-		padding: 0.8rem;
-	}
-	.notification-popover strong {
-		color: #1d2c47;
-		font-size: 0.64rem;
-	}
-	.notification-popover span,
-	.notification-popover a {
-		color: #8490a2;
-		font-size: 0.58rem;
-	}
-	.notification-popover a {
-		color: #2563eb;
-		text-decoration: none;
 	}
 	.welcome-card {
 		display: flex;
@@ -1146,16 +1013,6 @@
 		}
 	}
 	@media (max-width: 480px) {
-		.dashboard-topbar {
-			min-height: 3.2rem;
-		}
-		.date-chip {
-			font-size: 0;
-		}
-		.date-chip svg {
-			width: 0.95rem;
-			height: 0.95rem;
-		}
 		.welcome-card {
 			align-items: flex-start;
 		}

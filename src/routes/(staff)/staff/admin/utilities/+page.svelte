@@ -11,7 +11,6 @@
 
 		let serviceDialog = $state<HTMLDialogElement>();
 	let billingDialog = $state<HTMLDialogElement>();
-	let notificationOpen = $state(false);
 	let serviceName = $state('');
 	let serviceAdded = $state('');
 	const money = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value) || 0);
@@ -41,9 +40,6 @@
 			tone: b.status.toLowerCase() === 'paid' ? 'green' : 'blue'
 		}))
 	);
-	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
-		new Date()
-	);
 
 	function onServiceSaved() {
 		serviceAdded = serviceName.trim();
@@ -61,43 +57,6 @@
 </svelte:head>
 
 <main class="admin-page utilities-page">
-	<header class="utility-topbar">
-		<div>
-			<h1>Utilities</h1>
-			<p>Utilities overview</p>
-		</div>
-		<div class="topbar-actions">
-			<span class="date-chip">
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><rect x="3.5" y="5" width="17" height="15" rx="2" /><path
-						d="M7.5 3v4M16.5 3v4M3.5 9h17"
-					/></svg
-				>
-				{monthLabel}
-			</span>
-			<div class="notification-wrap">
-				<button
-					class="icon-button"
-					type="button"
-					aria-label="Notifications"
-					aria-expanded={notificationOpen}
-					onclick={() => (notificationOpen = !notificationOpen)}
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true"
-						><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
-					>
-				</button>
-				{#if notificationOpen}
-					<div class="notification-popover" role="status">
-						<strong>You're all caught up</strong>
-						<span>No new utility alerts.</span>
-					</div>
-				{/if}
-			</div>
-			<button class="avatar" type="button" aria-label="Administrator account">QC</button>
-		</div>
-	</header>
-
 	{#if serviceAdded}
 		<div class="toast" role="status">
 			<strong>{serviceAdded}</strong> was added to this demo account.
@@ -331,49 +290,11 @@
 </dialog>
 
 <style>
-	.utilities-page {
-		padding-top: 0;
-	}
-	.utility-topbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		min-height: 3.9rem;
-		margin: 0 calc(clamp(1rem, 3vw, 3rem) * -1) 1rem;
-		border-bottom: 1px solid #e5e9ef;
-		background: #fff;
-		padding: 0.55rem clamp(1rem, 3vw, 3rem);
-	}
-	.utility-topbar h1 {
-		margin: 0;
-		color: #172b4d;
-		font-size: 0.88rem;
-		font-weight: 900;
-	}
-	.utility-topbar p {
-		margin: 0.1rem 0 0;
-		color: #7f8a9b;
-		font-size: 0.62rem;
-	}
-	.topbar-actions,
 	.section-actions {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 	}
-	.date-chip {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		border: 1px solid #e2e6ec;
-		border-radius: 0.45rem;
-		background: #f8f9fb;
-		color: #778397;
-		padding: 0.42rem 0.62rem;
-		font-size: 0.6rem;
-	}
-	.date-chip svg,
-	.icon-button svg,
 	.outline-button svg,
 	.activity-link svg {
 		width: 0.85rem;
@@ -383,50 +304,6 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 		stroke-width: 1.8;
-	}
-	.icon-button,
-	.avatar {
-		display: grid;
-		place-items: center;
-		width: 2rem;
-		height: 2rem;
-		border: 1px solid #e3e8ef;
-		border-radius: 50%;
-		background: #fff;
-		color: #6d7c91;
-		cursor: pointer;
-	}
-	.avatar {
-		border: 0;
-		background: #2563eb;
-		color: white;
-		font-size: 0.58rem;
-		font-weight: 900;
-	}
-	.notification-wrap {
-		position: relative;
-	}
-	.notification-popover {
-		position: absolute;
-		z-index: 5;
-		top: calc(100% + 0.6rem);
-		right: 0;
-		display: grid;
-		gap: 0.3rem;
-		width: 12rem;
-		border: 1px solid #e2e8f0;
-		border-radius: 0.6rem;
-		background: white;
-		box-shadow: 0 12px 30px #182b471c;
-		padding: 0.8rem;
-	}
-	.notification-popover strong {
-		color: #1d2c47;
-		font-size: 0.66rem;
-	}
-	.notification-popover span {
-		color: #8490a2;
-		font-size: 0.6rem;
 	}
 	.account-card,
 	.activity-card {
@@ -1083,13 +960,6 @@
 		.utility-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); padding: 1rem; }
 		.utility-dialog form { grid-template-columns: 1fr; }
 		.utility-dialog form > * { grid-column: 1; }
-		.date-chip {
-			font-size: 0;
-		}
-		.date-chip svg {
-			width: 0.95rem;
-			height: 0.95rem;
-		}
 		.section-heading {
 			flex-direction: column;
 		}

@@ -153,7 +153,7 @@
 </footer>
 
 <style>
-	:global(body) { margin: 0; background: #061d42; color: #f4f8ff; font-family: 'Montserrat', sans-serif; }
+	:global(body) { margin: 0; background: #061d42; color: #f4f8ff; font-family: 'Manrope', sans-serif; }
 	.history-page { min-height: calc(100vh - 4rem); background: #061d42; padding-bottom: 8rem; }
 	.history-toolbar { display: flex; min-height: 5rem; align-items: center; gap: 1rem; border-bottom: 1px solid #1d385c; padding: .8rem clamp(1rem, 4vw, 3.75rem); }
 	.back-button { display: grid; width: 2.75rem; height: 2.75rem; flex: 0 0 auto; place-items: center; border-radius: .7rem; background: #172f50; color: #eaf2ff; }

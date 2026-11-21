@@ -87,9 +87,6 @@
 		})
 	);
 	const money = (amount: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
-	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
-		new Date()
-	);
 </script>
 
 <svelte:head>
@@ -101,29 +98,6 @@
 </svelte:head>
 
 <main class="admin-page inventory-page">
-	<header class="inventory-topbar">
-		<div>
-			<h1>Inventory</h1>
-			<p>Directory / Inventory Control</p>
-		</div>
-		<div class="topbar-actions">
-			<span class="date-chip">
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><rect x="3.5" y="5" width="17" height="15" rx="2" /><path
-						d="M7.5 3v4M16.5 3v4M3.5 9h17"
-					/></svg
-				>
-				{monthLabel}
-			</span>
-			<button class="icon-button" type="button" aria-label="Notifications">
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
-				>
-			</button>
-			<button class="avatar" type="button" aria-label="Administrator account">QC</button>
-		</div>
-	</header>
-
 	<div class="page-heading">
 		<div>
 			<h2>Inventory management</h2>
@@ -289,75 +263,6 @@
 </main>
 
 <style>
-	.inventory-page {
-		padding-top: 0;
-	}
-	.inventory-topbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		min-height: 3.9rem;
-		margin: 0 calc(clamp(1rem, 3vw, 3rem) * -1) 1rem;
-		border-bottom: 1px solid #e5e9ef;
-		background: #fff;
-		padding: 0.55rem clamp(1rem, 3vw, 3rem);
-	}
-	.inventory-topbar h1 {
-		margin: 0;
-		color: #172b4d;
-		font-size: 0.88rem;
-		font-weight: 900;
-	}
-	.inventory-topbar p {
-		margin: 0.1rem 0 0;
-		color: #7f8a9b;
-		font-size: 0.62rem;
-	}
-	.topbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-	.date-chip {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		border: 1px solid #e2e6ec;
-		border-radius: 0.45rem;
-		background: #f8f9fb;
-		color: #778397;
-		padding: 0.42rem 0.62rem;
-		font-size: 0.6rem;
-	}
-	.date-chip svg,
-	.icon-button svg {
-		width: 0.85rem;
-		height: 0.85rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 1.8;
-	}
-	.icon-button,
-	.avatar {
-		display: grid;
-		width: 2rem;
-		height: 2rem;
-		place-items: center;
-		border: 1px solid #e3e8ef;
-		border-radius: 50%;
-		background: #fff;
-		color: #6d7c91;
-		cursor: pointer;
-	}
-	.avatar {
-		border: 0;
-		background: #2563eb;
-		color: white;
-		font-size: 0.58rem;
-		font-weight: 900;
-	}
 	.page-heading {
 		display: flex;
 		align-items: center;
@@ -809,9 +714,6 @@
 		}
 	}
 	@media (max-width: 640px) {
-		.inventory-topbar {
-			min-height: 3.5rem;
-		}
 		.page-heading {
 			align-items: flex-start;
 		}
@@ -843,13 +745,6 @@
 		.restock-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	@media (max-width: 420px) {
-		.date-chip {
-			font-size: 0;
-		}
-		.date-chip svg {
-			width: 0.95rem;
-			height: 0.95rem;
-		}
 		.page-heading {
 			flex-direction: column;
 		}

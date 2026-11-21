@@ -678,7 +678,7 @@
 		overflow: hidden;
 		background: #f7f9fb;
 		color: var(--ink);
-		font-family: 'Montserrat', sans-serif;
+		font-family: 'Manrope', sans-serif;
 	}
 	.register-sidebar {
 		position: sticky;

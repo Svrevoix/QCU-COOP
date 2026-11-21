@@ -282,7 +282,7 @@
 		min-height: 100vh;
 		background: #f7f8fa;
 		color: var(--ink);
-		font-family: 'Montserrat', sans-serif;
+		font-family: 'Manrope', sans-serif;
 	}
 	.cashier-sidebar {
 		position: sticky;

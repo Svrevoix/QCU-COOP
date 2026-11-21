@@ -76,7 +76,6 @@
 		transform: translateY(calc(var(--active-nav-index) * var(--nav-item-step)));
 		border-radius: 0.65rem;
 		background: #2563eb;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 		pointer-events: none;
 		view-transition-name: cashier-nav-active;
 	}

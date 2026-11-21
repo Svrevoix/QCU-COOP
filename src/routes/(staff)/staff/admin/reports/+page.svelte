@@ -22,12 +22,7 @@
 	let generatedAt = $state('09:42 AM');
 	let exported = $state(false);
 	let exportError = $state('');
-	let notificationsOpen = $state(false);
 
-	const academicYear = (() => {
-		const year = new Date().getFullYear();
-		return `Academic Year ${year}-${String(year + 1).slice(-2)}`;
-	})();
 	const filteredRows = $derived(
 		rows.filter((row) => row.join(' ').toLowerCase().includes(search.trim().toLowerCase()))
 	);
@@ -70,40 +65,6 @@
 </svelte:head>
 
 <main class="admin-page reports-page">
-	<header class="reports-topbar">
-		<div>
-			<h1>Reports</h1>
-			<p>Dashboard / Reports / Reports Engine</p>
-		</div>
-		<div class="topbar-actions">
-			<span class="date-chip">
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><rect x="3.5" y="5" width="17" height="15" rx="2" /><path
-						d="M7.5 3v4M16.5 3v4M3.5 9h17"
-					/></svg
-				>
-				{academicYear}
-			</span>
-			<div class="notification-wrap">
-				<button
-					class="icon-button"
-					type="button"
-					aria-label="Notifications"
-					aria-expanded={notificationsOpen}
-					onclick={() => (notificationsOpen = !notificationsOpen)}
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true"
-						><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
-					>
-				</button>
-				{#if notificationsOpen}
-					<div class="notification-popover" role="status">No new report notifications.</div>
-				{/if}
-			</div>
-			<button class="avatar" type="button" aria-label="Administrator account">QC</button>
-		</div>
-	</header>
-
 	{#if exported}<div class="toast" role="status">Workbook downloaded successfully.</div>{/if}
 	{#if exportError}<div class="toast error-toast" role="alert">{exportError}</div>{/if}
 
@@ -232,8 +193,6 @@
 		width: 100%;
 		max-width: 100%;
 		min-width: 0;
-		padding-top: 0;
-		padding-left: clamp(1rem, 2vw, 2rem);
 	}
 	.report-layout,
 	.catalog-column,
@@ -243,92 +202,6 @@
 	.filters {
 		max-width: 100%;
 		min-width: 0;
-	}
-	.reports-topbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		min-height: 3.5rem;
-		margin: 0 calc(clamp(1rem, 3vw, 3rem) * -1) 0.85rem;
-		margin-left: calc(clamp(1rem, 2vw, 2rem) * -1);
-		border-bottom: 1px solid #e5e9ef;
-		background: #fff;
-		padding: 0.45rem clamp(1rem, 3vw, 3rem);
-	}
-	.reports-topbar h1 {
-		margin: 0;
-		color: #172b4d;
-		font-size: 0.83rem;
-		font-weight: 900;
-	}
-	.reports-topbar p {
-		margin: 0.08rem 0 0;
-		color: #7f8a9b;
-		font-size: 0.57rem;
-	}
-	.topbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-	}
-	.date-chip {
-		display: flex;
-		align-items: center;
-		gap: 0.38rem;
-		border: 1px solid #e2e6ec;
-		border-radius: 0.45rem;
-		background: #f8f9fb;
-		color: #778397;
-		padding: 0.38rem 0.55rem;
-		font-size: 0.56rem;
-	}
-	.date-chip svg,
-	.icon-button svg {
-		width: 0.78rem;
-		height: 0.78rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 1.8;
-	}
-	.icon-button,
-	.avatar {
-		display: grid;
-		width: 1.9rem;
-		height: 1.9rem;
-		place-items: center;
-		border: 1px solid #e3e8ef;
-		border-radius: 50%;
-		background: #fff;
-		color: #6d7c91;
-		cursor: pointer;
-	}
-	.avatar {
-		border: 0;
-		background: #2563eb;
-		color: white;
-		font-size: 0.55rem;
-		font-weight: 900;
-	}
-	.notification-wrap {
-		position: relative;
-	}
-	.notification-popover {
-		position: absolute;
-		z-index: 5;
-		top: calc(100% + 0.55rem);
-		right: 0;
-		box-sizing: border-box;
-		width: min(12rem, calc(100vw - 2rem));
-		max-width: calc(100vw - 2rem);
-		border: 1px solid #e2e8f0;
-		border-radius: 0.6rem;
-		background: white;
-		box-shadow: 0 12px 30px #182b471c;
-		padding: 0.75rem;
-		color: #607087;
-		font-size: 0.58rem;
 	}
 	.reports-heading {
 		display: flex;
@@ -657,7 +530,6 @@
 		border-color: #334866;
 		background: #172640;
 	}
-	:global(html[data-theme='dark'] .reports-page .date-chip),
 	:global(html[data-theme='dark'] .reports-page .icon-button) {
 		border-color: #415878;
 		background: #172640;
@@ -700,16 +572,6 @@
 	@media (max-width: 650px) {
 		.reports-page {
 			overflow-x: clip;
-		}
-		.reports-topbar {
-			min-height: 3.2rem;
-		}
-		.date-chip {
-			font-size: 0;
-		}
-		.date-chip svg {
-			width: 0.95rem;
-			height: 0.95rem;
 		}
 		.reports-heading {
 			align-items: flex-start;
