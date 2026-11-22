@@ -1,14 +1,10 @@
 <script lang="ts">
 	let {
 		collapsed,
-		sidebarId,
-		href = '/staff/pos',
-		onToggle
+		href = '/staff/pos'
 	}: {
 		collapsed: boolean;
-		sidebarId: string;
 		href?: string;
-		onToggle: () => void;
 	} = $props();
 </script>
 
@@ -17,19 +13,6 @@
 		<span class="brand-mark">Q</span>
 		<span class="brand-copy"><strong>QCU COOP</strong><small>Cashier workspace</small></span>
 	</a>
-	<button
-		class="sidebar-toggle"
-		type="button"
-		aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-		aria-expanded={!collapsed}
-		aria-controls={sidebarId}
-		title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-		onclick={onToggle}
-	>
-		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path d={collapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} />
-		</svg>
-	</button>
 </div>
 
 <style>
@@ -97,40 +80,6 @@
 		color: #8da1c3;
 		font-size: 0.65rem;
 	}
-	.sidebar-toggle {
-		display: grid;
-		box-sizing: border-box;
-		width: 2rem;
-		height: 2rem;
-		flex: 0 0 auto;
-		place-items: center;
-		margin: 0;
-		border: 1px solid #263b5b;
-		border-radius: 0.55rem;
-		background: transparent;
-		color: #b8c8dd;
-		padding: 0;
-		cursor: pointer;
-	}
-	.sidebar-toggle:hover {
-		background: #12274b;
-		color: white;
-	}
-	:global(html[data-theme='dark'] .cashier-sidebar-top .sidebar-toggle) {
-		border-color: #415878;
-		background: #122440;
-		color: #dbe7fb;
-	}
-	.sidebar-toggle svg {
-		display: block;
-		width: 1.1rem;
-		height: 1.1rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-		stroke-width: 2;
-	}
 	.cashier-sidebar-top.collapsed {
 		box-sizing: border-box;
 		width: 100%;
@@ -148,9 +97,6 @@
 		max-width: 0;
 		opacity: 0;
 		visibility: hidden;
-	}
-	.cashier-sidebar-top.collapsed .sidebar-toggle {
-		align-self: center;
 	}
 	:global(.cashier-shell.collapsed .cashier-sidebar),
 	:global(.register-shell.collapsed .register-sidebar) {
@@ -192,9 +138,6 @@
 		}
 	}
 	@media (max-width: 760px) {
-		.sidebar-toggle {
-			display: none;
-		}
 		.cashier-sidebar-top.collapsed {
 			flex-direction: row;
 			gap: 0.5rem;

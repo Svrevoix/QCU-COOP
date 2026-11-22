@@ -8,7 +8,18 @@
 	let statusFilter = $state('All statuses');
 	const tabs = ['Items', 'Suppliers', 'Customers'];
 	let selectedProductId = $state('');
+	let restockSearchTerm = $state('');
+	let restockPickerOpen = $state(false);
+	let activeRestockProductIndex = $state(0);
+	let restockSearchInput = $state<HTMLInputElement>();
 	let products = $derived(page.data.products as Product[]);
+	let matchingRestockProducts = $derived.by(() => {
+		const search = restockSearchTerm.trim().toLowerCase();
+		if (!search) return products;
+		return products.filter((product) =>
+			`${product.product_name} ${product.sku}`.toLowerCase().includes(search)
+		);
+	});
 	let balances = $derived(page.data.balances as Balance[]);
 	let inventoryItems = $derived(products.map((product) => {
 		const warehouseRows = balances.filter((balance) => balance.product_id === product.id);
@@ -90,6 +101,51 @@
 	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
 		new Date()
 	);
+
+	function selectRestockProduct(product: Product) {
+		selectedProductId = String(product.id);
+		restockSearchTerm = `${product.product_name} · ${product.sku}`;
+		restockPickerOpen = false;
+		restockSearchInput?.setCustomValidity('');
+	}
+
+	function handleRestockSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			restockPickerOpen = false;
+		} else if (event.key === 'ArrowDown' && matchingRestockProducts.length) {
+			event.preventDefault();
+			restockPickerOpen = true;
+			activeRestockProductIndex = Math.min(
+				Math.max(activeRestockProductIndex + 1, 0),
+				matchingRestockProducts.length - 1
+			);
+		} else if (event.key === 'ArrowUp' && matchingRestockProducts.length) {
+			event.preventDefault();
+			restockPickerOpen = true;
+			activeRestockProductIndex =
+				activeRestockProductIndex <= 0
+					? matchingRestockProducts.length - 1
+					: activeRestockProductIndex - 1;
+		} else if (
+			event.key === 'Enter' &&
+			restockPickerOpen &&
+			matchingRestockProducts[
+				activeRestockProductIndex >= 0 ? activeRestockProductIndex : 0
+			]
+		) {
+			event.preventDefault();
+			selectRestockProduct(
+				matchingRestockProducts[activeRestockProductIndex >= 0 ? activeRestockProductIndex : 0]
+			);
+		}
+	}
+
+	function handleRestockSubmit(event: SubmitEvent) {
+		if (selectedProductId) return;
+		event.preventDefault();
+		restockSearchInput?.setCustomValidity('Select a product from the matching list.');
+		restockSearchInput?.reportValidity();
+	}
 </script>
 
 <svelte:head>
@@ -145,8 +201,61 @@
 		<div class="section-heading"><h2 id="restock-title">Restock inventory</h2><p>Receive stock and record the inventory movement. The default stock location is assigned automatically.</p></div>
 		{#if page.form?.restockError}<p class="restock-message error" role="alert">{page.form.restockError}</p>{/if}
 		{#if page.form?.restockSuccess}<p class="restock-message success" role="status">{page.form.restockSuccess}</p>{/if}
-		<form method="POST" action="?/restock" class="restock-form">
-			<label>Item<select name="productId" bind:value={selectedProductId} required><option value="" disabled>Select an item</option>{#each products as product}<option value={product.id}>{product.product_name} · {product.sku}</option>{/each}</select></label>
+		<form method="POST" action="?/restock" class="restock-form" onsubmit={handleRestockSubmit}>
+			<label class="restock-item-label" for="restock-item-search">Item
+				<div class="restock-item-picker">
+					<input
+						bind:this={restockSearchInput}
+						id="restock-item-search"
+						type="text"
+						placeholder="Search item..."
+						autocomplete="off"
+						role="combobox"
+						aria-autocomplete="list"
+						aria-expanded={restockPickerOpen}
+						aria-controls="restock-product-options"
+						aria-activedescendant={restockPickerOpen && matchingRestockProducts[activeRestockProductIndex]
+							? `restock-product-${matchingRestockProducts[activeRestockProductIndex].id}`
+							: undefined}
+						value={restockSearchTerm}
+						onfocus={() => {
+							restockPickerOpen = true;
+							activeRestockProductIndex = -1;
+						}}
+						onblur={() => (restockPickerOpen = false)}
+						oninput={(event) => {
+							restockSearchTerm = event.currentTarget.value;
+							selectedProductId = '';
+							restockPickerOpen = true;
+							activeRestockProductIndex = -1;
+							event.currentTarget.setCustomValidity('');
+						}}
+						onkeydown={handleRestockSearchKeydown}
+					/>
+					<input type="hidden" name="productId" value={selectedProductId} />
+					{#if restockPickerOpen}
+						<div class="restock-product-options" id="restock-product-options" role="listbox" aria-label="Matching products">
+							{#each matchingRestockProducts as product, index (product.id)}
+								<button
+									id="restock-product-{product.id}"
+									class="restock-product-option"
+									class:active={index === activeRestockProductIndex}
+									type="button"
+									role="option"
+									aria-selected={String(product.id) === selectedProductId}
+									onmousedown={(event) => event.preventDefault()}
+									onmouseenter={() => (activeRestockProductIndex = index)}
+									onclick={() => selectRestockProduct(product)}
+								>
+									<strong>{product.product_name}</strong><span>{product.sku}</span>
+								</button>
+							{:else}
+								<p class="restock-no-matches">No matching products.</p>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</label>
 			<label>Quantity received<input name="quantity" type="number" min="1" step="1" required /></label>
 			<label>Note<input name="remarks" maxlength="500" placeholder="Optional reference or note" /></label>
 			<button class="add-button" type="submit" disabled={!products.length}>Receive stock</button>
@@ -251,7 +360,7 @@
 										class="status"
 										class:low={item.status === 'Low stock'}
 										class:out={item.status === 'Out of stock'}><i></i>{item.status}</span
-									></td><td><a class="row-restock" href="#restock-title" onclick={() => selectedProductId = String(item.id)}>Restock</a></td
+									></td><td><a class="row-restock" href="#restock-title" onclick={() => selectRestockProduct(item)}>Restock</a></td
 								>
 							</tr>
 						{:else}
@@ -447,7 +556,16 @@
 	.restock-panel { padding: .85rem .95rem; }
 	.restock-form { display: grid; grid-template-columns: 1.5fr .8fr 1.4fr auto; align-items: end; gap: .6rem; }
 	.restock-form label { display: grid; gap: .3rem; color: #66768d; font-size: .58rem; font-weight: 700; }
-	.restock-form input, .restock-form select { min-width: 0; height: 2.35rem; border: 1px solid #e1e6ed; border-radius: .45rem; background: #fafbfc; color: #34445d; padding: .4rem .55rem; font: inherit; font-size: .62rem; }
+	.restock-form input:not([type='hidden']) { box-sizing: border-box; width: 100%; min-width: 0; height: 2.35rem; border: 1px solid #e1e6ed; border-radius: .45rem; background: #fafbfc; color: #34445d; padding: .4rem .55rem; font: inherit; font-size: .62rem; }
+	.restock-item-picker { position: relative; }
+	.restock-product-options { position: absolute; z-index: 20; top: calc(100% + .25rem); right: 0; left: 0; max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #dce3ed; border-radius: .5rem; background: white; box-shadow: 0 12px 28px rgba(23, 43, 77, .18); }
+	.restock-product-option { display: flex; width: 100%; min-height: 2.35rem; align-items: center; justify-content: space-between; gap: .75rem; border: 0; border-bottom: 1px solid #edf1f5; background: transparent; padding: .55rem .65rem; color: #34445d; font: inherit; font-size: .62rem; text-align: left; cursor: pointer; }
+	.restock-product-option:last-child { border-bottom: 0; }
+	.restock-product-option:hover, .restock-product-option.active { background: #eff6ff; }
+	.restock-product-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.restock-product-option span { flex: 0 0 auto; color: #71809a; }
+	.restock-no-matches { margin: 0; padding: .7rem; color: #71809a; font-size: .62rem; font-weight: 500; }
+	.restock-form input[type='hidden'] { display: none; }
 	.restock-form .add-button { border: 0; cursor: pointer; }
 	.restock-form .add-button:disabled { opacity: .5; cursor: not-allowed; }
 	.restock-message { margin: .5rem 0; border-radius: .45rem; padding: .5rem .65rem; font-size: .62rem; }
@@ -785,10 +903,21 @@
 	:global(html[data-theme='dark'] .inventory-page .search),
 	:global(html[data-theme='dark'] .inventory-page .toolbar select),
 	:global(html[data-theme='dark'] .inventory-page .restock-form input),
-	:global(html[data-theme='dark'] .inventory-page .restock-form select) {
+	:global(html[data-theme='dark'] .inventory-page .restock-product-options) {
 		border-color: #415878;
-		background: #101d35;
+		background: #172640;
+	}
+	:global(html[data-theme='dark'] .inventory-page .restock-product-option) {
+		border-color: #334866;
 		color: #edf4ff;
+	}
+	:global(html[data-theme='dark'] .inventory-page .restock-product-option:hover),
+	:global(html[data-theme='dark'] .inventory-page .restock-product-option.active) {
+		background: #203a60;
+	}
+	:global(html[data-theme='dark'] .inventory-page .restock-product-option span),
+	:global(html[data-theme='dark'] .inventory-page .restock-no-matches) {
+		color: #b8c8dd;
 	}
 	:global(html[data-theme='dark'] .inventory-page th) {
 		background: #101d35;

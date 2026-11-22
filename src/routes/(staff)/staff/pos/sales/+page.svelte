@@ -108,8 +108,6 @@
 	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<CashierSidebarHeader
 			collapsed={cashierSidebar.collapsed}
-			sidebarId="cashier-sidebar"
-			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
 		/>
 		<p class="sidebar-label">Workspace</p>
 		<CashierNavigation
@@ -313,15 +311,11 @@
 		margin-top: auto;
 	}
 	.cashier-content {
-		width: min(100%, 100rem);
+		width: 100%;
+		max-width: 100rem;
 		min-width: 0;
 		margin: 0 auto;
 		padding: 0 clamp(1rem, 2vw, 1.5rem);
-	}
-	@media (min-width: 1100px) {
-		.cashier-content {
-			zoom: 1.1;
-		}
 	}
 	.sales-topbar {
 		display: flex;

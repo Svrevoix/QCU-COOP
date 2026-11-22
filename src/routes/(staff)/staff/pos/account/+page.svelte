@@ -69,8 +69,6 @@
 	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<CashierSidebarHeader
 			collapsed={cashierSidebar.collapsed}
-			sidebarId="cashier-sidebar"
-			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
 		/>
 		<p class="sidebar-label">Workspace</p>
 		<CashierNavigation
@@ -269,11 +267,6 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 		stroke-width: 2;
-	}
-	@media (min-width: 1100px) {
-		.cashier-content {
-			zoom: 1.1;
-		}
 	}
 	.account-panel {
 		width: 100%;

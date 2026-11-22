@@ -16,20 +16,12 @@
 
 	// Fallback identity shown on the avatar badge before any session is authenticated.
 	const placeholderStudentId = '23-1111';
-	const cashierSidebarPreferenceKey = 'qcu-cashier-sidebar-collapsed';
 	let cashierSidebarState = $state({ collapsed: true });
-	let cashierSidebarPreferenceLoaded = $state(false);
 	setContext('cashierSidebar', cashierSidebarState);
 	let displayedId = $derived(page.data.user?.id ?? placeholderStudentId);
 	let isAuthenticated = $derived(!!page.data.user);
 	let isAdmin = $derived(page.data.user?.role === 'admin');
 	let isPublicLanding = $derived(page.url.pathname === '/' && !isAuthenticated);
-
-	$effect(() => {
-		if (cashierSidebarPreferenceLoaded) {
-			localStorage.setItem(cashierSidebarPreferenceKey, String(cashierSidebarState.collapsed));
-		}
-	});
 
 	$effect(() => {
 		const profileId = page.data.user?.profileId ?? null;
@@ -177,27 +169,13 @@
 		// Applies the previously saved theme (set from the Account page) on load.
 		const savedTheme = localStorage.getItem('qcu-theme');
 		if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-		const savedSidebarPreference = localStorage.getItem(cashierSidebarPreferenceKey);
-		if (savedSidebarPreference === 'true' || savedSidebarPreference === 'false') {
-			cashierSidebarState.collapsed = savedSidebarPreference === 'true';
-		}
-		cashierSidebarPreferenceLoaded = true;
+		cashierSidebarState.collapsed = true;
 		loadingStartedAt = Date.now();
 		finishPageLoading();
 
-		const handleStorage = (event: StorageEvent) => {
-			if (
-				event.key === cashierSidebarPreferenceKey &&
-				(event.newValue === 'true' || event.newValue === 'false')
-			) {
-				cashierSidebarState.collapsed = event.newValue === 'true';
-			}
-		};
-		window.addEventListener('storage', handleStorage);
 		window.addEventListener('click', handleWindowClick);
 		return () => {
 			clearTimeout(loadingTimer);
-			window.removeEventListener('storage', handleStorage);
 			window.removeEventListener('click', handleWindowClick);
 		};
 	});

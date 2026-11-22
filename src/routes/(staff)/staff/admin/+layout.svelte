@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { onMount, setContext } from 'svelte';
+	import { setContext } from 'svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	let { children } = $props();
-	const sidebarPreferenceKey = 'qcu-admin-sidebar-collapsed';
 	type ReportGroup = { label: string; reports: string[] };
 	const navigation = [
 		{ href: '/staff/admin', label: 'Dashboard', icon: 'grid' },
@@ -64,8 +63,7 @@
 	});
 	setContext('adminReportSelection', reportSelection);
 	setContext('adminReportGroups', reportGroups);
-	let sidebarCollapsed = $state(page.url.pathname === '/staff/admin/reports');
-	let sidebarPreferenceLoaded = $state(false);
+	let sidebarCollapsed = $state(true);
 	let mobileSidebarOpen = $state(false);
 	let activePath = $derived(page.url.pathname);
 	let activeNavigationIndex = $derived(
@@ -76,26 +74,6 @@
 				(item.href === '/staff/admin' && activePath.startsWith('/staff/admin/dashboard'))
 		)
 	);
-	onMount(() => {
-		const savedPreference = localStorage.getItem(sidebarPreferenceKey);
-		if (savedPreference === 'true' || savedPreference === 'false') {
-			sidebarCollapsed = savedPreference === 'true';
-		}
-		sidebarPreferenceLoaded = true;
-
-		const handleStorage = (event: StorageEvent) => {
-			if (event.key === sidebarPreferenceKey && (event.newValue === 'true' || event.newValue === 'false')) {
-				sidebarCollapsed = event.newValue === 'true';
-			}
-		};
-		window.addEventListener('storage', handleStorage);
-		return () => window.removeEventListener('storage', handleStorage);
-	});
-	$effect(() => {
-		if (sidebarPreferenceLoaded) {
-			localStorage.setItem(sidebarPreferenceKey, String(sidebarCollapsed));
-		}
-	});
 	$effect(() => {
 		if (!mobileSidebarOpen) return;
 
@@ -122,19 +100,6 @@
 				<div class="brand-mark">Q</div>
 				<div class="brand-copy"><strong>QCU COOP</strong><span>Admin workspace</span></div>
 			</div>
-			<button
-				class="sidebar-toggle"
-				type="button"
-				aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-				aria-expanded={!sidebarCollapsed}
-				aria-controls="admin-sidebar"
-				title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-				onclick={() => (sidebarCollapsed = !sidebarCollapsed)}
-			>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><path d={sidebarCollapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} /></svg
-				>
-			</button>
 		</div>
 		<div class="sidebar-label">Workspace</div>
 		<nav aria-label="Admin navigation">
@@ -227,11 +192,11 @@
 		--line: #e2e8f0;
 		--blue: #2563eb;
 		display: flex;
+		box-sizing: border-box;
 		min-height: 100vh;
 		background: #f4f7fb;
 		color: var(--ink);
 		font-family: 'Montserrat', sans-serif;
-		zoom: 1.1;
 	}
 	:global(html[data-theme='dark'] .admin-shell) {
 		background: #101d35;
@@ -550,6 +515,8 @@
 		font-size: 0.58rem;
 	}
 	.admin-content {
+		box-sizing: border-box;
+		width: 100%;
 		min-width: 0;
 		flex: 1;
 	}
@@ -557,10 +524,12 @@
 		display: none;
 	}
 	.admin-route-content {
+		box-sizing: border-box;
+		width: 100%;
 		animation: admin-route-appear 220ms ease-out both;
 	}
 	.admin-route-content.readable-admin-page {
-		zoom: 1.2;
+		width: 100%;
 	}
 	@keyframes admin-route-appear {
 		from {
@@ -729,7 +698,6 @@
 		min-width: 0;
 		padding: 0;
 	}
-	.sidebar-toggle,
 	.mobile-menu-button {
 		display: grid;
 		place-items: center;
@@ -742,17 +710,10 @@
 		color: #b8c8dd;
 		cursor: pointer;
 	}
-	.sidebar-toggle {
-		box-sizing: border-box;
-		margin: 0;
-		padding: 0;
-	}
-	.sidebar-toggle:hover,
 	.mobile-menu-button:hover {
 		background: #12274b;
 		color: white;
 	}
-	.sidebar-toggle svg,
 	.mobile-menu-button svg {
 		display: block;
 		width: 1.1rem;
@@ -813,10 +774,6 @@
 		margin-bottom: 1.5rem;
 		padding: 0.25rem 0 0;
 	}
-	:global(.admin-shell.collapsed) .sidebar-toggle {
-		align-self: center;
-		justify-self: center;
-	}
 	:global(.admin-shell.collapsed) .brand-copy,
 	:global(.admin-shell.collapsed) .nav-label,
 	:global(.admin-shell.collapsed) .sidebar-footer > div:last-child {
@@ -863,7 +820,6 @@
 		.admin-shell {
 			display: block;
 			position: relative;
-			zoom: 1;
 		}
 		.admin-sidebar {
 			position: fixed;
@@ -932,9 +888,6 @@
 		.admin-shell.collapsed :global(.report-catalog) {
 			display: block;
 		}
-		.sidebar-toggle {
-			display: none;
-		}
 		.admin-backdrop {
 			position: fixed;
 			z-index: 30;
@@ -956,7 +909,7 @@
 			padding: 0 0.75rem;
 		}
 		.admin-route-content.readable-admin-page {
-			zoom: 1;
+			width: 100%;
 		}
 		.admin-sidebar nav {
 			--nav-item-height: 2.75rem;

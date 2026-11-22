@@ -125,8 +125,6 @@
 	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
 		<CashierSidebarHeader
 			collapsed={cashierSidebar.collapsed}
-			sidebarId="cashier-sidebar"
-			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
 		/>
 		<p class="sidebar-label">Workspace</p>
 		<CashierNavigation
@@ -354,18 +352,15 @@
 		flex: 1;
 		flex-direction: column;
 		box-sizing: border-box;
-		width: min(100%, 100rem);
+		width: 100%;
+		max-width: 100rem;
 		min-width: 0;
 		margin: 0 auto;
 		padding: 0 clamp(1rem, 2vw, 1.5rem);
 	}
-	@media (min-width: 1100px) {
-		.cashier-content {
-			zoom: 1.1;
-		}
-	}
 	.cashier-topbar {
 		display: flex;
+		box-sizing: border-box;
 		align-items: center;
 		justify-content: space-between;
 		min-height: 3.7rem;
@@ -605,7 +600,7 @@
 	.cashier-title {
 		margin: 0;
 		color: #091b35;
-		font-size: clamp(2.4rem, 4vw, 4.25rem);
+		font-size: clamp(1.75rem, 3vw, 2.75rem);
 		letter-spacing: -0.06em;
 		line-height: 0.96;
 		font-weight: 900;

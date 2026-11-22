@@ -217,9 +217,7 @@
 	<aside class="register-sidebar" id="register-sidebar" aria-label="Cashier workspace sidebar">
 		<CashierSidebarHeader
 			collapsed={cashierSidebar.collapsed}
-			sidebarId="register-sidebar"
 			href="/staff/pos/register"
-			onToggle={() => (cashierSidebar.collapsed = !cashierSidebar.collapsed)}
 		/>
 		<div class="sidebar-label">Workspace</div>
 		<CashierNavigation
@@ -750,11 +748,6 @@
 		flex: 1;
 		flex-direction: column;
 		overflow: hidden;
-	}
-	@media (min-width: 1100px) {
-		.register-main {
-			zoom: 1.1;
-		}
 	}
 	.register-shell.collapsed .sidebar-footer {
 		justify-content: center;
