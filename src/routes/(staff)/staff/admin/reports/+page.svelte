@@ -1,20 +1,13 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import ReportCatalog from '$lib/components/ReportCatalog.svelte';
+	import { reportPresets } from '$lib/report-presets';
 
 	type ReportGroup = { label: string; reports: string[] };
 	type ReportSelection = { group: string; report: string };
 
 	const selection = getContext<ReportSelection>('adminReportSelection');
 	const reportGroups = getContext<ReportGroup[]>('adminReportGroups');
-	const rows = [
-		['15 Sep 2026', 'TX-10482', 'QCU ID Lace', 'Maria Santos', '₱1,245.00'],
-		['16 Sep 2026', 'TX-10491', 'Ballpen set · 10 pcs', 'J. Dela Cruz', '₱350.00'],
-		['18 Sep 2026', 'TX-10519', 'Faculty essentials bundle', 'R. Manalo', '₱2,180.00'],
-		['20 Sep 2026', 'TX-10534', 'Printing services', 'Maria Santos', '₱480.50'],
-		['22 Sep 2026', 'TX-10548', 'School supplies assorted', 'L. Cruz', '₱653.00']
-	];
-
 	let report = $derived(selection.report);
 	let period = $state('This month');
 	let warehouse = $state('All warehouses');
@@ -28,8 +21,9 @@
 		const year = new Date().getFullYear();
 		return `Academic Year ${year}-${String(year + 1).slice(-2)}`;
 	})();
+	const currentReport = $derived(reportPresets[report] ?? reportPresets['Daily Cashier Cash-Out']);
 	const filteredRows = $derived(
-		rows.filter((row) => row.join(' ').toLowerCase().includes(search.trim().toLowerCase()))
+		currentReport.rows.filter((row) => row.join(' ').toLowerCase().includes(search.trim().toLowerCase()))
 	);
 
 	function generateReport() {
@@ -48,7 +42,7 @@
 				['Period', period],
 				['Warehouse', warehouse],
 				[],
-				['Date', 'Reference', 'Item', 'Operator', 'Amount'],
+				currentReport.columns,
 				...filteredRows
 			];
 			const sheet = XLSX.utils.aoa_to_sheet(data);
@@ -130,9 +124,9 @@
 					<div>
 						<p class="selected-label">Selected report</p>
 						<h2>{report}</h2>
-						<p>Configure the scope before generating or exporting the workbook.</p>
+						<p>{currentReport.description}</p>
 					</div>
-					<span class="ready"><i></i> Ready</span>
+					<span class="ready"><i></i> Sample preview</span>
 				</div>
 				<div class="filters">
 					<label
@@ -160,9 +154,9 @@
 			</section>
 
 			<section class="metrics" aria-label="Report summary">
-				<article><span>Rows available</span><strong>4,862</strong><small>{period}</small></article>
+				<article><span>Records in report</span><strong>{currentReport.rowCount}</strong><small>{period}</small></article>
 				<article>
-					<span>Report value</span><strong>₱284,620</strong><small>Gross amount</small>
+					<span>{currentReport.metricLabel}</span><strong>{currentReport.metricValue}</strong><small>{report}</small>
 				</article>
 				<article>
 					<span>Last generated</span><strong>{generatedAt}</strong><small>Administrator</small>
@@ -189,20 +183,17 @@
 				</div>
 				<div class="table-wrap">
 					<table>
-						<thead
-							><tr><th>Date</th><th>Reference</th><th>Item</th><th>Operator</th><th>Amount</th></tr
-							></thead
-						>
+						<thead><tr>{#each currentReport.columns as column}<th>{column}</th>{/each}</tr></thead>
 						<tbody>
 							{#each filteredRows as row (row[1])}
 								<tr
 									>{#each row as cell, index (`${row[1]}-${index}`)}<td
-											class:amount={index === 4}
-											class:reference={index === 1}>{cell}</td
+										class:amount={currentReport.numericLastColumn && index === row.length - 1}
+										class:reference={index === currentReport.highlightColumn}>{cell}</td
 										>{/each}</tr
 								>
 							{:else}
-								<tr><td class="no-results" colspan="5">No preview rows match your search.</td></tr>
+								<tr><td class="no-results" colspan={currentReport.columns.length}>No preview rows match your search.</td></tr>
 							{/each}
 						</tbody>
 					</table>
@@ -210,8 +201,8 @@
 				<div class="preview-footer">
 					<div>
 						<strong
-							>Showing {filteredRows.length} of 4,862 rows — scroll or export for full dataset</strong
-						><small>Sorted by date ascending · {warehouse} · {period}</small>
+							>Showing {filteredRows.length} of {currentReport.rowCount} preview rows for this report</strong
+						><small>Sample rows · {warehouse} · {period}</small>
 					</div>
 					<svg viewBox="0 0 24 24" aria-label="Report chart" role="img"
 						><path d="M4 20V11h4v9m2 0V5h4v15m2 0v-7h4v7M2 20h20" /></svg
@@ -682,6 +673,28 @@
 	}
 	:global(html[data-theme='dark'] .reports-page td) {
 		border-color: #334866;
+		color: #c9d6e8;
+	}
+	:global(html[data-theme='dark'] .reports-page .selected-label),
+	:global(html[data-theme='dark'] .reports-page .builder-heading > div > p:last-child),
+	:global(html[data-theme='dark'] .reports-page .preview-heading p),
+	:global(html[data-theme='dark'] .reports-page .metrics span),
+	:global(html[data-theme='dark'] .reports-page .metrics small),
+	:global(html[data-theme='dark'] .reports-page .filters label),
+	:global(html[data-theme='dark'] .reports-page .preview-footer small) {
+		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .reports-page .preview-footer) {
+		background: #101d35;
+	}
+	:global(html[data-theme='dark'] .reports-page .preview-footer strong) {
+		color: #8eb5ff;
+	}
+	:global(html[data-theme='dark'] .reports-page td.reference) {
+		color: #8eb5ff;
+	}
+	:global(html[data-theme='dark'] .reports-page td.no-results) {
+		color: #b8c8dd;
 	}
 	@media (max-width: 900px) {
 		.report-layout {

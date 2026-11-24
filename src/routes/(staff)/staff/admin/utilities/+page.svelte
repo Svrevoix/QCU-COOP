@@ -10,7 +10,6 @@
 	};
 
 		let serviceDialog = $state<HTMLDialogElement>();
-	let billingDialog = $state<HTMLDialogElement>();
 	let notificationOpen = $state(false);
 	let serviceName = $state('');
 	let serviceAdded = $state('');
@@ -107,52 +106,6 @@
 		</div>
 	{/if}
 
-	<section class="overview-panel" aria-labelledby="operations-overview-title">
-		<div class="overview-header">
-			<div class="overview-title-wrap">
-				<span class="overview-badge" aria-hidden="true"></span>
-				<div>
-					<h2 id="operations-overview-title">Operations overview</h2>
-					<p>Here what is happening across the cooperative store today.</p>
-				</div>
-			</div>
-			<button class="outline-button overview-report-button" type="button">
-				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19.5h12M8 16V8m4 8V5m4 11v-6" /><path d="M3.5 20.5h17" /></svg>
-				View reports
-			</button>
-		</div>
-
-		<div class="overview-stat-grid">
-			<article>
-				<span>Gross sales</span>
-				<strong>₱284,620</strong>
-			</article>
-			<article>
-				<span>Units moved</span>
-				<strong>1,846</strong>
-			</article>
-			<article>
-				<span>Low stock items</span>
-				<strong>18</strong>
-			</article>
-			<article>
-				<span>Non-selling items</span>
-				<strong>24</strong>
-			</article>
-		</div>
-
-		<div class="overview-link-grid">
-			<a href="#!" class="overview-link-card">
-				<strong>Inventory Management</strong>
-				<span>Review stock, purchasing, and item records</span>
-			</a>
-			<a href="#!" class="overview-link-card">
-				<strong>Reports Engine</strong>
-				<span>Review sales and cooperative performance</span>
-			</a>
-		</div>
-	</section>
-
 	<section class="accounts-section" aria-labelledby="utility-accounts-title">
 		<div class="section-heading">
 			<div>
@@ -160,12 +113,12 @@
 				<p>Monitor active campus services, balances, and due dates.</p>
 			</div>
 			<div class="section-actions">
-				<button class="outline-button" type="button" onclick={() => billingDialog?.showModal()}>
+				<a class="outline-button" href="/staff/admin/utilities/summary">
 					<svg viewBox="0 0 24 24" aria-hidden="true"
 						><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5" /><path d="M4 4v4.5h4.5M12 8v4l2.5 1.5" /></svg
 					>
-					Billing history
-				</button>
+					Summary
+				</a>
 				<button class="primary-button" type="button" onclick={() => serviceDialog?.showModal()}>
 					<span aria-hidden="true">+</span> Add service
 				</button>
@@ -240,32 +193,17 @@
 				</div>
 			</article>
 
-			<aside class="activity-card" aria-labelledby="recent-billing-title">
-				<div class="activity-heading">
-					<h3 id="recent-billing-title">Recent billing activity</h3>
-					<button
-						type="button"
-						class="activity-link"
-						aria-label="Open billing history"
-						onclick={() => billingDialog?.showModal()}
-					>
-						<svg viewBox="0 0 24 24" aria-hidden="true"
-							><path d="M14 4h6v6M20 4l-9 9" /><path
-								d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"
-							/></svg
-						>
-					</button>
-				</div>
-				{#each billingActivity as activity}
-					<div class="activity-item">
-						<span class={`activity-marker ${activity.tone}`}></span>
-						<span class="activity-label">{activity.label}</span>
-						<strong>{activity.amount}</strong>
-						<small>{activity.date}</small>
-					</div>
-				{/each}
-			</aside>
+
 		</div>
+		<section class="billing-history-section" id="utility-summary" aria-labelledby="billing-history-title">
+			<div class="section-heading"><div><h2 id="billing-history-title">Billing history</h2><p>Utility report summary and recent account activity.</p></div></div>
+			<div class="history-table-wrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Status</th><th>Amount due</th></tr></thead><tbody>
+				{#each data.bills as bill (bill.id)}
+					{@const service = serviceById.get(accountById.get(bill.utility_account_id)?.service_id ?? -1)?.service_name ?? 'Utility'}
+					<tr><td>{service} bill</td><td>{date(bill.created_at)}</td><td>{bill.status}</td><td>{money(outstanding(bill))}</td></tr>
+				{:else}<tr><td colspan="4">No billing records yet.</td></tr>{/each}
+			</tbody></table></div>
+		</section>
 	</section>
 </main>
 
@@ -302,33 +240,7 @@
 	</form>
 </dialog>
 
-<dialog bind:this={billingDialog} class="utility-dialog billing-dialog">
-	<div class="dialog-heading">
-		<div>
-			<span class="dialog-eyebrow">Utility account</span>
-			<h2>Billing history</h2>
-		</div>
-		<button
-			class="dialog-close"
-			type="button"
-			aria-label="Close dialog"
-			onclick={() => billingDialog?.close()}>×</button
-		>
-	</div>
-	<p class="dialog-copy">Recent account activity · QCU Coop Store Operations</p>
-	<div class="history-list">
-		{#each billingActivity as activity}
-			<div class="history-row">
-				<div><strong>{activity.label}</strong><span>{activity.date}</span></div>
-				<b>{activity.amount}</b>
-			</div>
-		{/each}
-	</div>
-	<div class="dialog-actions">
-		<button class="primary-button" type="button" onclick={() => billingDialog?.close()}>Done</button
-		>
-	</div>
-</dialog>
+
 
 <style>
 	.utilities-page {
@@ -603,6 +515,19 @@
 	.accounts-section {
 		margin-top: 0.95rem;
 	}
+	.billing-history-section {
+		margin-top: 1rem;
+		border: 1px solid #314d77;
+		border-radius: 0.8rem;
+		background: #172640;
+		padding: 0.9rem;
+	}
+	.history-table-wrap { overflow-x: auto; }
+	.history-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
+	.history-table-wrap th, .history-table-wrap td { border-bottom: 1px solid #334866; padding: 0.65rem; font-size: 0.68rem; }
+	.history-table-wrap th { color: #aebdcb; font-size: 0.58rem; text-transform: uppercase; }
+	.history-table-wrap td { color: #edf4ff; }
+	.history-table-wrap td:last-child, .history-table-wrap th:last-child { text-align: right; }
 	.section-heading {
 		display: flex;
 		align-items: center;

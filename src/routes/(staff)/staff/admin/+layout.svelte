@@ -26,7 +26,8 @@
 				'Summarized Sales',
 				'Monthly Sales Analysis',
 				'Annual Sales Analysis',
-				'Daily Product Analysis'
+				'Daily Product Analysis',
+				'Best-Selling Products'
 			]
 		},
 		{
@@ -37,16 +38,9 @@
 				'Inventory Movement Report',
 				'Stock Level Report',
 				'Detailed Receiving by Item',
-				'Product Alert Report'
+				'Product Alert Report',
+				'Slow-Moving Products'
 			]
-		},
-		{
-			label: 'Utilities Reports',
-			reports: ['Utility Expense Report', 'Monthly Utility Summary', 'Utility Payment History']
-		},
-		{
-			label: 'Membership Reports',
-			reports: ['Membership Summary Report', 'Active Members Report']
 		},
 		{
 			label: 'Audit Reports',
