@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
 	let loading = $state(true);
@@ -6,110 +7,29 @@
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
 	let notificationsOpen = $state(false);
-
-	const recentTransactions = [
-		{
-			item: 'Canned Sardines 155g',
-			reference: 'TXN-2026-10481',
-			category: 'Canned Goods',
-			quantity: 12,
-			amount: '₱204.00'
-		},
-		{
-			item: 'Cooking Oil 1L',
-			reference: 'TXN-2026-10480',
-			category: 'Grocery',
-			quantity: 6,
-			amount: '₱474.00'
-		},
-		{
-			item: 'Instant Noodles 6-pack',
-			reference: 'TXN-2026-10479',
-			category: 'Dry Goods',
-			quantity: 24,
-			amount: '₱936.00'
-		},
-		{
-			item: 'Distilled Water 5L',
-			reference: 'TXN-2026-10478',
-			category: 'Beverages',
-			quantity: 8,
-			amount: '₱320.00'
-		},
-		{
-			item: 'Laundry Detergent 1kg',
-			reference: 'TXN-2026-10477',
-			category: 'Household',
-			quantity: 10,
-			amount: '₱870.00'
-		}
-	];
-	const lowStockItems = [
-		{ name: 'White Sugar 1kg', sku: 'SKU-0041', category: 'Dry Goods', remaining: 3 },
-		{ name: 'Canned Tuna 180g', sku: 'SKU-0087', category: 'Canned Goods', remaining: 5 },
-		{ name: 'Iodized Salt 250g', sku: 'SKU-0013', category: 'Condiments', remaining: 2 },
-		{ name: 'Vinegar 350ml', sku: 'SKU-0092', category: 'Condiments', remaining: 1 },
-		{ name: 'Bar Soap 90g', sku: 'SKU-0119', category: 'Household', remaining: 4 }
-	];
-	const recentActivity = [
-		{
-			title: 'Inventory sync completed',
-			meta: '09:42 AM · System',
-			status: 'Synced',
-			tone: 'blue'
-		},
-		{
-			title: 'Low-stock alert triggered',
-			meta: '08:17 AM · Inventory',
-			status: 'Review',
-			tone: 'amber'
-		},
-		{ title: 'Utility payment posted', meta: '07:55 AM · Finance', status: 'Posted', tone: 'blue' },
-		{
-			title: 'Maintenance request assigned',
-			meta: '07:12 AM · Maintenance',
-			status: 'Open',
-			tone: 'red'
-		},
-		{ title: 'Sales report exported', meta: '06:48 AM · Reports', status: 'Exported', tone: 'blue' }
-	];
-	const services = ['Point of sale', 'Inventory sync', 'Reporting engine', 'Member portal'];
-	const salesBars = [52, 76, 62, 88, 100, 73, 100];
-	const weekDays = $derived.by(() => {
-		const start = new Date(today);
-		start.setDate(start.getDate() - 6);
-		return Array.from({ length: 7 }, (_, index) => {
-			const day = new Date(start);
-			day.setDate(start.getDate() + index);
-			return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(day);
-		});
-	});
-	const monthLabel = $derived(
-		new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(today)
-	);
-	const dateLabel = $derived(
-		new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(today)
-	);
+	const dashboard = $derived(page.data.dashboard);
+	const notificationCount = $derived((dashboard.lowStockCount > 0 ? 1 : 0) + (dashboard.outstandingBalance > 0 ? 1 : 0));
+	const monthLabel = $derived(dashboard.currentMonthLabel);
+	const dateLabel = $derived(new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(today));
 	const salesPeriod = $derived.by(() => {
 		const start = new Date(today);
 		start.setDate(start.getDate() - 6);
-		const dateFormat = new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit' });
-		return `${dateFormat.format(start)}–${dateFormat.format(today)}`;
+		const format = new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit' });
+		return `${format.format(start)} – ${format.format(today)}`;
 	});
+	const salesChangeLabel = $derived(dashboard.salesChange === null ? 'No prior-month comparison' : `${dashboard.salesChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboard.salesChange).toFixed(1)}% vs last month`);
+	const weekChangeLabel = $derived(dashboard.weekChange === null ? 'No prior-week comparison' : `${dashboard.weekChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboard.weekChange).toFixed(1)}% vs last week`);
+	const chartCeiling = $derived(Math.max(...dashboard.salesTrend.map((day) => day.amount), 0));
+	const formatCurrency = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 
 	onMount(() => {
 		function updateClock() {
 			const now = new Date();
 			const hour = now.getHours();
 			timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-			localTime = now.toLocaleTimeString(undefined, {
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit'
-			});
+			localTime = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 			today = now;
 		}
-
 		updateClock();
 		const interval = setInterval(updateClock, 1000);
 		loading = false;
@@ -139,21 +59,34 @@
 			</span>
 			<div class="notification-wrap">
 				<button
-					class="icon-button"
+					class="icon-button notification-bell"
 					type="button"
-					aria-label="Notifications"
+					aria-label="Open dashboard notifications"
+					aria-haspopup="true"
 					aria-expanded={notificationsOpen}
 					onclick={() => (notificationsOpen = !notificationsOpen)}
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true"
 						><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
 					>
+					{#if notificationCount > 0}<span class="notification-badge">{notificationCount > 99 ? '99+' : notificationCount}</span>{/if}
 				</button>
 				{#if notificationsOpen}
-					<div class="notification-popover" role="status">
-						<strong>Dashboard alerts</strong>
-						<span>18 inventory items need restocking.</span>
-						<a href="/staff/admin/inventory">Review low stock</a>
+					<div class="notification-popover" role="region" aria-label="Dashboard notifications">
+						<div class="notification-heading"><div><span class="notification-eyebrow">Updates</span><strong>Notifications</strong></div><span class="notification-count">{notificationCount} {notificationCount === 1 ? 'alert' : 'alerts'}</span></div>
+						{#if notificationCount > 0}
+							<div class="notification-list">
+								{#if dashboard.lowStockCount > 0}
+									<div class="notification-item warning"><span class="notification-symbol">!</span><div><strong>Stock needs attention</strong><p>{dashboard.lowStockCount} {dashboard.lowStockCount === 1 ? 'item is' : 'items are'} at or below the reorder point.</p><a href="/staff/admin/inventory">Review inventory <span aria-hidden="true">→</span></a></div></div>
+								{/if}
+								{#if dashboard.outstandingBalance > 0}
+									<div class="notification-item bill"><span class="notification-symbol">₱</span><div><strong>Utility bills outstanding</strong><p>{formatCurrency(dashboard.outstandingBalance)} remains unpaid.</p><a href="/staff/admin/utilities">Review utilities <span aria-hidden="true">→</span></a></div></div>
+								{/if}
+							</div>
+						{:else}
+							<div class="notification-empty"><span class="notification-check" aria-hidden="true">✓</span><strong>You’re all caught up</strong><p>There are no stock or utility alerts right now.</p></div>
+						{/if}
+						<div class="notification-footer">Based on the latest dashboard data</div>
 					</div>
 				{/if}
 			</div>
@@ -177,7 +110,7 @@
 			<div class="welcome-icon" aria-hidden="true"></div>
 			<div class="welcome-copy">
 				<p class="welcome-eyebrow">Operations overview</p>
-				<h2>Good {timeOfDay}, Administrator</h2>
+				<h2>Good {timeOfDay}, {page.data.userName}</h2>
 				<p>Here is what is happening across the cooperative store today.</p>
 			</div>
 			<div class="live-clock" aria-label={`Local system time ${localTime}`}>
@@ -195,25 +128,29 @@
 			</a>
 		</section>
 
+		{#if dashboard.failedTables.length}
+			<p class="dashboard-data-notice" role="status">Some dashboard data is unavailable right now. Check database access for: {dashboard.failedTables.join(', ')}.</p>
+		{/if}
+
 		<section class="dashboard-stats" aria-label="Operations metrics">
 			<article>
-				<span>Gross sales</span><strong>₱284,620</strong><small class="positive"
-					>↑ 8.2% vs last month</small
+				<span>Gross sales · {monthLabel}</span><strong>{formatCurrency(dashboard.grossSales)}</strong><small class:positive={dashboard.salesChange === null || dashboard.salesChange >= 0} class:warning={dashboard.salesChange !== null && dashboard.salesChange < 0}
+					>{salesChangeLabel}</small
 				>
 			</article>
 			<article>
-				<span>Units moved</span><strong>1,846</strong><small class="positive"
-					>↑ 3.1% vs last month</small
+				<span>Units moved this month</span><strong>{dashboard.unitsMoved.toLocaleString()}</strong><small
+					>From recorded sales</small
 				>
 			</article>
 			<article>
-				<span>Low stock items</span><strong class="warning">18</strong><small class="warning"
-					>Needs restocking</small
+				<span>Low stock items</span><strong class="warning">{dashboard.lowStockCount}</strong><small class="warning"
+					>At or below reorder level</small
 				>
 			</article>
 			<article>
-				<span>Non-selling items</span><strong class="muted">24</strong><small
-					>Review recommended</small
+				<span>No sales in 30 days</span><strong class="muted">{dashboard.nonSellingCount}</strong><small
+					>Active catalog items</small
 				>
 			</article>
 		</section>
@@ -223,8 +160,8 @@
 				<section class="dashboard-card transactions-card">
 					<div class="card-heading">
 						<div>
-							<h2>Recent transactions</h2>
-							<p>Today · {dateLabel}</p>
+							<h2>Recent sales</h2>
+							<p>Latest recorded sale items</p>
 						</div>
 						<a class="compact-button" href="/staff/admin/reports">
 							<svg viewBox="0 0 24 24" aria-hidden="true"
@@ -232,7 +169,7 @@
 									d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"
 								/></svg
 							>
-							Export
+							View reports
 						</a>
 					</div>
 					<div class="table-wrap">
@@ -242,15 +179,17 @@
 								></thead
 							>
 							<tbody>
-								{#each recentTransactions as transaction (transaction.reference)}
+							{#each dashboard.recentTransactions as transaction (`${transaction.reference}-${transaction.item}-${transaction.date}`)}
 									<tr>
 										<td
-											><strong>{transaction.item}</strong><small>{transaction.reference}</small></td
+										><strong>{transaction.item}</strong><small>{transaction.reference} · {transaction.date}</small></td
 										>
 										<td>{transaction.category}</td>
 										<td>{transaction.quantity}</td>
-										<td class="amount">{transaction.amount}</td>
+									<td class="amount">{formatCurrency(transaction.amount)}</td>
 									</tr>
+							{:else}
+								<tr><td colspan="4" class="dashboard-empty">No sales have been recorded yet.</td></tr>
 								{/each}
 							</tbody>
 						</table>
@@ -274,9 +213,9 @@
 							></span
 						></a
 					>
-					<a href="/staff/admin/inventory/adjustments/actual-count"
+					<a href="/staff/admin/utilities"
 						><span class="quick-icon amber-icon" aria-hidden="true">⌁</span><span
-							><strong>Maintenance Logs</strong><small>Track service requests and repairs</small
+							><strong>Utilities</strong><small>Review utility accounts and bills</small
 							></span
 						></a
 					>
@@ -294,43 +233,28 @@
 									d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"
 								/></svg
 							>
-							Export
+							View reports
 						</a>
 					</div>
 					<div class="sales-summary">
-						<div><span>Current week</span><strong>₱284,620</strong></div>
-						<div><span>Vs last week</span><strong class="positive">+8.2%</strong></div>
+						<div><span>Current 7 days</span><strong>{formatCurrency(dashboard.currentWeekSales)}</strong></div>
+						<div><span>Vs previous 7 days</span><strong class:positive={dashboard.weekChange === null || dashboard.weekChange >= 0} class:warning={dashboard.weekChange !== null && dashboard.weekChange < 0}>{weekChangeLabel}</strong></div>
 					</div>
 					<div class="sales-chart" aria-label="Sales trend chart for the last seven days">
-						<div class="chart-label">₱18k</div>
+						<div class="chart-label">Daily sales · {formatCurrency(chartCeiling)}</div>
 						<div class="chart-bars">
-							{#each salesBars as height, index (`${weekDays[index]}-${index}`)}
+							{#each dashboard.salesTrend as day, index (`${day.label}-${index}`)}
 								<div class="chart-day">
 									<div
-										class:highlight={index === 4 || index === 6}
+										class:highlight={index === 6}
 										class="chart-bar"
-										style={`height: ${height}%`}
-										title={`${weekDays[index]} sales`}
+										style={`height: ${day.height}%`}
+										title={`${day.label}: ${formatCurrency(day.amount)}`}
 									></div>
-									<span>{weekDays[index]}</span>
+									<span>{day.label}</span>
 								</div>
 							{/each}
 						</div>
-					</div>
-				</section>
-
-				<section class="dashboard-card service-card">
-					<div class="card-heading">
-						<div>
-							<h2>Service status</h2>
-							<p>Live operational health</p>
-						</div>
-						<span class="status-badge blue-badge">4 / 4 online</span>
-					</div>
-					<div class="service-list">
-						{#each services as service (service)}
-							<div><span><i></i>{service}</span><strong>Healthy</strong></div>
-						{/each}
 					</div>
 				</section>
 			</div>
@@ -340,45 +264,45 @@
 					<div class="card-heading">
 						<div>
 							<h2>Low stock items</h2>
-							<p>18 items need restocking</p>
+							<p>{dashboard.lowStockCount} items at or below reorder level</p>
 						</div>
-						<span class="status-badge amber-badge">Action needed</span>
+						{#if dashboard.lowStockCount}<span class="status-badge amber-badge">Action needed</span>{/if}
 					</div>
 					<div class="compact-list">
-						{#each lowStockItems as item (item.sku)}
+						{#each dashboard.lowStockItems as item (item.sku)}
 							<div class="compact-row">
 								<span><strong>{item.name}</strong><small>{item.sku} · {item.category}</small></span>
 								<b class:urgent={item.remaining <= 2}>{item.remaining} left</b>
 							</div>
+						{:else}
+							<p class="dashboard-empty">No low-stock items right now.</p>
 						{/each}
 					</div>
-					<a class="card-link" href="/staff/admin/inventory"
-						>View all 18 low-stock items <span aria-hidden="true">→</span></a
-					>
+					<a class="card-link" href="/staff/admin/inventory">Open inventory <span aria-hidden="true">→</span></a>
 				</section>
 
 				<section class="dashboard-card operational-card">
 					<div class="card-heading"><div><h2>Operational summary</h2></div></div>
 					<div class="summary-list">
 						<div>
-							<span><i class="dot blue-dot"></i>Utility balance</span><strong>₱18,940.75</strong>
+							<span><i class="dot blue-dot"></i>Outstanding utility balance</span><strong>{formatCurrency(dashboard.outstandingBalance)}</strong>
 						</div>
 						<div>
-							<span><i class="dot amber-dot"></i>Next bill due</span><strong class="warning"
-								>05 Nov</strong
+							<span><i class="dot amber-dot"></i>Next unpaid bill due</span><strong class:warning={Boolean(dashboard.nextBillDate)}
+								>{dashboard.nextBillDate ?? 'None due'}</strong
 							>
 						</div>
 						<div>
-							<span><i class="dot green-dot"></i>Active services</span><strong class="positive"
-								>4 / 4 operational</strong
+							<span><i class="dot green-dot"></i>Active utility accounts</span><strong class="positive"
+								>{dashboard.activeAccounts} / {dashboard.utilityAccountCount} active</strong
 							>
 						</div>
 						<div>
-							<span><i class="dot slate-dot"></i>YTD utility spend</span><strong>₱186,420</strong>
+							<span><i class="dot slate-dot"></i>Paid this year</span><strong>{formatCurrency(dashboard.ytdUtilitySpend)}</strong>
 						</div>
 						<div>
-							<span><i class="dot slate-dot"></i>Non-selling SKUs</span><strong class="muted"
-								>24 items</strong
+							<span><i class="dot slate-dot"></i>No sales in 30 days</span><strong class="muted"
+								>{dashboard.nonSellingCount} items</strong
 							>
 						</div>
 					</div>
@@ -391,16 +315,17 @@
 					<div class="card-heading">
 						<div>
 							<h2>Recent activity</h2>
-							<p>Latest system events</p>
+							<p>Latest recorded audit events</p>
 						</div>
-						<span class="status-badge amber-badge">3 alerts</span>
 					</div>
 					<div class="activity-list">
-						{#each recentActivity as activity (activity.title)}
+						{#each dashboard.activity as activity (`${activity.title}-${activity.meta}`)}
 							<div class="activity-row">
 								<span><strong>{activity.title}</strong><small>{activity.meta}</small></span>
 								<b class={`status-badge ${activity.tone}-badge`}>{activity.status}</b>
 							</div>
+						{:else}
+							<p class="dashboard-empty">No audit activity has been recorded yet.</p>
 						{/each}
 					</div>
 				</section>
@@ -499,35 +424,66 @@
 	.notification-wrap {
 		position: relative;
 	}
+	.notification-bell { position: relative; transition: color 140ms ease, border-color 140ms ease, box-shadow 140ms ease; }
+	.notification-bell:hover, .notification-bell[aria-expanded='true'] { border-color: #a8c5f5; color: #2563eb; box-shadow: 0 0 0 3px #2563eb14; }
+	.notification-badge {
+		position: absolute;
+		top: -0.24rem;
+		right: -0.24rem;
+		display: grid;
+		min-width: 1rem;
+		height: 1rem;
+		box-sizing: border-box;
+		place-items: center;
+		border: 2px solid #fff;
+		border-radius: 2rem;
+		background: #ef4444;
+		color: #fff;
+		padding: 0 0.18rem;
+		font-size: 0.52rem;
+		font-weight: 900;
+		line-height: 1;
+	}
 	.notification-popover {
 		position: absolute;
-		z-index: 5;
-		top: calc(100% + 0.55rem);
+		z-index: 30;
+		top: calc(100% + 0.7rem);
 		right: 0;
-		display: grid;
-		gap: 0.3rem;
 		box-sizing: border-box;
-		width: min(13rem, calc(100vw - 2rem));
+		width: min(21rem, calc(100vw - 2rem));
 		max-width: calc(100vw - 2rem);
-		border: 1px solid #e2e8f0;
-		border-radius: 0.6rem;
+		border: 1px solid #dbe4f0;
+		border-radius: 0.9rem;
 		background: white;
-		box-shadow: 0 12px 30px #182b471c;
-		padding: 0.8rem;
+		box-shadow: 0 18px 48px #15284426;
+		overflow: hidden;
 	}
-	.notification-popover strong {
-		color: #1d2c47;
-		font-size: 0.64rem;
+	.notification-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		border-bottom: 1px solid #e8edf4;
+		padding: 0.9rem 1rem;
 	}
-	.notification-popover span,
-	.notification-popover a {
-		color: #8490a2;
-		font-size: 0.58rem;
-	}
-	.notification-popover a {
-		color: #2563eb;
-		text-decoration: none;
-	}
+	.notification-heading > div { display: grid; gap: 0.14rem; }
+	.notification-eyebrow { color: #78869a; font-size: 0.56rem; font-weight: 850; letter-spacing: 0.1em; text-transform: uppercase; }
+	.notification-heading strong { color: #1d2c47; font-size: 0.88rem; font-weight: 900; }
+	.notification-count { border-radius: 2rem; background: #edf4ff; color: #2868cf; padding: 0.28rem 0.55rem; font-size: 0.62rem; font-weight: 850; white-space: nowrap; }
+	.notification-list { display: grid; padding: 0.25rem 1rem; }
+	.notification-item { display: grid; grid-template-columns: 2rem minmax(0, 1fr); align-items: start; gap: 0.7rem; border-bottom: 1px solid #edf1f6; padding: 0.8rem 0; }
+	.notification-item:last-child { border-bottom: 0; }
+	.notification-symbol { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: 0.6rem; background: #fff4df; color: #a56600; font-size: 0.85rem; font-weight: 900; }
+	.notification-item.bill .notification-symbol { background: #edf4ff; color: #2868cf; }
+	.notification-item strong { color: #26364f; font-size: 0.73rem; font-weight: 850; }
+	.notification-item p { margin: 0.2rem 0 0.35rem; color: #728198; font-size: 0.66rem; line-height: 1.45; }
+	.notification-item a { color: #2563eb; font-size: 0.65rem; font-weight: 800; text-decoration: none; }
+	.notification-item a:hover { text-decoration: underline; }
+	.notification-empty { display: grid; justify-items: center; padding: 1.35rem 1rem 1.1rem; text-align: center; }
+	.notification-check { display: grid; width: 2.1rem; height: 2.1rem; place-items: center; margin-bottom: 0.55rem; border-radius: 50%; background: #e9fbf1; color: #09834b; font-size: 1rem; font-weight: 900; }
+	.notification-empty strong { color: #26364f; font-size: 0.75rem; }
+	.notification-empty p { margin: 0.25rem 0 0; color: #78869a; font-size: 0.65rem; }
+	.notification-footer { border-top: 1px solid #e8edf4; background: #f8fafd; color: #8995a6; padding: 0.6rem 1rem; font-size: 0.58rem; }
 	.welcome-card {
 		display: flex;
 		min-width: 0;
@@ -538,7 +494,7 @@
 		border-radius: 0.75rem;
 		background: white;
 		box-shadow: 0 6px 20px rgba(32, 55, 88, 0.04);
-		padding: 0.7rem 0.85rem;
+		padding: 0.95rem 1.1rem;
 	}
 	.welcome-icon {
 		width: 1.65rem;
@@ -554,7 +510,7 @@
 	.welcome-eyebrow {
 		margin: 0 0 0.12rem;
 		color: #2563eb;
-		font-size: 0.48rem;
+		font-size: 0.62rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -562,13 +518,13 @@
 	.welcome-copy h2 {
 		margin: 0;
 		color: #172b4d;
-		font-size: 0.83rem;
+		font-size: 1rem;
 		font-weight: 900;
 	}
 	.welcome-copy > p:last-child {
 		margin: 0.15rem 0 0;
 		color: #8290a2;
-		font-size: 0.57rem;
+		font-size: 0.68rem;
 	}
 	.live-clock {
 		display: grid;
@@ -579,12 +535,12 @@
 	}
 	.live-clock-label {
 		color: #8291a4;
-		font-size: 0.49rem;
+		font-size: 0.62rem;
 		font-weight: 700;
 	}
 	.live-clock time {
 		color: #172b4d;
-		font-size: 0.83rem;
+		font-size: 0.95rem;
 		font-variant-numeric: tabular-nums;
 		font-weight: 900;
 	}
@@ -593,7 +549,7 @@
 		align-items: center;
 		gap: 0.3rem;
 		color: #168251;
-		font-size: 0.49rem;
+		font-size: 0.62rem;
 		font-weight: 800;
 	}
 	.live-indicator i {
@@ -615,7 +571,7 @@
 		background: white;
 		color: #44536a;
 		padding: 0.35rem 0.55rem;
-		font-size: 0.55rem;
+		font-size: 0.68rem;
 		font-weight: 700;
 		text-decoration: none;
 		white-space: nowrap;
@@ -627,8 +583,8 @@
 	.dashboard-stats {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.55rem;
-		margin-bottom: 0.65rem;
+		gap: 0.8rem;
+		margin-bottom: 0.9rem;
 	}
 	.dashboard-stats article,
 	.dashboard-card {
@@ -639,13 +595,13 @@
 		box-shadow: 0 5px 16px rgba(32, 55, 88, 0.04);
 	}
 	.dashboard-stats article {
-		padding: 0.65rem 0.75rem;
+		padding: 0.9rem 1rem;
 	}
 	.dashboard-stats span,
 	.dashboard-stats small {
 		display: block;
 		color: #7f8b9d;
-		font-size: 0.51rem;
+		font-size: 0.65rem;
 	}
 	.dashboard-stats span {
 		font-weight: 800;
@@ -665,6 +621,8 @@
 	.warning {
 		color: #ec7b09 !important;
 	}
+	.dashboard-data-notice { margin: 0 0 .85rem; border: 1px solid #f0cf91; border-radius: .6rem; background: #fff8e8; color: #8a5a08; padding: .7rem .9rem; font-size: .72rem; }
+	.dashboard-empty { margin: .8rem 0; color: #8490a1; font-size: .75rem; text-align: center; }
 	.muted {
 		color: #788395 !important;
 	}
@@ -672,17 +630,17 @@
 		display: grid;
 		grid-template-columns: minmax(0, 2.2fr) minmax(15rem, 0.95fr);
 		align-items: start;
-		gap: 0.6rem;
+		gap: 0.9rem;
 	}
 	.main-column,
 	.side-column {
 		display: grid;
 		min-width: 0;
 		align-content: start;
-		gap: 0.6rem;
+		gap: 0.9rem;
 	}
 	.dashboard-card {
-		padding: 0.65rem 0.72rem;
+		padding: 1rem 1.1rem;
 	}
 	.card-heading {
 		display: flex;
@@ -694,13 +652,13 @@
 	.card-heading h2 {
 		margin: 0;
 		color: #1c2c49;
-		font-size: 0.62rem;
+		font-size: 0.78rem;
 		font-weight: 900;
 	}
 	.card-heading p {
 		margin: 0.12rem 0 0;
 		color: #8a96a7;
-		font-size: 0.5rem;
+		font-size: 0.65rem;
 	}
 	.table-wrap {
 		overflow-x: auto;
@@ -713,7 +671,7 @@
 	th {
 		background: #f3f5f8;
 		color: #7e8998;
-		font-size: 0.46rem;
+		font-size: 0.59rem;
 		text-align: left;
 		text-transform: uppercase;
 	}
@@ -731,7 +689,7 @@
 	td {
 		border-bottom: 1px solid #e9edf2;
 		color: #7d899b;
-		font-size: 0.49rem;
+		font-size: 0.65rem;
 	}
 	td strong,
 	td small {
@@ -793,14 +751,14 @@
 	.quick-links strong {
 		overflow: hidden;
 		color: #2563eb;
-		font-size: 0.52rem;
+		font-size: 0.65rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.quick-links small {
 		overflow: hidden;
 		color: #8490a1;
-		font-size: 0.43rem;
+		font-size: 0.58rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -841,7 +799,7 @@
 	}
 	.sales-summary span {
 		color: #8490a1;
-		font-size: 0.44rem;
+		font-size: 0.58rem;
 		font-weight: 800;
 		text-transform: uppercase;
 	}
@@ -864,7 +822,7 @@
 		top: 0.05rem;
 		left: 2.1rem;
 		color: #8996a8;
-		font-size: 0.43rem;
+		font-size: 0.57rem;
 	}
 	.chart-bars {
 		display: flex;
@@ -884,7 +842,7 @@
 		justify-content: end;
 		gap: 0.25rem;
 		color: #8793a4;
-		font-size: 0.43rem;
+		font-size: 0.57rem;
 	}
 	.chart-bar {
 		width: 100%;
@@ -922,7 +880,7 @@
 	}
 	.service-list strong {
 		color: #0a9f52;
-		font-size: 0.5rem;
+		font-size: 0.65rem;
 	}
 	.status-badge {
 		display: inline-flex;
@@ -930,7 +888,7 @@
 		justify-content: center;
 		border-radius: 1rem;
 		padding: 0.2rem 0.38rem;
-		font-size: 0.44rem;
+		font-size: 0.59rem;
 		font-weight: 800;
 		white-space: nowrap;
 	}
@@ -992,7 +950,7 @@
 		background: #fff2d7;
 		color: #b87a06;
 		padding: 0.17rem 0.32rem;
-		font-size: 0.43rem;
+		font-size: 0.55rem;
 	}
 	.compact-row > b.urgent {
 		background: #ffebeb;
@@ -1012,14 +970,14 @@
 		justify-content: space-between;
 		gap: 0.4rem;
 		color: #8490a1;
-		font-size: 0.47rem;
+		font-size: 0.61rem;
 	}
 	.summary-list div > span {
 		gap: 0.35rem;
 	}
 	.summary-list strong {
 		color: #253650;
-		font-size: 0.48rem;
+		font-size: 0.63rem;
 		text-align: right;
 		white-space: nowrap;
 	}
@@ -1087,6 +1045,25 @@
 		border-color: #334866;
 		background: #172640;
 	}
+	:global(html[data-theme='dark'] .dashboard-page .notification-heading),
+	:global(html[data-theme='dark'] .dashboard-page .notification-item),
+	:global(html[data-theme='dark'] .dashboard-page .notification-footer) { border-color: #334866; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-footer) { background: #101e34; color: #9aabc2; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-heading strong),
+	:global(html[data-theme='dark'] .dashboard-page .notification-item strong),
+	:global(html[data-theme='dark'] .dashboard-page .notification-empty strong) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-eyebrow),
+	:global(html[data-theme='dark'] .dashboard-page .notification-item p),
+	:global(html[data-theme='dark'] .dashboard-page .notification-empty p) { color: #aebdcb; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-count) { background: #243a59; color: #b9d2ff; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-badge) { border-color: #172640; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-item.warning .notification-symbol) { background: #4a3a1c; color: #ffdb8a; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-item.bill .notification-symbol) { background: #243a59; color: #9fc3ff; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-check) { background: #123b31; color: #82e2b0; }
+	:global(html[data-theme='dark'] .dashboard-page .notification-bell:hover),
+	:global(html[data-theme='dark'] .dashboard-page .notification-bell[aria-expanded='true']) { border-color: #5f85bf; color: #9fc3ff; box-shadow: 0 0 0 3px #6da2ff1c; }
+	:global(html[data-theme='dark'] .dashboard-page .dashboard-data-notice) { border-color: #765c2d; background: #342d20; color: #f2d08a; }
+	:global(html[data-theme='dark'] .dashboard-page .dashboard-empty) { color: #b8c8dd; }
 	:global(html[data-theme='dark'] .dashboard-page h1),
 	:global(html[data-theme='dark'] .dashboard-page h2),
 	:global(html[data-theme='dark'] .dashboard-page td strong),

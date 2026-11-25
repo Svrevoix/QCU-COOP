@@ -1,158 +1,89 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { getContext, tick } from 'svelte';
+	import type { PageData } from './$types';
 	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
 	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
-	import {
-		productCatalog,
-		type Product as CatalogProduct,
-		type ProductCategory
-	} from '$lib/products';
-	import { productMatchesTag, productSubcategories } from '$lib/productFilters';
 
-	type Product = {
-		key: string;
-		sku: string;
-		name: string;
-		category: ProductCategory;
-		price: number | undefined;
-		size: string;
-		stock: number;
-	};
+	type Product = { id: number; sku: string; name: string; categoryId: number | null; price: number | null; size: string; stock: number; image: string | null };
 	type CartLine = { product: Product; quantity: number };
-	type Member = { name: string; id: string };
-
-	const categories: { id: 'all' | ProductCategory; label: string }[] = [
-		{ id: 'all', label: 'All' },
-		{ id: 'supplies', label: 'School & Office Supplies' },
-		{ id: 'uniforms', label: 'Uniforms' },
-		{ id: 'merchandise', label: 'QCU Merchandise & Accessories' },
-		{ id: 'food', label: 'Food, Snacks & Dining Items' },
-		{ id: 'care', label: 'Personal Care, Hygiene & Medical' },
-		{ id: 'bags', label: 'Miscellaneous Bags & Accessories' },
-		{ id: 'textbooks', label: 'Academic Textbooks' },
-		{ id: 'operations', label: 'Financial & Co-op Operations' }
-	];
-	const categoryLabels = Object.fromEntries(
-		categories.filter((category) => category.id !== 'all').map(({ id, label }) => [id, label])
-	) as Record<ProductCategory, string>;
-	const products: Product[] = productCatalog.flatMap((catalogProduct, productIndex) => {
-		const variants = catalogProduct.variants ?? [
-			{ sku: catalogProduct.sku, price: catalogProduct.price }
-		];
-		const sizeOptions = getVariantOptions(catalogProduct, variants.length);
-
-		return variants.map((variant, variantIndex) => ({
-			key: `${catalogProduct.id}:${variant.sku}`,
-			sku: variant.sku,
-			name: catalogProduct.name,
-			category: catalogProduct.category,
-			price: variant.price ?? catalogProduct.price,
-			size: sizeOptions[variantIndex] ?? 'One size',
-			stock: 8 + ((productIndex * 31 + variantIndex * 17) % 120)
-		}));
-	});
-	const members: Member[] = [
-		{ name: 'Emma Wilson', id: '23-2111' },
-		{ name: 'Maria Santos', id: '24-1084' },
-		{ name: 'John Dela Cruz', id: '22-0732' }
-	];
-
-	let activeCategory = $state<'all' | ProductCategory>('all');
-	let activeProductTag = $state('');
+	type Member = { id: string; displayId: string; name: string; role: string };
+	type PickupOrder = { id: string; reference: string; customerId: string; customerName: string; total: number; stockReserved: boolean; createdAt: string; items: Array<{ productId: number; name: string; quantity: number; price: number }> };
+	let { data, form }: { data: PageData; form?: { success?: boolean; message?: string } } = $props();
+	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	let activeCategory = $state('all');
 	let showFilters = $state(false);
 	let search = $state('');
-	let cart = $state<CartLine[]>([
-		{ product: products[0], quantity: 1 },
-		{ product: products[1], quantity: 1 },
-		{ product: products[2], quantity: 1 }
-	]);
-	let customer = $state<Member | null>(members[0]);
+	let cart = $state<CartLine[]>([]);
+	let customer = $state<Member | null>(null);
+	let selectedPickupOrder = $state<PickupOrder | null>(null);
 	let customerDialog = $state<HTMLDialogElement>();
 	let paymentDialog = $state<HTMLDialogElement>();
 	let searchInput = $state<HTMLInputElement>();
-	let paymentMethod = $state('Cash');
 	let cashReceived = $state('');
 	let notificationOpen = $state(false);
 	let toast = $state('');
 	let heldOrders = $state<CartLine[][]>([]);
 	let lastHeldOrder = $state<CartLine[] | null>(null);
-	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
 	let mobileSidebarOpen = $state(false);
-
-	const filteredProducts = $derived(
-		products.filter((product) => {
-			const matchesCategory = activeCategory === 'all' || product.category === activeCategory;
-			const matchesTag = !activeProductTag || productMatchesTag(product.name, activeProductTag);
-			const matchesSearch = `${product.name} ${product.sku} ${categoryLabels[product.category]}`
-				.toLowerCase()
-				.includes(search.trim().toLowerCase());
-			return matchesCategory && matchesTag && matchesSearch;
-		})
-	);
-	const availableSubcategories = $derived(
-		activeCategory === 'all'
-			? productSubcategories
-			: productSubcategories.filter((subcategory) => subcategory.category === activeCategory)
-	);
-	const itemCount = $derived(cart.reduce((total, line) => total + line.quantity, 0));
-	const subtotal = $derived(
-		cart.reduce((total, line) => total + (line.product.price ?? 0) * line.quantity, 0)
-	);
-	const discount = $derived(customer ? subtotal * 0.05 : 0);
-	const total = $derived(subtotal - discount);
-	const includedVat = $derived(total > 0 ? (total * 12) / 112 : 0);
-	const cashChange = $derived(Math.max(0, Number(cashReceived || 0) - total));
-	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
-		new Date()
-	);
-
-	function formatCurrency(amount: number) {
-		return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-	}
-
-	function getVariantOptions(product: CatalogProduct, variantCount: number) {
-		const options = product.name.match(/\(([^)]+)\)$/)?.[1].split(',').map((option) => option.trim());
-		return variantCount > 1 && options?.length === variantCount ? options : ['One size'];
-	}
+	const products = $derived(data.products as Product[]);
+	const members = $derived(data.customers as Member[]);
+	const pickupOrders = $derived(data.pickupOrders as PickupOrder[]);
+	const categories = $derived([{ id: 'all', label: 'All products' }, ...data.categories.map((category) => ({ id: String(category.id), label: category.category_name }))]);
+	const categoryLabels = $derived(new Map(data.categories.map((category) => [category.id, category.category_name])));
+	const filteredProducts = $derived(products.filter((product) => {
+		const matchesCategory = activeCategory === 'all' || String(product.categoryId) === activeCategory;
+		const matchesSearch = `${product.name} ${product.sku} ${categoryLabels.get(product.categoryId ?? -1) ?? 'Uncategorized'}`.toLowerCase().includes(search.trim().toLowerCase());
+		return matchesCategory && matchesSearch;
+	}));
+	const itemCount = $derived(cart.reduce((sum, line) => sum + line.quantity, 0));
+	const subtotal = $derived(cart.reduce((sum, line) => sum + (line.product.price ?? 0) * line.quantity, 0));
+	const discount = $derived(customer ? Math.round(subtotal * 0.05 * 100) / 100 : 0);
+	const total = $derived(Math.round((subtotal - discount) * 100) / 100);
+	const chargeTotal = $derived(selectedPickupOrder?.total ?? total);
+	const includedVat = $derived(total > 0 ? Math.round((total * 12 / 112) * 100) / 100 : 0);
+	const cashChange = $derived(Math.max(0, Number(cashReceived || 0) - chargeTotal));
+	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(new Date());
+	const formatCurrency = (amount: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
 	function quantityFor(product: Product) {
-		return cart.find((line) => line.product.key === product.key)?.quantity ?? 0;
+		return cart.find((line) => line.product.id === product.id)?.quantity ?? 0;
 	}
 
 	function addToOrder(product: Product) {
-		if (product.stock < 1 || product.price === undefined) return;
-		const line = cart.find((item) => item.product.key === product.key);
+		if (product.stock < 1 || product.price === null) return;
+		const line = cart.find((item) => item.product.id === product.id);
 		if (line) {
 			if (line.quantity >= product.stock) return;
-			cart = cart.map((item) =>
-				item.product.key === product.key ? { ...item, quantity: item.quantity + 1 } : item
-			);
+			cart = cart.map((item) => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
 		} else {
 			cart = [...cart, { product, quantity: 1 }];
 		}
 	}
 
-	function updateQuantity(key: string, change: number) {
-		cart = cart
-			.map((line) =>
-				line.product.key === key
-					? { ...line, quantity: Math.min(line.product.stock, line.quantity + change) }
-					: line
-			)
-			.filter((line) => line.quantity > 0);
+	function updateQuantity(productId: number, change: number) {
+		cart = cart.map((line) => line.product.id === productId ? { ...line, quantity: Math.min(line.product.stock, line.quantity + change) } : line).filter((line) => line.quantity > 0);
 	}
 
-	function removeFromOrder(key: string) {
-		cart = cart.filter((line) => line.product.key !== key);
+	function removeFromOrder(productId: number) {
+		cart = cart.filter((line) => line.product.id !== productId);
 	}
 
 	function holdOrder() {
-		if (cart.length === 0) return;
+		if (!cart.length) return;
 		lastHeldOrder = cart.map((line) => ({ ...line }));
 		heldOrders = [...heldOrders, lastHeldOrder];
 		cart = [];
 		toast = `Order held locally · ${heldOrders.length} held`;
+	}
+
+	function beginPickupCheckout(order: PickupOrder) {
+		if (cart.length > 0) return;
+		selectedPickupOrder = order;
+		customer = members.find((member) => member.id === order.customerId) ?? null;
+		cashReceived = '';
+		paymentDialog?.showModal();
 	}
 
 	function restoreHeldOrder() {
@@ -163,40 +94,9 @@
 		toast = 'Held order restored.';
 	}
 
-	function completePayment(event: SubmitEvent) {
-		event.preventDefault();
-		if (cart.length === 0) return;
-		if (paymentMethod === 'Cash' && Number(cashReceived) < total) return;
-
-		paymentDialog?.close();
-		cart = [];
-		customer = null;
-		cashReceived = '';
-		toast = 'Payment completed in demo mode. No transaction was sent to a backend.';
-	}
-
 	async function focusSearch() {
 		await tick();
 		searchInput?.focus();
-	}
-
-	function selectCategory(category: 'all' | ProductCategory) {
-		activeCategory = category;
-		if (
-			activeProductTag &&
-			!productSubcategories.some(
-				(subcategory) =>
-					(category === 'all' || subcategory.category === category) &&
-					subcategory.tags.includes(activeProductTag)
-			)
-		) {
-			activeProductTag = '';
-		}
-	}
-
-	function toggleProductTag(category: ProductCategory, tag: string) {
-		activeCategory = category;
-		activeProductTag = activeProductTag === tag ? '' : tag;
 	}
 </script>
 
@@ -206,7 +106,7 @@
 
 <svelte:head>
 	<title>Register | QCU Coop Cashier</title>
-	<meta name="description" content="Cashier point-of-sale register with a local demo order." />
+	<meta name="description" content="Cashier point-of-sale register connected to live store inventory." />
 </svelte:head>
 
 <main
@@ -279,10 +179,11 @@
 							No new register alerts.
 						</div>{/if}
 				</div>
-				<span class="cashier-avatar">MS</span>
-				<strong class="cashier-name">Maria Santos</strong>
+				<span class="cashier-avatar">{data.cashierName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span>
+				<strong class="cashier-name">{data.cashierName}</strong>
 			</div>
 		</header>
+		{#if form?.message}<div class:pos-error={!form.success} class:pos-success={form.success} role={form.success ? 'status' : 'alert'}>{form.message}</div>{/if}
 
 		<div class="register-workspace">
 			<section class="products-area" aria-labelledby="products-title">
@@ -290,6 +191,38 @@
 					<h2 id="products-title">Register Products</h2>
 					<p>Tap items below to add to the current order</p>
 				</header>
+				{#if pickupOrders.length}
+					<details class="pickup-orders">
+						<summary><span>Customer pickup orders</span><strong>{pickupOrders.length} waiting</strong></summary>
+						<div class="pickup-order-list">
+							{#each pickupOrders as order (order.id)}
+								<article class="pickup-order">
+									<div class="pickup-order-copy">
+										<strong>{order.reference} <span>· {order.customerName}</span>{#if !order.stockReserved}<em>Not reserved</em>{/if}</strong>
+										<p>{order.items.map((item) => `${item.quantity}× ${item.name}`).join(', ')}</p>
+									</div>
+									<div class="pickup-order-actions">
+										<strong>{formatCurrency(order.total)}</strong>
+										<button type="button" class="pickup-charge" disabled={cart.length > 0} onclick={() => beginPickupCheckout(order)}>Complete pickup</button>
+										<form
+											method="POST"
+											action="?/cancelPickupOrder"
+											use:enhance
+											onsubmit={(event) => {
+												if (!confirm(`Cancel pickup ${order.reference}? Any reserved stock will be returned to the store.`)) {
+													event.preventDefault();
+												}
+											}}
+										>
+											<input type="hidden" name="orderId" value={order.id} />
+											<button type="submit" class="pickup-cancel">Cancel order</button>
+										</form>
+									</div>
+								</article>
+							{/each}
+						</div>
+					</details>
+				{/if}
 				<label class="product-search">
 					<svg viewBox="0 0 24 24" aria-hidden="true"
 						><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg
@@ -321,27 +254,26 @@
 						Filter products
 					</button>
 					<span class="filter-summary">
-						{activeCategory === 'all' ? 'All categories' : categoryLabels[activeCategory]}
-						{#if activeProductTag} · {activeProductTag}{/if}
+						{activeCategory === 'all' ? 'All categories' : categoryLabels.get(Number(activeCategory)) ?? 'Category'}
 					</span>
 				</div>
 
 				<div class="product-count">
 					<strong
-						>{activeProductTag ? `${activeProductTag} · ` : ''}{activeCategory === 'all' ? 'All products' : categoryLabels[activeCategory]} · {filteredProducts.length}
+						>{activeCategory === 'all' ? 'All products' : categoryLabels.get(Number(activeCategory)) ?? 'Category'} · {filteredProducts.length}
 						items</strong
 					>
-					<span>Sample stock shown by selected size</span>
+					<span>Live store stock · {products.length} active products</span>
 				</div>
 
 				<div class="product-grid">
-					{#each filteredProducts as product (product.key)}
+					{#each filteredProducts as product (product.id)}
 						<article class="product-card">
 							<div class="product-image">
 								<span class="stock-badge" class:low-stock={product.stock < 20}
 									>{product.stock} left</span
 								>
-								<div class="image-placeholder" aria-hidden="true">
+								{#if product.image}<img src={product.image} alt="" loading="lazy" />{:else}<div class="image-placeholder" aria-hidden="true">
 									<svg viewBox="0 0 24 24"
 										><rect x="4" y="4" width="16" height="16" rx="2" /><circle
 											cx="9"
@@ -349,24 +281,24 @@
 											r="1.5"
 										/><path d="m5 17 5-5 3 3 2-2 4 4" /></svg
 									>
-								</div>
+								</div>{/if}
 								<span class="product-variant">{product.size}<small>{product.sku}</small></span>
 							</div>
 							<h3>{product.name}</h3>
-							<p class="product-category">{categoryLabels[product.category]}</p>
+							<p class="product-category">{categoryLabels.get(product.categoryId ?? -1) ?? 'Uncategorized'}</p>
 							<strong class="product-price"
-								>{product.price === undefined ? 'Price to be set' : formatCurrency(product.price)}</strong
+								>{product.price === null ? 'Price to be set' : formatCurrency(product.price)}</strong
 							>
 							<button
 								class="add-to-order"
 								type="button"
-								disabled={product.stock === 0 || product.price === undefined || quantityFor(product) >= product.stock}
+								disabled={product.stock === 0 || product.price === null || quantityFor(product) >= product.stock}
 								onclick={() => addToOrder(product)}
 							>
 								<span
 									>{product.stock === 0
 										? 'Out of stock'
-										: product.price === undefined
+										: product.price === null
 											? 'Price to be set'
 										: quantityFor(product) > 0
 											? 'Add to order'
@@ -381,7 +313,7 @@
 					{/each}
 				</div>
 				<p class="product-footer">
-					Showing {filteredProducts.length} of {products.length} items / size variants
+					Showing {filteredProducts.length} of {products.length} products
 				</p>
 			</section>
 
@@ -410,7 +342,7 @@
 							class="customer-button"
 							onclick={() => customerDialog?.showModal()}
 						>
-							{#if customer}{customer.name} ({customer.id}){:else}Walk-in customer{/if}
+							{#if customer}{customer.name} ({customer.displayId}){:else}Walk-in customer{/if}
 						</button>
 						<button
 							class="member-button"
@@ -428,7 +360,7 @@
 					<strong>Cart Items</strong><span>{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
 				</div>
 				<div class="cart-list">
-					{#each cart as line (line.product.key)}
+					{#each cart as line (line.product.id)}
 						<article class="cart-item">
 							<div class="cart-item-top">
 								<div>
@@ -442,20 +374,20 @@
 									<button
 										type="button"
 										aria-label={`Remove one ${line.product.name}`}
-										onclick={() => updateQuantity(line.product.key, -1)}>−</button
+									onclick={() => updateQuantity(line.product.id, -1)}>−</button
 									>
 									<strong>{line.quantity}</strong>
 									<button
 										type="button"
 										aria-label={`Add one ${line.product.name}`}
-										disabled={line.quantity >= line.product.stock}
-										onclick={() => updateQuantity(line.product.key, 1)}>+</button
+									disabled={line.quantity >= line.product.stock}
+									onclick={() => updateQuantity(line.product.id, 1)}>+</button
 									>
 								</div>
 								<button
 									class="remove-item"
 									type="button"
-									onclick={() => removeFromOrder(line.product.key)}>Remove</button
+									onclick={() => removeFromOrder(line.product.id)}>Remove</button
 								>
 							</div>
 						</article>
@@ -537,7 +469,7 @@
 		>
 			<header class="filter-panel-heading">
 				<div>
-					<span>{activeCategory === 'all' ? 'All products' : categoryLabels[activeCategory]}</span>
+					<span>{activeCategory === 'all' ? 'All products' : categoryLabels.get(Number(activeCategory)) ?? 'Category'}</span>
 					<h2 id="register-filter-title">Filter products</h2>
 				</div>
 				<button type="button" aria-label="Close filters" onclick={() => (showFilters = false)}
@@ -553,39 +485,21 @@
 								type="button"
 								class:active={activeCategory === category.id}
 								aria-pressed={activeCategory === category.id}
-								onclick={() => selectCategory(category.id)}
+								onclick={() => activeCategory = category.id}
 							>
 								{category.id === 'all' ? 'All products' : category.label}
 							</button>
 						{/each}
 					</div>
 				</div>
-				{#each availableSubcategories as subcategory (subcategory.name)}
-					<div class="filter-subcategory">
-						<h3>{subcategory.name}</h3>
-						<div class="filter-options">
-							{#each subcategory.tags as tag}
-								<button
-									type="button"
-									class:active={activeCategory === subcategory.category && activeProductTag === tag}
-									aria-pressed={activeCategory === subcategory.category && activeProductTag === tag}
-									onclick={() => toggleProductTag(subcategory.category, tag)}
-								>
-									{tag}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/each}
 			</div>
 			<footer class="filter-panel-footer">
 				<span>Product filters</span>
-				{#if activeCategory !== 'all' || activeProductTag}
+				{#if activeCategory !== 'all'}
 					<button
 						type="button"
 						onclick={() => {
 							activeCategory = 'all';
-							activeProductTag = '';
 						}}>Clear filters</button
 					>
 				{/if}
@@ -620,49 +534,63 @@
 				onclick={() => {
 					customer = member;
 					customerDialog?.close();
-				}}><strong>{member.name}</strong><span>Member ID · {member.id}</span></button
+				}}><strong>{member.name}</strong><span>{member.role} · {member.displayId}</span></button
 			>
 		{/each}
+		{#if members.length === 0}<p class="empty-products">No active student or teacher profiles are available.</p>{/if}
 	</div>
 </dialog>
 
 <dialog bind:this={paymentDialog} class="register-dialog payment-dialog">
-	<form onsubmit={completePayment}>
+	<form method="POST" action="?/completeSale" use:enhance={() => async ({ result, update }) => {
+		await update();
+		if (result.type === 'success' && result.data?.success) {
+			const completedPickup = selectedPickupOrder !== null;
+			paymentDialog?.close();
+			cart = [];
+			customer = null;
+			selectedPickupOrder = null;
+			cashReceived = '';
+			toast = completedPickup
+				? `Pickup ${result.data.receiptNumber} completed successfully.`
+				: `Sale ${result.data.receiptNumber} completed successfully.`;
+		}
+	}}>
+		<input type="hidden" name="items" value={JSON.stringify(cart.map((line) => ({ productId: line.product.id, quantity: line.quantity })))} />
+		{#if selectedPickupOrder}<input type="hidden" name="qrOrderId" value={selectedPickupOrder.id} />{/if}
+		{#if customer}<input type="hidden" name="customerId" value={customer.id} />{/if}
 		<div class="dialog-heading">
 			<div>
-				<span>Checkout</span>
-				<h2>Charge {formatCurrency(total)}</h2>
+				<span>{selectedPickupOrder ? `Pickup ${selectedPickupOrder.reference}` : 'Checkout'}</span>
+				<h2>Charge {formatCurrency(chargeTotal)}</h2>
 			</div>
-			<button type="button" aria-label="Close" onclick={() => paymentDialog?.close()}>×</button>
+			<button type="button" aria-label="Close" onclick={() => { selectedPickupOrder = null; customer = null; paymentDialog?.close(); }}>×</button>
 		</div>
-		<p>Demo checkout only. No payment will be processed or stored.</p>
+		<p>{selectedPickupOrder
+			? selectedPickupOrder.stockReserved
+				? 'This order has already reserved store stock. Completing pickup will save the receipt without deducting inventory again.'
+				: 'This older pickup request did not reserve stock when submitted. Stock will be checked and deducted as part of this sale.'
+			: 'Cash only. Completing this sale saves the receipt and updates store inventory.'}</p>
 		<label class="payment-label"
-			>Payment method
-			<select bind:value={paymentMethod}
-				><option>Cash</option><option>GCash</option><option>Card</option></select
-			>
-		</label>
-		{#if paymentMethod === 'Cash'}
-			<label class="payment-label"
 				>Cash received
 				<input
+					name="cashReceived"
 					type="number"
-					min={total}
+					min={chargeTotal}
 					step="0.01"
 					required
 					bind:value={cashReceived}
 					placeholder="Enter amount received"
 				/>
 			</label>
-			<div class="change-due">
+		<div class="change-due">
 				<span>Change due</span><strong>{formatCurrency(cashChange)}</strong>
 			</div>
-		{/if}
 		<div class="dialog-actions">
-			<button class="hold-button" type="button" onclick={() => paymentDialog?.close()}
-				>Cancel</button
+			<button class="hold-button" type="button" onclick={() => { selectedPickupOrder = null; customer = null; paymentDialog?.close(); }}
+				>Back</button
 			>
-			<button class="charge-button" type="submit">Complete demo sale</button>
+			<button class="charge-button" type="submit">{selectedPickupOrder ? 'Complete pickup' : 'Complete sale'}</button>
 		</div>
 	</form>
 </dialog>
@@ -922,6 +850,97 @@
 		color: #7d8ba0;
 		font-size: 0.58rem;
 	}
+	.pickup-orders {
+		flex: 0 0 auto;
+		margin: 0 0 0.55rem;
+		border: 1px solid #dfe7f1;
+		border-radius: 0.55rem;
+		background: white;
+	}
+	.pickup-orders summary {
+		display: flex;
+		min-height: 2rem;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding: 0 0.65rem;
+		color: #24334b;
+		font-size: 0.58rem;
+		font-weight: 800;
+		cursor: pointer;
+		list-style: none;
+	}
+	.pickup-orders summary::-webkit-details-marker { display: none; }
+	.pickup-orders summary strong {
+		border-radius: 1rem;
+		background: #eaf2ff;
+		color: #2563eb;
+		padding: 0.2rem 0.45rem;
+		font-size: 0.51rem;
+	}
+	.pickup-order-list {
+		max-height: 8rem;
+		overflow-y: auto;
+		border-top: 1px solid #e8edf4;
+	}
+	.pickup-order {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.7rem;
+		border-bottom: 1px solid #edf1f6;
+		padding: 0.45rem 0.65rem;
+	}
+	.pickup-order:last-child { border-bottom: 0; }
+	.pickup-order-copy { min-width: 0; }
+	.pickup-order-copy > strong {
+		display: block;
+		overflow: hidden;
+		color: #24334b;
+		font-size: 0.55rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pickup-order-copy > strong span { color: #78869a; font-weight: 600; }
+	.pickup-order-copy > strong em {
+		margin-left: 0.3rem;
+		border-radius: 0.25rem;
+		background: #fff3d9;
+		color: #8a5a00;
+		padding: 0.1rem 0.25rem;
+		font-size: 0.43rem;
+		font-style: normal;
+	}
+	.pickup-order-copy p {
+		margin: 0.15rem 0 0;
+		overflow: hidden;
+		color: #738198;
+		font-size: 0.49rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pickup-order-actions {
+		display: flex;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.pickup-order-actions > strong { color: #24334b; font-size: 0.55rem; }
+	.pickup-order-actions form { margin: 0; }
+	.pickup-charge,
+	.pickup-cancel {
+		min-height: 1.55rem;
+		border: 1px solid transparent;
+		border-radius: 0.35rem;
+		padding: 0.25rem 0.4rem;
+		font: inherit;
+		font-size: 0.49rem;
+		font-weight: 800;
+		cursor: pointer;
+	}
+	.pickup-charge { background: #eaf2ff; color: #1d5fdb; }
+	.pickup-charge:disabled { opacity: 0.45; cursor: not-allowed; }
+	.pickup-cancel { border-color: #f0d7d7; background: white; color: #a32e35; }
 	.product-search {
 		display: flex;
 		min-height: 2.05rem;
@@ -1198,6 +1217,7 @@
 		background: #f6f7f8;
 		color: #9aa6b6;
 	}
+	.product-image > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 	.image-placeholder svg {
 		width: 1.1rem;
 		height: 1.1rem;
@@ -1621,6 +1641,10 @@
 		padding: 0.65rem 0.8rem;
 		font-size: 0.57rem;
 	}
+	.pos-error,
+	.pos-success { margin: 0.55rem 0 0; border: 1px solid; border-radius: 0.5rem; padding: 0.6rem 0.75rem; font-size: 0.65rem; }
+	.pos-error { border-color: #efb8b8; background: #fff2f2; color: #a32e35; }
+	.pos-success { border-color: #b7e5cd; background: #effbf4; color: #157347; }
 	.toast button {
 		border: 0;
 		background: transparent;
@@ -1759,11 +1783,24 @@
 	:global(html[data-theme='dark'] .register-footer),
 	:global(html[data-theme='dark'] .product-card),
 	:global(html[data-theme='dark'] .register-dialog),
-	:global(html[data-theme='dark'] .notification-popover) {
+	:global(html[data-theme='dark'] .notification-popover),
+	:global(html[data-theme='dark'] .pickup-orders) {
 		border-color: #334866;
 		background: #172640;
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .pos-error) { border-color: #74434b; background: #3c242c; color: #ffc6c6; }
+	:global(html[data-theme='dark'] .pos-success) { border-color: #28664d; background: #173a30; color: #a8edc8; }
+	:global(html[data-theme='dark'] .pickup-orders summary),
+	:global(html[data-theme='dark'] .pickup-order-copy > strong),
+	:global(html[data-theme='dark'] .pickup-order-actions > strong) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .pickup-order-copy > strong span),
+	:global(html[data-theme='dark'] .pickup-order-copy p) { color: #a9bad3; }
+	:global(html[data-theme='dark'] .pickup-order-copy > strong em) { background: #4a3b22; color: #ffda8b; }
+	:global(html[data-theme='dark'] .pickup-order-list),
+	:global(html[data-theme='dark'] .pickup-order) { border-color: #334866; }
+	:global(html[data-theme='dark'] .pickup-charge) { background: #203b66; color: #c9dcff; }
+	:global(html[data-theme='dark'] .pickup-cancel) { border-color: #74434b; background: #172640; color: #ffc6c6; }
 	:global(html[data-theme='dark'] .topbar-title h1),
 	:global(html[data-theme='dark'] .cashier-name),
 	:global(html[data-theme='dark'] .products-heading h2),
@@ -2019,6 +2056,8 @@
 			overflow: visible;
 			min-height: 25rem;
 		}
+		.pickup-order { align-items: flex-start; }
+		.pickup-order-actions { flex-wrap: wrap; justify-content: flex-end; }
 		.product-grid {
 			flex: initial;
 			overflow: visible;

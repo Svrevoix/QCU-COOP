@@ -5,7 +5,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { productCatalog, type Product, type ProductCategory } from '$lib/products';
+	import type { Product, ProductCategory } from '$lib/products';
+	let { data } = $props();
 
 	const categories: {
 		id: ProductCategory;
@@ -44,26 +45,24 @@
 	let featuredTrack = $state<HTMLDivElement>();
 	let featuredInteractionPaused = $state(false);
 	let featuredInteractionTimer: ReturnType<typeof setTimeout> | undefined;
-	let randomizedProducts = $state<Product[]>(productCatalog.slice());
+	let randomizedProducts = $state<Product[]>([]);
 	let discoveredProducts = $derived(
 		activeCategory === 'all'
 			? randomizedProducts
 			: randomizedProducts.filter((product) => product.category === activeCategory)
 	);
 	let visibleProducts = $derived(discoveredProducts.slice(0, 10));
-	let featuredProducts = $derived(
-		categories
-			.map((category) => productCatalog.find((product) => product.category === category.id))
-			.filter((product): product is Product => Boolean(product))
-	);
+	let featuredProducts = $derived.by(() => {
+		const available = data.products.filter((product: Product) => product.featured);
+		return (available.length ? available : data.products).slice(0, 8) as Product[];
+	});
 
 	const productPrice = (product: Product) => product.price ?? product.variants?.[0]?.price;
 	const formatPrice = (product: Product) => {
 		const price = productPrice(product);
 		return price === undefined ? 'Price to be set' : `₱${price.toFixed(2)}`;
 	};
-	const productHref = (product: Product) =>
-		`/products?category=${product.category}&query=${encodeURIComponent(product.name)}`;
+	const productHref = (product: Product) => `/products?category=${product.category}`;
 
 	function moveFeatured(direction: number) {
 		const track = featuredTrack;
@@ -127,7 +126,7 @@
 			if (isReload) history.scrollRestoration = previousScrollRestoration;
 		};
 
-		randomizedProducts = shuffleProducts(productCatalog);
+		randomizedProducts = shuffleProducts(data.products);
 		const sections = document.querySelectorAll<HTMLElement>('.shop-reveal');
 		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const resetReveals = () => {
@@ -262,8 +261,13 @@
 								{/if}
 							</div>
 							<div class="featured-info">
+								{#if product.stock !== undefined && product.stock <= 0}
+									<span class="stock-badge stock-out">Out of stock</span>
+								{:else if product.lowStock}
+									<span class="stock-badge stock-low">Low stock · {product.stock} left</span>
+								{/if}
 								<h3>{product.name}</h3>
-								<p>{categoryDescriptions[product.category]}</p>
+								<p>{product.description?.trim() || categoryDescriptions[product.category]}</p>
 								<strong>{formatPrice(product)}</strong>
 							</div>
 						</a>
@@ -381,12 +385,17 @@
 						</div>
 						<div class="shop-product-info">
 							<span class="product-category-label">{categoryLabel(product.category)}</span>
+							{#if product.stock !== undefined && product.stock <= 0}
+								<span class="stock-badge stock-out">Out of stock</span>
+							{:else if product.lowStock}
+								<span class="stock-badge stock-low">Low stock · {product.stock} left</span>
+							{/if}
 							<h3>{product.name}</h3>
 							<div class="product-price-row">
 								<strong>{formatPrice(product)}</strong>
 								<span class="product-sku">{product.sku}</span>
 							</div>
-							<a class="select-product" href={productHref(product)}>Select product</a>
+							<a class="select-product" href={productHref(product)}>Browse category</a>
 						</div>
 					</article>
 				{/each}
@@ -567,8 +576,9 @@
 	.featured-image {
 		height: 11rem;
 		margin: 0.8rem 1rem 0;
-		border: 1px solid var(--shop-line);
+		border: 1px solid #dbe4f0;
 		border-radius: 0.75rem;
+		background: #fff;
 	}
 	.featured-image img,
 	.shop-product-image img {
@@ -576,6 +586,7 @@
 		height: 100%;
 		object-fit: contain;
 		padding: 0.8rem;
+		background: #fff;
 	}
 	.no-image-label {
 		display: none;
@@ -588,17 +599,34 @@
 	}
 	.featured-image.missing-image,
 	.shop-product-image.missing-image {
-		background: #25458f;
+		background: #fff;
 	}
 	.featured-image.missing-image .no-image-label,
 	.shop-product-image.missing-image .no-image-label {
 		display: block;
-		color: #b8c8ed;
+		color: #64748b;
 	}
 	.featured-info {
 		display: grid;
 		gap: 0.35rem;
 		padding: 0.85rem 1rem 1rem;
+	}
+	.stock-badge {
+		display: inline-flex;
+		width: fit-content;
+		border-radius: 999px;
+		padding: 0.24rem 0.55rem;
+		font-size: 0.62rem;
+		font-weight: 850;
+		line-height: 1.2;
+	}
+	.stock-low {
+		background: #fff4d6;
+		color: #925b00;
+	}
+	.stock-out {
+		background: #fee2e2;
+		color: #b91c1c;
 	}
 	.featured-info h3 {
 		margin: 0;
@@ -735,7 +763,10 @@
 	.shop-product-image {
 		height: 8.5rem;
 		flex: 0 0 auto;
-		background: #233f91;
+		margin: 0.65rem 0.65rem 0;
+		border: 1px solid #dbe4f0;
+		border-radius: 0.75rem;
+		background: #fff;
 	}
 	.shop-product-image img {
 		padding: 1rem;
@@ -893,6 +924,12 @@
 	:global(html[data-theme='dark'] .shop-page .shop-product-card) {
 		border-color: #3b61b5;
 		background: #233f91;
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-product-image),
+	:global(html[data-theme='dark'] .shop-page .shop-product-image img),
+	:global(html[data-theme='dark'] .shop-page .featured-image),
+	:global(html[data-theme='dark'] .shop-page .featured-image img) {
+		background: #fff;
 	}
 	:global(html[data-theme='dark'] .shop-page .show-more) {
 		border-color: #6f96e8;

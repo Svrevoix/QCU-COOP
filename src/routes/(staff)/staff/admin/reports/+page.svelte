@@ -1,18 +1,20 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import ReportCatalog from '$lib/components/ReportCatalog.svelte';
-	import { reportPresets } from '$lib/report-presets';
+	import { buildReport } from '$lib/report-data';
+	import type { PageData } from './$types';
 
 	type ReportGroup = { label: string; reports: string[] };
 	type ReportSelection = { group: string; report: string };
 
 	const selection = getContext<ReportSelection>('adminReportSelection');
 	const reportGroups = getContext<ReportGroup[]>('adminReportGroups');
+	let { data }: { data: PageData } = $props();
 	let report = $derived(selection.report);
 	let period = $state('This month');
 	let warehouse = $state('All warehouses');
 	let search = $state('');
-	let generatedAt = $state('09:42 AM');
+	let generatedAt = $state(new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
 	let exported = $state(false);
 	let exportError = $state('');
 	let notificationsOpen = $state(false);
@@ -21,10 +23,11 @@
 		const year = new Date().getFullYear();
 		return `Academic Year ${year}-${String(year + 1).slice(-2)}`;
 	})();
-	const currentReport = $derived(reportPresets[report] ?? reportPresets['Daily Cashier Cash-Out']);
+	const currentReport = $derived(buildReport(report, data.reportSource, period, warehouse));
 	const filteredRows = $derived(
 		currentReport.rows.filter((row) => row.join(' ').toLowerCase().includes(search.trim().toLowerCase()))
 	);
+	const previewRows = $derived(filteredRows.slice(0, 100));
 
 	function generateReport() {
 		generatedAt = new Date().toLocaleTimeString(undefined, {
@@ -100,6 +103,7 @@
 
 	{#if exported}<div class="toast" role="status">Workbook downloaded successfully.</div>{/if}
 	{#if exportError}<div class="toast error-toast" role="alert">{exportError}</div>{/if}
+	{#if data.failedTables.length}<div class="toast error-toast" role="status">Some report tables could not be loaded: {data.failedTables.join(', ')}. Affected reports may be incomplete.</div>{/if}
 
 	<div class="reports-heading">
 		<div>
@@ -126,28 +130,27 @@
 						<h2>{report}</h2>
 						<p>{currentReport.description}</p>
 					</div>
-					<span class="ready"><i></i> Sample preview</span>
+					<span class="ready"><i></i> {data.failedTables.length ? 'Partial database' : 'Live database'}</span>
 				</div>
 				<div class="filters">
 					<label
 						>Date range
 						<select bind:value={period}>
-							<option>This month</option><option>Today</option><option>Last month</option><option
-								>Quarter to date</option
-							>
+							<option>This month</option><option>Today</option><option>Last month</option><option>Quarter to date</option><option>Year to date</option><option>All time</option>
 						</select>
 					</label>
 					<label
 						>Warehouse
 						<select bind:value={warehouse}>
-							<option>All warehouses</option><option>Main warehouse</option><option
-								>North storage</option
-							><option>Retail floor</option>
+							<option>All warehouses</option>
+							{#each data.reportSource.warehouses ?? [] as location (location.id)}
+								<option>{location.warehouse_name}</option>
+							{/each}
 						</select>
 					</label>
 					<label class="search-label"
 						>Search records
-						<input bind:value={search} placeholder="SKU, reference, operator..." />
+						<input bind:value={search} placeholder={`Search ${currentReport.columns.slice(0, 3).join(', ').toLowerCase()}...`} />
 					</label>
 					<button class="generate-button" type="button" onclick={generateReport}>Generate</button>
 				</div>
@@ -170,7 +173,7 @@
 				<div class="preview-heading">
 					<div>
 						<h2>Report preview</h2>
-						<p>{report} / {warehouse} / {period}</p>
+						<p>{report} / {warehouse} / {period} · Database records</p>
 					</div>
 					<button class="secondary" type="button" onclick={exportWorkbook}>
 						<svg viewBox="0 0 24 24" aria-hidden="true"
@@ -185,7 +188,7 @@
 					<table>
 						<thead><tr>{#each currentReport.columns as column}<th>{column}</th>{/each}</tr></thead>
 						<tbody>
-							{#each filteredRows as row (row[1])}
+							{#each previewRows as row, rowIndex (`${report}-${rowIndex}`)}
 								<tr
 									>{#each row as cell, index (`${row[1]}-${index}`)}<td
 										class:amount={currentReport.numericLastColumn && index === row.length - 1}
@@ -193,7 +196,7 @@
 										>{/each}</tr
 								>
 							{:else}
-								<tr><td class="no-results" colspan={currentReport.columns.length}>No preview rows match your search.</td></tr>
+								<tr><td class="no-results" colspan={currentReport.columns.length}>No database records match these filters.</td></tr>
 							{/each}
 						</tbody>
 					</table>
@@ -201,8 +204,8 @@
 				<div class="preview-footer">
 					<div>
 						<strong
-							>Showing {filteredRows.length} of {currentReport.rowCount} preview rows for this report</strong
-						><small>Sample rows · {warehouse} · {period}</small>
+							>Showing {previewRows.length} rows · {filteredRows.length} match this search · {currentReport.rowCount} total</strong
+						><small>Database rows · {warehouse} · {period}</small>
 					</div>
 					<svg viewBox="0 0 24 24" aria-label="Report chart" role="img"
 						><path d="M4 20V11h4v9m2 0V5h4v15m2 0v-7h4v7M2 20h20" /></svg

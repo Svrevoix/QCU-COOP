@@ -6,8 +6,8 @@
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	let { data } = $props();
 	let loading = $state(true);
-	let activeRegister = $state('All registers');
 	let localTime = $state('');
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
@@ -37,62 +37,16 @@
 		return () => clearInterval(interval);
 	});
 
-	const transactions = [
-		{
-			id: '#TX-10482',
-			time: '10:42:18 AM',
-			cashier: 'Maria Santos',
-			register: 'Register 01',
-			type: 'Sale',
-			amount: '1,245.00',
-			payment: 'GCash',
-			state: 'Completed'
-		},
-		{
-			id: '#TX-10481',
-			time: '10:41:52 AM',
-			cashier: 'John Dela Cruz',
-			register: 'Register 02',
-			type: 'Sale',
-			amount: '380.00',
-			payment: 'Cash',
-			state: 'Completed'
-		},
-		{
-			id: '#TX-10480',
-			time: '10:39:07 AM',
-			cashier: 'Maria Santos',
-			register: 'Register 01',
-			type: 'Void',
-			amount: '75.00',
-			payment: 'Cash',
-			state: 'Approved'
-		},
-		{
-			id: '#TX-10479',
-			time: '10:36:44 AM',
-			cashier: 'Anna Reyes',
-			register: 'Register 03',
-			type: 'Refund',
-			amount: '420.00',
-			payment: 'Card',
-			state: 'Completed'
-		}
-	];
-	let visibleTransactions = $derived(
-		activeRegister === 'All registers'
-			? transactions
-			: transactions.filter((transaction) => transaction.register === activeRegister)
-	);
+	const visibleTransactions = $derived(data.transactions);
 
 	function exportTransactions() {
 		const rows = [
-			['Reference', 'Time', 'Cashier', 'Register', 'Type', 'Amount', 'Payment', 'Status'],
+			['Reference', 'Time', 'Cashier', 'Customer', 'Type', 'Amount', 'Payment', 'Status'],
 			...visibleTransactions.map((transaction) => [
 				transaction.id,
 				transaction.time,
 				transaction.cashier,
-				transaction.register,
+				transaction.customer,
 				transaction.type,
 				transaction.amount,
 				transaction.payment,
@@ -186,7 +140,7 @@
 					{#if notificationsOpen}
 						<div class="notification-popover" role="status">
 							<strong>Cashier alerts</strong>
-							<span>3 exceptions need review.</span>
+							<span>{data.exceptions} unresolved stock alerts.</span>
 						</div>
 					{/if}
 				</div>
@@ -206,7 +160,7 @@
 				<div class="cashier-title-row" in:fade={{ duration: 250 }}>
 					<div class="cashier-title-copy">
 						<p class="cashier-eyebrow">Operations overview</p>
-						<h1 class="cashier-title">Good {timeOfDay}, Cashier</h1>
+						<h1 class="cashier-title">Good {timeOfDay}, {data.cashierName}</h1>
 						<p class="cashier-subtitle">Here is what is happening across the store today.</p>
 					</div>
 					<div class="live-clock" aria-label="Local system time">
@@ -217,18 +171,18 @@
 				</div>
 				<div class="kpi-grid" in:fade={{ duration: 250, delay: 40 }}>
 					<article>
-						<span>Open registers</span><strong>2 <small>/ 3</small></strong><em
-							>All systems normal</em
+						<span>Open registers</span><strong>{data.openRegisters} <small>/ {data.registerCount}</small></strong><em
+							>Active cashier sessions</em
 						>
 					</article>
 					<article>
-						<span>Sales today</span><strong>40,730</strong><em class="up">↑ 18.2% vs yesterday</em>
+						<span>Sales today</span><strong>₱{data.salesToday.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong><em class="up">{data.yesterdaySales ? `${((data.salesToday - data.yesterdaySales) / data.yesterdaySales * 100).toFixed(1)}% vs yesterday` : 'Cash sales today'}</em>
 					</article>
 					<article>
-						<span>Transactions</span><strong>137</strong><em>12 since last hour</em>
+						<span>Transactions</span><strong>{data.transactionsToday}</strong><em>{data.recentHour} since last hour</em>
 					</article>
 					<article>
-						<span>Exceptions</span><strong class="exception">3</strong><em class="warn"
+						<span>Open stock alerts</span><strong class="exception">{data.exceptions}</strong><em class="warn"
 							>Requires review</em
 						>
 					</article>
@@ -238,16 +192,13 @@
 					<div class="panel-heading">
 						<div>
 							<h2>Transaction activity</h2>
-							<p>Recent transactions across registers</p>
+							<p>Recent POS sales and pickup-order checkouts</p>
+							{#if !data.pickupOrderLinkAvailable}
+								<p class="schema-note">Pickup-order labels require Supabase migration 202611250008_reserve_customer_order_stock.sql.</p>
+							{/if}
 						</div>
 						<div class="table-actions">
-							<label class="sr-only" for="register-filter">Filter by register</label><select
-								id="register-filter"
-								bind:value={activeRegister}
-								><option>All registers</option><option>Register 01</option><option
-									>Register 02</option
-								><option>Register 03</option></select
-							><button
+							<span class="log-status">{visibleTransactions.length} recent</span><button
 								class="export-button"
 								type="button"
 								aria-label="Export transaction logs"
@@ -268,7 +219,7 @@
 						<table>
 							<thead
 								><tr
-									><th>Reference</th><th>Time</th><th>Cashier</th><th>Type</th><th>Amount</th><th
+									><th>Reference</th><th>Time</th><th>Cashier</th><th>Customer</th><th>Type</th><th>Amount</th><th
 										>Payment</th
 									><th>Status</th></tr
 								></thead
@@ -277,11 +228,13 @@
 									<tr
 										><td><strong>{transaction.id}</strong></td><td>{transaction.time}</td><td
 											>{transaction.cashier}</td
+										><td>{transaction.customer}</td
 										><td
 											><span
 												class="type"
 												class:void={transaction.type === 'Void'}
-												class:refund={transaction.type === 'Refund'}>{transaction.type}</span
+												class:refund={transaction.type === 'Refund'}
+												class:pickup={transaction.type === 'Pickup order'}>{transaction.type}</span
 											></td
 										><td class="amount">{transaction.amount}</td><td>{transaction.payment}</td><td
 											><span class="log-status">{transaction.state}</span></td
@@ -289,7 +242,7 @@
 									>
 								{:else}
 									<tr
-										><td class="empty-row" colspan="7">No transactions on this register yet.</td
+										><td class="empty-row" colspan="8">No saved sales for this cashier yet.</td
 										></tr
 									>
 								{/each}
@@ -670,6 +623,9 @@
 		color: #8b99ab;
 		font-size: 0.65rem;
 	}
+	.panel-heading .schema-note {
+		color: #b45309;
+	}
 	.table-actions {
 		display: flex;
 		align-items: center;
@@ -707,7 +663,7 @@
 	}
 	table {
 		width: 100%;
-		min-width: 42rem;
+		min-width: 48rem;
 		border-collapse: collapse;
 		text-align: left;
 	}
@@ -752,6 +708,10 @@
 		background: #fef0f0;
 		color: #c2414a;
 	}
+	.type.pickup {
+		background: #eaf2ff;
+		color: #2563eb;
+	}
 	.empty-row {
 		padding: 2rem;
 		text-align: center;
@@ -786,6 +746,9 @@
 	:global(html[data-theme='dark'] .kpi-grid em:not(.up):not(.warn)),
 	:global(html[data-theme='dark'] td) {
 		color: #b8c8dd;
+	}
+	:global(html[data-theme='dark'] .panel-heading .schema-note) {
+		color: #f4c85b;
 	}
 	:global(html[data-theme='dark'] .live-clock) {
 		border-color: #334866;

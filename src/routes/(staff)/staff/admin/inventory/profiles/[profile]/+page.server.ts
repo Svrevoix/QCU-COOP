@@ -4,7 +4,7 @@ import { inventoryRequest, uploadProductImage } from '$lib/server/inventory';
 
 type Product = {
 	id: number; sku: string; product_name: string; description: string | null; category_id: number | null;
-	supplier_id: number | null; cost_price: number; selling_price: number; stock: number; reorder_level: number;
+	supplier_id: number | null; cost_price: number; selling_price: number; stock: number; reorder_level: number; refill_level: number; refill_quantity: number;
 	image_url: string | null; featured: boolean; status: string; taxable: boolean; item_type: string | null; size: string | null;
 };
 type Supplier = { id: number; supplier_name: string; contact_person: string | null; phone: string | null; email: string | null; address: string | null };
@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	}
 	if (params.profile !== 'item') return { products: [], suppliers: [], warehouses: [] };
 	const [productsResponse, suppliersResponse, warehousesResponse, categoriesResponse] = await Promise.all([
-		inventoryRequest(`products?${new URLSearchParams({ select: 'id,sku,product_name,description,category_id,supplier_id,cost_price,selling_price,stock,reorder_level,image_url,featured,status,taxable,item_type,size', order: 'product_name.asc' })}`),
+		inventoryRequest(`products?${new URLSearchParams({ select: 'id,sku,product_name,description,category_id,supplier_id,cost_price,selling_price,stock,reorder_level,refill_level,refill_quantity,image_url,featured,status,taxable,item_type,size', order: 'product_name.asc' })}`),
 		inventoryRequest(`suppliers?${new URLSearchParams({ select: 'id,supplier_name', order: 'supplier_name.asc' })}`),
 		inventoryRequest(`warehouses?${new URLSearchParams({ select: 'id,warehouse_name', order: 'warehouse_name.asc' })}`),
 		inventoryRequest(`categories?${new URLSearchParams({ select: 'id,category_name', order: 'category_name.asc' })}`)
@@ -50,6 +50,8 @@ export const actions: Actions = {
 		const sellingPrice = Number(form.get('selling_price'));
 		const stock = Number(form.get('stock'));
 		const reorderLevel = Number(form.get('reorder_level'));
+		const refillLevel = Number(form.get('refill_level'));
+		const refillQuantity = Number(form.get('refill_quantity'));
 		const status = String(form.get('status') ?? 'active').trim();
 		const itemType = String(form.get('item_type') ?? '').trim() || null;
 		const size = String(form.get('size') ?? '').trim() || null;
@@ -59,7 +61,7 @@ export const actions: Actions = {
 		const categoryId = categoryRaw ? Number(categoryRaw) : null;
 		const supplierId = supplierRaw ? Number(supplierRaw) : null;
 		if (!sku || !productName || !['active', 'inactive', 'discontinued'].includes(status)) return fail(400, { itemError: 'SKU, item name, and a valid status are required.' });
-		if (![costPrice, sellingPrice, stock, reorderLevel].every(Number.isFinite) || costPrice < 0 || sellingPrice < 0 || !Number.isInteger(stock) || stock < 0 || !Number.isInteger(reorderLevel) || reorderLevel < 0) return fail(400, { itemError: 'Enter valid non-negative prices and whole-number stock/reorder quantities.' });
+		if (![costPrice, sellingPrice, stock, reorderLevel, refillLevel, refillQuantity].every(Number.isFinite) || costPrice < 0 || sellingPrice < 0 || !Number.isInteger(stock) || stock < 0 || !Number.isInteger(reorderLevel) || reorderLevel < 0 || !Number.isInteger(refillLevel) || refillLevel < 0 || !Number.isInteger(refillQuantity) || refillQuantity < 0) return fail(400, { itemError: 'Enter valid non-negative prices and whole-number stock, reorder, and refill quantities.' });
 		if ((categoryId !== null && (!Number.isInteger(categoryId) || categoryId < 1)) || (supplierId !== null && (!Number.isInteger(supplierId) || supplierId < 1))) return fail(400, { itemError: 'Category and supplier IDs must be positive whole numbers.' });
 		let stockQuantity = 0;
 		let imageUrl: string | null = null;
@@ -77,7 +79,7 @@ export const actions: Actions = {
 			if ('error' in upload) return fail(502, { itemError: upload.error });
 			imageUrl = upload.url;
 		}
-		const payload = { sku, product_name: productName, description, category_id: categoryId, supplier_id: supplierId, cost_price: costPrice, selling_price: sellingPrice, stock: stockQuantity, reorder_level: reorderLevel, image_url: imageUrl, featured, status, taxable, item_type: itemType, size };
+		const payload = { sku, product_name: productName, description, category_id: categoryId, supplier_id: supplierId, cost_price: costPrice, selling_price: sellingPrice, stock: stockQuantity, reorder_level: reorderLevel, refill_level: refillLevel, refill_quantity: refillQuantity, image_url: imageUrl, featured, status, taxable, item_type: itemType, size };
 		const path = id ? `products?id=eq.${encodeURIComponent(id)}` : 'products';
 		const response = await inventoryRequest(path, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
 		if (!response.ok) return fail(502, { itemError: `Could not save item (Supabase HTTP ${response.status}). Check SKU uniqueness and the products table columns.` });

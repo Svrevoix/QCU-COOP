@@ -2,10 +2,10 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { handleImageError } from '$lib/imageFallback';
-	import { productCatalog } from '$lib/products';
+	import type { Product } from '$lib/products';
+	let { data } = $props();
 
 	let currentTab = $state('all');
-	let cartCount = $state(0);
 	let activeFeaturedIndex = $state(0);
 	let pointerStartX = $state<number | null>(null);
 
@@ -18,8 +18,10 @@
 
 	// Keep the rotating hero on products with catalog artwork so it never opens
 	// on a missing-image fallback (the QCU Jacket currently has no image asset).
-	const featuredProductIds = ['sup-1', 'unf-1', 'mer-3'];
-	const featuredProducts = productCatalog.filter(p => featuredProductIds.includes(p.id));
+	let featuredProducts = $derived.by(() => {
+		const featured = data.products.filter((product: Product) => product.featured);
+		return (featured.length ? featured : data.products).slice(0, 3) as Product[];
+	});
 	const placeholderImage = 'images/attires/placeholder-shirt.png';
 
 	let visibleFeaturedCards = $derived.by(() => {
@@ -36,14 +38,10 @@
 	});
 
 	let filteredProducts = $derived(
-		currentTab === 'all' 
-			? productCatalog 
-			: productCatalog.filter(p => p.category === currentTab)
+		currentTab === 'all'
+			? data.products
+			: data.products.filter((p: Product) => p.category === currentTab)
 	);
-
-	function addToCart() {
-		cartCount += 1;
-	}
 
 	function showPreviousFeatured() {
 		activeFeaturedIndex = (activeFeaturedIndex - 1 + featuredProducts.length) % featuredProducts.length;
@@ -70,6 +68,7 @@
 	}
 
 	onMount(() => {
+		if (!featuredProducts.length) return;
 		const interval = setInterval(() => {
 			activeFeaturedIndex = (activeFeaturedIndex + 1) % featuredProducts.length;
 		}, 2600);
@@ -127,10 +126,15 @@
 						</div>
 
 						<div class="featured-copy p-5 bg-transparent text-[#0a2d5d]">
+							{#if item.stock !== undefined && item.stock <= 0}
+								<span class="availability-badge availability-out">Out of stock</span>
+							{:else if item.lowStock}
+								<span class="availability-badge availability-low">Low stock · {item.stock} left</span>
+							{/if}
 							<h3 class="featured-name font-black text-[#0a2d5d] leading-snug line-clamp-1 transition-colors duration-300 group-hover:text-blue-700">
 								{item.name}
 							</h3>
-							<p class="featured-desc text-xs text-[#0a2d5d]/75 font-medium mt-1">Official merchandise line built for QCU students.</p>
+							<p class="featured-desc text-xs text-[#0a2d5d]/75 font-medium mt-1">{item.description?.trim() || 'Shop this product at QCU Coop.'}</p>
 							<div class="featured-meta flex justify-between items-baseline mt-4 mb-2">
 								<span class="featured-price text-xl font-black text-[#0a2d5d]">{item.price !== undefined ? `₱${item.price.toFixed(2)}` : 'Price to be set'}</span>
 								<span class="featured-sku text-[10px] font-mono text-[#0a2d5d]/70">{item.sku}</span>
@@ -249,6 +253,47 @@
 		flex: 0 0 auto;
 	}
 
+	.availability-badge {
+		display: inline-flex;
+		align-items: center;
+		width: fit-content;
+		margin-bottom: 0.4rem;
+		gap: 0.35rem;
+		font-size: 0.58rem;
+		font-weight: 850;
+		line-height: 1.2;
+		letter-spacing: 0.035em;
+		text-transform: uppercase;
+	}
+
+	.availability-badge::before {
+		width: 0.4rem;
+		height: 0.4rem;
+		border-radius: 50%;
+		content: '';
+	}
+
+	.featured-left .availability-badge,
+	.featured-right .availability-badge {
+		display: none;
+	}
+
+	.availability-low {
+		color: #ffe0a3;
+	}
+
+	.availability-low::before {
+		background: #fbbf24;
+	}
+
+	.availability-out {
+		color: #fecaca;
+	}
+
+	.availability-out::before {
+		background: #f87171;
+	}
+
 	.featured-name {
 		font-size: clamp(0.8rem, 1.1vw, 1.1rem);
 	}
@@ -262,7 +307,7 @@
 	}
 
 	.featured-price {
-		font-size: clamp(1rem, 1.7vw, 1.7rem);
+		font-size: clamp(0.9rem, 1.2vw, 1.25rem);
 	}
 
 	.featured-sku {

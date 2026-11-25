@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
 import type { CartItem } from '$lib/cart';
 
-export type OrderStatus = 'Delivered' | 'Claimed' | 'Ready for pickup' | 'Cancelled';
+export type OrderStatus = 'Pending confirmation' | 'Delivered' | 'Claimed' | 'Ready for pickup' | 'Cancelled';
 
 export type PurchaseOrder = {
 	id: string;

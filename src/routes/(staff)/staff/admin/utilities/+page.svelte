@@ -1,53 +1,37 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
-	let { data, form }: { data: PageData; form?: { success?: boolean; message?: string } } = $props();
-	type BillingActivity = {
-		label: string;
-		amount: string;
-		date: string;
-		tone: string;
-	};
-
-		let serviceDialog = $state<HTMLDialogElement>();
+	let { data, form }: { data: PageData; form?: { success?: boolean; message?: string; billAdded?: boolean; statusUpdated?: boolean } } = $props();
+	let serviceDialog = $state<HTMLDialogElement>();
+	let billDialog = $state<HTMLDialogElement>();
 	let notificationOpen = $state(false);
-	let serviceName = $state('');
 	let serviceAdded = $state('');
+	let billAdded = $state(false);
+	let paymentUpdated = $state(false);
+	let billAccountId = $state('');
+	let billMonth = $state(new Date().getMonth() + 1);
 	const money = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value) || 0);
 	const date = (value: string | null) => value ? new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T00:00:00`)) : '—';
 	const serviceById = $derived(new Map(data.services.map((s) => [s.id, s])));
 	const accountById = $derived(new Map(data.accounts.map((a) => [a.id, a])));
-	const utilityServices = $derived(
-		data.accounts.slice(0, 5).map((account) => {
-			const service = serviceById.get(account.service_id);
-			return {
-				name: service?.service_name ?? 'Utility Service',
-				provider: service?.provider ?? '',
-				account: account.account_number ?? account.account_name
-			};
-		})
-	);
 	const openBills = $derived(data.bills.filter((b) => !['paid', 'cancelled'].includes(b.status.toLowerCase())));
 	const outstanding = (b: (typeof data.bills)[number]) => Math.max(0, Number(b.amount_due) - Number(b.amount_paid));
-	const nextBill = $derived(
-		openBills.filter((b) => b.due_date).sort((a, b) => a.due_date!.localeCompare(b.due_date!))[0]
-	);
-	const billingActivity: BillingActivity[] = $derived(
-		data.bills.slice(0, 5).map((b) => ({
-			label: `${serviceById.get(accountById.get(b.utility_account_id)?.service_id ?? -1)?.service_name ?? 'Utility'} bill � ${b.status}`,
-			amount: money(outstanding(b)),
-			date: date(b.created_at),
-			tone: b.status.toLowerCase() === 'paid' ? 'green' : 'blue'
-		}))
-	);
+	const activeAccountCount = $derived(data.accounts.filter((account) => account.status.toLowerCase() === 'active').length);
+	const currentBalance = $derived(openBills.reduce((sum, bill) => sum + outstanding(bill), 0));
+	const ytdSpend = $derived(data.bills.filter((bill) => bill.payment_date?.slice(0, 4) === String(new Date().getFullYear())).reduce((sum, bill) => sum + Number(bill.amount_paid || 0), 0));
+	const billingPeriod = (month: number, year: number) => new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(new Date(Date.UTC(year, month - 1, 1)));
 	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
 		new Date()
 	);
 
 	function onServiceSaved() {
-		serviceAdded = serviceName.trim();
-		serviceName = '';
+		serviceAdded = 'Utility account';
 		serviceDialog?.close();
+	}
+
+	function openBillDialog(accountId = '') {
+		billAccountId = accountId;
+		billDialog?.showModal();
 	}
 </script>
 
@@ -105,12 +89,21 @@
 			>
 		</div>
 	{/if}
+	{#if billAdded}
+		<div class="toast" role="status">Utility bill added to billing history.<button type="button" aria-label="Dismiss notification" onclick={() => (billAdded = false)}>×</button></div>
+	{/if}
+	{#if paymentUpdated}
+		<div class="toast" role="status">Bill marked as paid and billing totals refreshed.<button type="button" aria-label="Dismiss notification" onclick={() => (paymentUpdated = false)}>×</button></div>
+	{/if}
+	{#if form?.message}
+		<div class="form-alert" role="alert">{form.message}</div>
+	{/if}
 
 	<section class="accounts-section" aria-labelledby="utility-accounts-title">
 		<div class="section-heading">
 			<div>
 				<h2 id="utility-accounts-title">Utility accounts</h2>
-				<p>Monitor active campus services, balances, and due dates.</p>
+				<p>Track service accounts, outstanding bills, and payments in one place.</p>
 			</div>
 			<div class="section-actions">
 				<a class="outline-button" href="/staff/admin/utilities/summary">
@@ -122,86 +115,57 @@
 				<button class="primary-button" type="button" onclick={() => serviceDialog?.showModal()}>
 					<span aria-hidden="true">+</span> Add service
 				</button>
+				<button class="primary-button" type="button" onclick={() => openBillDialog()}>
+					<span aria-hidden="true">+</span> Add bill
+				</button>
 			</div>
 		</div>
 
 		<div class="account-stats">
 			<article>
-				<span>Active services</span><strong>{data.accounts.filter((a) => a.status.toLowerCase() === 'active').length}</strong><small class="positive"
-					>All services operational</small
+				<span>Active services</span><strong>{activeAccountCount}</strong><small class="positive"
+					>of {data.accounts.length} utility accounts</small
 				>
 			</article>
 			<article>
-				<span>Current balance</span><strong>₱18,940.75</strong><small>Across {openBills.length} open bills</small>
+				<span>Outstanding balance</span><strong>{money(currentBalance)}</strong><small>Across {openBills.length} unpaid bills</small>
 			</article>
 			<article>
-				<span>Next due date</span>
-				<strong>{nextBill ? date(nextBill.due_date).replace(/ \d{4}$/, '') : '—'}</strong>
-				<small class={openBills.length ? 'due' : ''}>
-					{openBills.length ? `Electricity · ${money(nextBill?.amount_due ?? 0)}` : 'No open bills'}
-				</small>
-			</article>
-			<article>
-				<span>YTD utility spend</span><strong>₱186,420</strong><small class="positive"
-					>↓ 4.8% versus 2025</small
+				<span>Paid this year</span><strong>{money(ytdSpend)}</strong><small
+					>Recorded utility payments</small
 				>
 			</article>
 		</div>
 
-		<div class="account-layout">
-			<article class="account-card">
-				<div class="account-title-row">
-					<div class="service-mark" aria-hidden="true">
-						<svg viewBox="0 0 24 24"
-							><path d="M4 20V9l4 2V6l4 3V4l8 4v12Z" /><path
-								d="M8 20v-4h3v4m3-7h1m-1 3h1m3-3h1m-1 3h1"
-							/></svg
-						>
-					</div>
-					<div class="account-title">
-						<h3>QCU Coop Store Operations</h3>
-						<p>Master account · UT-02-01974</p>
-					</div>
-					<span class="standing"><i></i> Account in good standing</span>
-				</div>
-				<div class="account-details">
-					<div>
-						<span>Service address</span><strong>QCU Main Building, Ground Floor</strong><small
-							>San Bartolome, Novaliches</small
-						>
-					</div>
-					<div>
-						<span>Billing contact</span><strong>cooperative@qcu.edu.ph</strong><small
-							>(02) 8806 3470 local 214</small
-						>
-					</div>
-					<div>
-						<span>Cost center</span><strong>COOP-OPS-014</strong><small
-							>Campus auxiliary services</small
-						>
-					</div>
-				</div>
-				<div class="service-list" aria-label="Services on this account">
-					{#each utilityServices as service (service.name + ':' + service.account)}
-						<span title={[service.provider, service.account].filter(Boolean).join(' · ')}>
-							<strong>{service.name}</strong>
-							{#if service.provider || service.account}
-								<small>{[service.provider, service.account].filter(Boolean).join(' · ')}</small>
-							{/if}
-						</span>
+		<div class="account-table-wrap">
+			<table class="account-table">
+				<thead><tr><th>Service</th><th>Account</th><th>Service address</th><th>Billing contact</th><th>Cost center</th><th>Status</th><th></th></tr></thead>
+				<tbody>
+					{#each data.accounts as account (account.id)}
+						{@const service = serviceById.get(account.service_id)}
+						<tr>
+							<td><strong>{service?.service_name ?? 'Utility'}</strong><small>{service?.provider || 'Provider not set'}</small></td>
+							<td><strong>{account.account_name}</strong><small>{account.account_number || 'No account number'}</small></td>
+							<td>{account.service_address || '—'}</td>
+							<td><strong>{account.billing_contact || '—'}</strong><small>{account.contact_number || ''}</small></td>
+							<td>{account.cost_center || '—'}</td>
+							<td><span class="standing" class:inactive={account.status.toLowerCase() !== 'active'}><i></i>{account.status}</span></td>
+							<td><button class="table-action" type="button" onclick={() => openBillDialog(String(account.id))}>Add bill</button></td>
+						</tr>
+					{:else}
+						<tr><td colspan="7" class="billing-empty">No utility accounts yet. Add a service account to get started.</td></tr>
 					{/each}
-				</div>
-			</article>
-
-
+				</tbody>
+			</table>
 		</div>
 		<section class="billing-history-section" id="utility-summary" aria-labelledby="billing-history-title">
-			<div class="section-heading"><div><h2 id="billing-history-title">Billing history</h2><p>Utility report summary and recent account activity.</p></div></div>
-			<div class="history-table-wrap"><table><thead><tr><th>Bill</th><th>Date</th><th>Status</th><th>Amount due</th></tr></thead><tbody>
+			<div class="section-heading"><div><h2 id="billing-history-title">Billing history</h2><p>Review billing periods, payment status, and remaining balances.</p></div><span class="billing-count">{data.bills.length} bills</span></div>
+			<div class="history-table-wrap"><table><thead><tr><th>Service / account</th><th>Billing period</th><th>Due date</th><th>Status</th><th>Balance due</th><th>Action</th></tr></thead><tbody>
 				{#each data.bills as bill (bill.id)}
-					{@const service = serviceById.get(accountById.get(bill.utility_account_id)?.service_id ?? -1)?.service_name ?? 'Utility'}
-					<tr><td>{service} bill</td><td>{date(bill.created_at)}</td><td>{bill.status}</td><td>{money(outstanding(bill))}</td></tr>
-				{:else}<tr><td colspan="4">No billing records yet.</td></tr>{/each}
+					{@const billAccount = accountById.get(bill.utility_account_id)}
+					{@const billService = serviceById.get(billAccount?.service_id ?? -1)?.service_name ?? 'Utility'}
+					<tr><td><strong>{billService}</strong><small>{billAccount?.account_name ?? 'Account unavailable'}</small></td><td>{billingPeriod(bill.billing_month, bill.billing_year)}</td><td>{date(bill.due_date)}</td><td><span class="bill-status" class:paid={bill.status.toLowerCase() === 'paid'}>{bill.status}</span></td><td class="balance-value">{money(outstanding(bill))}</td><td>{#if bill.status.toLowerCase() !== 'paid' && bill.status.toLowerCase() !== 'cancelled'}<form method="POST" action="?/markBillPaid" use:enhance={() => async ({ update }) => { await update(); if (form?.success && form.statusUpdated) paymentUpdated = true; }}><input type="hidden" name="billId" value={bill.id} /><button class="table-action" type="submit">Mark paid</button></form>{:else}<span class="action-complete">—</span>{/if}</td></tr>
+				{:else}<tr><td colspan="6" class="billing-empty">No billing records yet. Bills will appear here when they are added.</td></tr>{/each}
 			</tbody></table></div>
 		</section>
 	</section>
@@ -237,6 +201,23 @@
 			>
 			<button class="primary-button" type="submit">Add service</button>
 		</div>
+	</form>
+</dialog>
+
+<dialog bind:this={billDialog} class="utility-dialog">
+	<form method="POST" action="?/addBill" use:enhance={() => async ({ update }) => { await update(); if (form?.success && form.billAdded) { billDialog?.close(); billAdded = true; billAccountId = ''; } }}>
+		<div class="dialog-heading"><div><span class="dialog-eyebrow">Utility billing</span><h2>Add a bill</h2></div><button class="dialog-close" type="button" aria-label="Close dialog" onclick={() => billDialog?.close()}>×</button></div>
+		<p class="dialog-copy">Record a utility bill. It will appear in billing history as soon as it is saved.</p>
+		<label>Utility account<select name="accountId" bind:value={billAccountId} required><option value="">Choose an account</option>{#each data.accounts as account (account.id)}<option value={String(account.id)}>{account.account_name}{account.account_number ? ` · ${account.account_number}` : ''}</option>{/each}</select></label>
+		<label>Billing month<select name="billingMonth" bind:value={billMonth} required>{#each Array.from({ length: 12 }, (_, i) => i + 1) as month}<option value={month}>{new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2020, month - 1, 1))}</option>{/each}</select></label>
+		<label>Billing year<input name="billingYear" type="number" min="2000" max="9999" value={new Date().getFullYear()} required /></label>
+		<label>Amount due (₱)<input name="amountDue" type="number" min="0.01" step="0.01" required /></label>
+		<label>Amount paid (₱)<input name="amountPaid" type="number" min="0" step="0.01" value="0" /></label>
+		<label>Due date<input name="dueDate" type="date" /></label>
+		<label>Payment date<input name="paymentDate" type="date" /></label>
+		<label>Official receipt number<input name="receiptNumber" maxlength="100" /></label>
+		<label class="wide-field">Remarks<input name="remarks" maxlength="500" placeholder="Optional note" /></label>
+		<div class="dialog-actions"><button class="outline-button" type="button" onclick={() => billDialog?.close()}>Cancel</button><button class="primary-button" type="submit" disabled={data.accounts.length === 0}>Save bill</button></div>
 	</form>
 </dialog>
 
@@ -459,7 +440,7 @@
 	}
 	.overview-stat-grid {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 0.7rem;
 	}
 	.overview-stat-grid article {
@@ -517,17 +498,41 @@
 	}
 	.billing-history-section {
 		margin-top: 1rem;
-		border: 1px solid #314d77;
+		border: 1px solid #e1e8f1;
 		border-radius: 0.8rem;
-		background: #172640;
-		padding: 0.9rem;
+		background: #fff;
+		padding: 1.1rem;
 	}
-	.history-table-wrap { overflow-x: auto; }
-	.history-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
-	.history-table-wrap th, .history-table-wrap td { border-bottom: 1px solid #334866; padding: 0.65rem; font-size: 0.68rem; }
-	.history-table-wrap th { color: #aebdcb; font-size: 0.58rem; text-transform: uppercase; }
-	.history-table-wrap td { color: #edf4ff; }
+	.history-table-wrap { overflow-x: auto; border: 1px solid #e5ebf3; border-radius: 0.65rem; }
+	.history-table-wrap table { width: 100%; min-width: 44rem; border-collapse: collapse; text-align: left; }
+	.history-table-wrap th, .history-table-wrap td { border-bottom: 1px solid #e5ebf3; padding: 0.78rem 0.85rem; font-size: 0.76rem; }
+	.history-table-wrap th { background: #f5f8fc; color: #61728a; font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.035em; }
+	.history-table-wrap td { color: #293a56; }
+	.history-table-wrap tbody tr:last-child td { border-bottom: 0; }
+	.history-table-wrap td:first-child strong, .history-table-wrap td:first-child small { display: block; }
+	.history-table-wrap td:first-child small { margin-top: 0.18rem; color: #8491a3; }
 	.history-table-wrap td:last-child, .history-table-wrap th:last-child { text-align: right; }
+	.billing-count { flex: 0 0 auto; border-radius: 2rem; background: #edf4ff; color: #356bc2; padding: 0.4rem 0.7rem; font-size: 0.7rem; font-weight: 800; }
+	.bill-status { display: inline-flex; border-radius: 2rem; background: #fff4df; color: #9a6500; padding: 0.25rem 0.55rem; font-size: 0.68rem; font-weight: 800; text-transform: capitalize; }
+	.bill-status.paid { background: #e9fbf1; color: #09834b; }
+	.balance-value { font-weight: 800; white-space: nowrap; }
+	.history-table-wrap td form { margin: 0; }
+	.action-complete { color: #8491a3; }
+	.billing-empty { height: 5rem; color: #718096 !important; text-align: center !important; }
+	.account-empty { display: grid; justify-items: start; gap: 0.55rem; border: 1px dashed #cbd6e4; border-radius: 0.8rem; background: #f8fafd; padding: 1.2rem; color: #64748b; }
+	.account-empty strong { color: #26364f; }
+	.account-table-wrap { overflow-x: auto; margin-top: 0.9rem; border: 1px solid #e1e8f1; border-radius: 0.8rem; background: #fff; }
+	.account-table { width: 100%; min-width: 62rem; border-collapse: collapse; text-align: left; }
+	.account-table th, .account-table td { border-bottom: 1px solid #e7edf4; padding: 0.8rem 0.9rem; font-size: 0.75rem; vertical-align: middle; }
+	.account-table th { background: #f5f8fc; color: #61728a; font-size: 0.64rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.035em; white-space: nowrap; }
+	.account-table tbody tr:last-child td { border-bottom: 0; }
+	.account-table tbody tr:hover { background: #f8fafd; }
+	.account-table td strong, .account-table td small { display: block; }
+	.account-table td strong { color: #293a56; font-size: 0.75rem; }
+	.account-table td small { margin-top: 0.18rem; color: #8491a3; font-size: 0.68rem; }
+	.table-action { border: 1px solid #c9d9f2; border-radius: 0.45rem; background: #f4f8ff; color: #2868cf; padding: 0.45rem 0.65rem; font: inherit; font-weight: 800; white-space: nowrap; cursor: pointer; }
+	.table-action:hover { background: #e7f0ff; }
+	.form-alert { margin: 0 0 0.8rem; border: 1px solid #f0c2c2; border-radius: 0.55rem; background: #fff4f4; color: #9d3434; padding: 0.65rem 0.8rem; font-size: 0.75rem; }
 	.section-heading {
 		display: flex;
 		align-items: center;
@@ -543,19 +548,28 @@
 	}
 	.account-stats {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.65rem;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.85rem;
+		width: 100%;
 	}
 	.account-stats article {
+		min-width: 0;
+		border: 1px solid #e4eaf2;
+		border-radius: 0.7rem;
 		background: white;
-		padding: 0.72rem 0.8rem;
-		box-shadow: 0 4px 14px rgba(32, 55, 88, 0.025);
+		padding: 1rem 1.1rem;
+		box-shadow: 0 5px 16px rgba(32, 55, 88, 0.04);
+	}
+	.account-stats article > span {
+		color: #718096;
+		font-size: 0.72rem;
+		font-weight: 750;
 	}
 	.account-stats strong {
 		display: block;
 		margin-top: 0.28rem;
 		color: #1b2d4b;
-		font-size: 1rem;
+		font-size: 1.25rem;
 		font-weight: 900;
 		letter-spacing: -0.015em;
 	}
@@ -563,7 +577,7 @@
 		display: block;
 		margin-top: 0.16rem;
 		color: #8793a4;
-		font-size: 0.56rem;
+		font-size: 0.68rem;
 	}
 	.account-stats .positive {
 		color: #16a05b;
@@ -573,14 +587,14 @@
 	}
 	.account-layout {
 		display: grid;
-		grid-template-columns: minmax(0, 2.5fr) minmax(13rem, 0.95fr);
+		grid-template-columns: minmax(0, 1fr);
 		align-items: start;
-		gap: 0.65rem;
-		margin-top: 0.65rem;
+		gap: 0.85rem;
+		margin-top: 0.9rem;
 	}
 	.account-card {
 		min-width: 0;
-		padding: 0.85rem 0.9rem 0.65rem;
+		padding: 1.2rem 1.3rem;
 	}
 	.account-title-row {
 		display: flex;
@@ -614,13 +628,13 @@
 	.activity-heading h3 {
 		margin: 0;
 		color: #1b2b46;
-		font-size: 0.64rem;
+		font-size: 0.9rem;
 		font-weight: 900;
 	}
 	.account-title p {
 		margin: 0.15rem 0 0;
 		color: #8a96a7;
-		font-size: 0.55rem;
+		font-size: 0.7rem;
 	}
 	.standing {
 		display: inline-flex;
@@ -630,7 +644,7 @@
 		background: #e9fbf1;
 		color: #099754;
 		padding: 0.28rem 0.5rem;
-		font-size: 0.53rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		white-space: nowrap;
 	}
@@ -657,7 +671,7 @@
 	}
 	.account-details span {
 		color: #718096;
-		font-size: 0.51rem;
+		font-size: 0.64rem;
 		font-weight: 800;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
@@ -666,14 +680,14 @@
 		overflow: hidden;
 		margin-top: 0.18rem;
 		color: #293a56;
-		font-size: 0.56rem;
+		font-size: 0.75rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.account-details small {
 		margin-top: 0.18rem;
 		color: #8c98a9;
-		font-size: 0.52rem;
+		font-size: 0.68rem;
 	}
 	.service-list {
 		display: flex;
@@ -688,7 +702,7 @@
 		background: #f2f6fc;
 		color: #61728a;
 		padding: 0.28rem 0.45rem;
-		font-size: 0.5rem;
+		font-size: 0.66rem;
 	}
 	.service-list strong {
 		color: inherit;
@@ -696,7 +710,7 @@
 	}
 	.service-list small {
 		color: #8b97a8;
-		font-size: 0.46rem;
+		font-size: 0.61rem;
 	}
 	.activity-card {
 		padding: 0.75rem 0.8rem;
@@ -804,6 +818,7 @@
 	.utility-dialog form .dialog-heading,
 	.utility-dialog form .dialog-copy,
 	.utility-dialog form .dialog-actions { grid-column: 1 / -1; }
+	.utility-dialog form > .wide-field { grid-column: 1 / -1; }
 	.utility-dialog form > label { min-width: 0; }
 	.utility-dialog::backdrop {
 		background: rgba(7, 19, 35, 0.72);
@@ -939,12 +954,34 @@
 	:global(html[data-theme='dark'] .utilities-page .account-card),
 	:global(html[data-theme='dark'] .utilities-page .activity-card),
 	:global(html[data-theme='dark'] .utilities-page .account-stats article),
+	:global(html[data-theme='dark'] .utilities-page .billing-history-section),
+	:global(html[data-theme='dark'] .utilities-page .account-table-wrap),
+	:global(html[data-theme='dark'] .utilities-page .account-empty),
 	:global(html[data-theme='dark'] .utilities-page .notification-popover),
 	:global(html[data-theme='dark'] .utility-dialog) {
 		border-color: #334866;
 		background: #172640;
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .utilities-page .history-table-wrap) { border-color: #334866; }
+	:global(html[data-theme='dark'] .utilities-page .account-table-wrap) { border-color: #334866; background: #172640; }
+	:global(html[data-theme='dark'] .utilities-page .account-table th) { border-color: #334866; background: #101e34; color: #b8c8dd; }
+	:global(html[data-theme='dark'] .utilities-page .account-table td) { border-color: #334866; color: #edf4ff; }
+	:global(html[data-theme='dark'] .utilities-page .account-table td strong) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .utilities-page .account-table td small) { color: #aebdcb; }
+	:global(html[data-theme='dark'] .utilities-page .account-table tbody tr:hover) { background: #1c2e49; }
+	:global(html[data-theme='dark'] .utilities-page .table-action) { border-color: #415878; background: #172640; color: #8ab7ff; }
+	:global(html[data-theme='dark'] .utilities-page .form-alert) { border-color: #74434b; background: #3c242c; color: #ffc6c6; }
+	:global(html[data-theme='dark'] .utilities-page .history-table-wrap th) { border-color: #334866; background: #101e34; color: #b8c8dd; }
+	:global(html[data-theme='dark'] .utilities-page .history-table-wrap td) { border-color: #334866; color: #edf4ff; }
+	:global(html[data-theme='dark'] .utilities-page .history-table-wrap td:first-child small),
+	:global(html[data-theme='dark'] .utilities-page .billing-empty) { color: #aebdcb !important; }
+	:global(html[data-theme='dark'] .utilities-page .billing-count) { background: #243a59; color: #c1d0e4; }
+	:global(html[data-theme='dark'] .utilities-page .account-empty) { border-color: #415878; color: #b8c8dd; }
+	:global(html[data-theme='dark'] .utilities-page .account-empty strong) { color: #edf4ff; }
+	:global(html[data-theme='dark'] .utilities-page .standing.inactive) { background: #3b2b22; color: #ffcf9c; }
+	:global(html[data-theme='dark'] .utilities-page .bill-status:not(.paid)) { background: #4a3a1c; color: #ffdb8a; }
+	:global(html[data-theme='dark'] .utilities-page .bill-status.paid) { background: #123b31; color: #82e2b0; }
 	:global(html[data-theme='dark'] .utilities-page h1),
 	:global(html[data-theme='dark'] .utilities-page h2),
 	:global(html[data-theme='dark'] .utilities-page h3),
@@ -967,12 +1004,8 @@
 		color: #b8c8dd;
 	}
 	@media (max-width: 820px) {
-		.account-layout {
-			grid-template-columns: minmax(0, 1.7fr) minmax(12rem, 1fr);
-		}
-		.standing {
-			font-size: 0.48rem;
-		}
+		.account-layout { grid-template-columns: minmax(0, 1fr); }
+		.standing { font-size: 0.64rem; }
 		.account-details {
 			grid-template-columns: 1fr 1fr;
 		}
@@ -987,6 +1020,7 @@
 		.account-stats {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+		.account-stats article:last-child { grid-column: 1 / -1; }
 		.account-layout {
 			grid-template-columns: 1fr;
 		}

@@ -15,10 +15,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (pathname.startsWith('/staff')) {
 		if (!event.locals.user) throw redirect(303, `/login?next=${encodeURIComponent(pathname)}`);
 		if (event.locals.user.role === 'student' || event.locals.user.role === 'teacher') throw error(403, 'Customer accounts cannot access staff tools.');
-		if (event.locals.user.role === 'cashier' && pathname !== '/staff/pos') {
+		if (event.locals.user.role === 'cashier' && pathname !== '/staff/pos' && !pathname.startsWith('/staff/pos/')) {
 			throw redirect(303, '/staff/pos');
 		}
-		if (event.locals.user.role === 'admin' && pathname === '/staff/pos') {
+		if (event.locals.user.role === 'admin' && (pathname === '/staff/pos' || pathname.startsWith('/staff/pos/'))) {
 			throw redirect(303, '/staff/admin');
 		}
 	}

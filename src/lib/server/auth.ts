@@ -118,8 +118,9 @@ async function teacherHasActiveMembership(teacherId: string) {
 		);
 	}
 	const query = new URLSearchParams({
-		select: 'active_membership,start_date,end_date',
+		select: 'active_membership,start_date,end_date,is_archived',
 		teacher_id: `eq.${teacherId}`,
+		or: '(is_archived.eq.false,is_archived.is.null)',
 		order: 'start_date.desc',
 		limit: '50'
 	});
@@ -139,9 +140,11 @@ async function teacherHasActiveMembership(teacherId: string) {
 		active_membership: boolean | null;
 		start_date: string | null;
 		end_date: string | null;
+		is_archived: boolean | null;
 	}>;
 	return memberships.some(
 		(membership) =>
+			membership.is_archived !== true &&
 			membership.active_membership === true &&
 			(!membership.start_date || membership.start_date <= today) &&
 			(!membership.end_date || membership.end_date >= today)

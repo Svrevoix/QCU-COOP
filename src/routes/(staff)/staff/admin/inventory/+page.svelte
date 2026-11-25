@@ -1,61 +1,49 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	type Product = { id: number; sku: string; product_name: string; category_id: number | null; cost_price: number; selling_price: number; stock: number; reorder_level: number; status: string };
-	type Balance = { product_id: number; warehouse_id: number; quantity: number };
+	import { enhance } from '$app/forms';
+	import { tick } from 'svelte';
+	type Product = { id: number; sku: string; product_name: string; category_id: number | null; cost_price: number; selling_price: number; stock: number; reorder_level: number; refill_level: number; refill_quantity: number; status: string };
+	type Balance = { product_id: number; warehouse_id: number; quantity: number; location_type: string };
+	type StockAlert = { id: number; product_id: number; warehouse_stock: number; store_stock: number; alert_type: string; resolved: boolean; created_at: string };
+	type Category = { id: number; category_name: string };
 
-	let activeTab = $state('Items');
 	let query = $state('');
 	let statusFilter = $state('All statuses');
-	const tabs = ['Items', 'Suppliers', 'Customers'];
 	let selectedProductId = $state('');
+	let transferProductId = $state('');
+	let transferQuantity = $state('1');
 	let restockSearchTerm = $state('');
 	let restockPickerOpen = $state(false);
 	let activeRestockProductIndex = $state(0);
 	let restockSearchInput = $state<HTMLInputElement>();
+	let restockQuantityInput = $state<HTMLInputElement>();
 	let products = $derived(page.data.products as Product[]);
+	const normalizeProductSearch = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 	let matchingRestockProducts = $derived.by(() => {
-		const search = restockSearchTerm.trim().toLowerCase();
+		const search = normalizeProductSearch(restockSearchTerm);
 		if (!search) return products;
 		return products.filter((product) =>
-			`${product.product_name} ${product.sku}`.toLowerCase().includes(search)
+			normalizeProductSearch(`${product.product_name} ${product.sku}`).includes(search)
 		);
 	});
 	let balances = $derived(page.data.balances as Balance[]);
+	let stockAlerts = $derived(page.data.stockAlerts as StockAlert[]);
+	let categories = $derived(page.data.categories as Category[]);
 	let inventoryItems = $derived(products.map((product) => {
-		const warehouseRows = balances.filter((balance) => balance.product_id === product.id);
-		const stock = warehouseRows.length ? warehouseRows.reduce((sum, row) => sum + Number(row.quantity), 0) : Number(product.stock ?? 0);
-		const status = stock <= 0 ? 'Out of stock' : stock <= Number(product.reorder_level ?? 0) ? 'Low stock' : 'In stock';
-		return { ...product, stock, status };
+		const rows = balances.filter((balance) => balance.product_id === product.id);
+		const storeRows = rows.filter((balance) => balance.location_type === 'store');
+		const warehouseRows = rows.filter((balance) => balance.location_type === 'warehouse');
+		const storeStock = storeRows.length ? storeRows.reduce((sum, row) => sum + Number(row.quantity), 0) : Number(product.stock ?? 0);
+		const warehouseStock = warehouseRows.reduce((sum, row) => sum + Number(row.quantity), 0);
+		const refillLevel = Number(product.refill_level ?? 0);
+		const refillQuantity = Number(product.refill_quantity ?? 0);
+		const status = storeStock <= 0 ? 'Out of stock' : storeStock <= Number(product.reorder_level ?? 0) ? 'Low stock' : 'In stock';
+		const categoryName = categories.find((category) => category.id === product.category_id)?.category_name ?? 'Uncategorized';
+		return { ...product, storeStock, warehouseStock, refillLevel, refillQuantity, categoryName, status };
 	}));
-	let inventoryValue = $derived(inventoryItems.reduce((sum, item) => sum + item.stock * Number(item.cost_price ?? 0), 0));
+	let inventoryValue = $derived(inventoryItems.reduce((sum, item) => sum + (item.storeStock + item.warehouseStock) * Number(item.cost_price ?? 0), 0));
 	let reorderCount = $derived(inventoryItems.filter((item) => item.status !== 'In stock').length);
 	let categoryCount = $derived(new Set(products.map((item) => item.category_id).filter((id) => id !== null)).size);
-	const maintenance = [
-		{
-			label: 'Item Profile',
-			href: '/staff/admin/inventory/profiles/item',
-			detail: 'SKU, pricing, and reorder rules',
-			icon: 'item'
-		},
-		{
-			label: 'Supplier Profile',
-			href: '/staff/admin/inventory/profiles/supplier',
-			detail: 'Vendor contacts and terms',
-			icon: 'supplier'
-		},
-		{
-			label: 'Customer Profile',
-			href: '/staff/admin/inventory/profiles/customer',
-			detail: 'Customer records and classifications',
-			icon: 'customer'
-		},
-		{
-			label: 'Payment Types Profile',
-			href: '/staff/admin/inventory/profiles/payment-types',
-			detail: 'Accepted tender types',
-			icon: 'payment'
-		}
-	];
 	const workflows = [
 		{
 			label: 'Purchase Item',
@@ -90,7 +78,7 @@
 	];
 	const filteredItems = $derived(
 		inventoryItems.filter((item) => {
-			const matchesQuery = `${item.sku} ${item.product_name} ${item.category_id ?? ''}`
+			const matchesQuery = `${item.sku} ${item.product_name} ${item.categoryName}`
 				.toLowerCase()
 				.includes(query.trim().toLowerCase());
 			const matchesStatus = statusFilter === 'All statuses' || item.status === statusFilter;
@@ -102,11 +90,20 @@
 		new Date()
 	);
 
-	function selectRestockProduct(product: Product) {
+	async function selectRestockProduct(product: Product) {
 		selectedProductId = String(product.id);
 		restockSearchTerm = `${product.product_name} · ${product.sku}`;
 		restockPickerOpen = false;
 		restockSearchInput?.setCustomValidity('');
+		await tick();
+		document.getElementById('restock-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		restockQuantityInput?.focus({ preventScroll: true });
+	}
+
+	function prepareStoreTransfer(item: { id: number; product_name: string; refillQuantity: number; warehouseStock: number }) {
+		transferProductId = String(item.id);
+		transferQuantity = String(Math.max(1, Math.min(item.refillQuantity || 1, item.warehouseStock || 1)));
+		document.getElementById('store-transfer-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}
 
 	function handleRestockSearchKeydown(event: KeyboardEvent) {
@@ -183,7 +180,7 @@
 	<div class="page-heading">
 		<div>
 			<h2>Inventory management</h2>
-			<p>Manage master records, stock levels, and the people and places behind every item.</p>
+			<p>Track store stock, warehouse replenishment, and product availability.</p>
 		</div>
 		<a class="add-button" href="/staff/admin/inventory/profiles/item"
 			><span aria-hidden="true">+</span> Add item</a
@@ -196,9 +193,20 @@
 		<article><span>Reorder queue</span><strong>{reorderCount}</strong><small class="warn">Low or out of stock</small></article>
 		<article><span>Suppliers</span><strong>{page.data.supplierCount}</strong><small>Supplier records</small></article>
 	</section>
+	{#if stockAlerts.length}
+		<section class="stock-alerts" aria-labelledby="stock-alerts-title">
+			<div class="section-heading"><h2 id="stock-alerts-title">Stock alerts</h2><p>Warehouse stock is needed to refill these items.</p></div>
+			<div class="stock-alert-list">
+				{#each stockAlerts as alert (alert.id)}
+					{@const item = products.find((product) => product.id === alert.product_id)}
+					<article><strong>{item?.product_name ?? `Item #${alert.product_id}`}</strong><span>Store: {alert.store_stock} · Warehouse: {alert.warehouse_stock}</span><b>{alert.alert_type.replaceAll('_', ' ')}</b></article>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	<section class="restock-panel" aria-labelledby="restock-title">
-		<div class="section-heading"><h2 id="restock-title">Restock inventory</h2><p>Receive stock and record the inventory movement. The default stock location is assigned automatically.</p></div>
+		<div class="section-heading"><h2 id="restock-title">Restock warehouse</h2><p>Receive stock into warehouse inventory. Store stock is tracked separately.</p></div>
 		{#if page.form?.restockError}<p class="restock-message error" role="alert">{page.form.restockError}</p>{/if}
 		{#if page.form?.restockSuccess}<p class="restock-message success" role="status">{page.form.restockSuccess}</p>{/if}
 		<form method="POST" action="?/restock" class="restock-form" onsubmit={handleRestockSubmit}>
@@ -256,75 +264,37 @@
 					{/if}
 				</div>
 			</label>
-			<label>Quantity received<input name="quantity" type="number" min="1" step="1" required /></label>
+			<label>Quantity received<input bind:this={restockQuantityInput} name="quantity" type="number" min="1" step="1" required /></label>
 			<label>Note<input name="remarks" maxlength="500" placeholder="Optional reference or note" /></label>
 			<button class="add-button" type="submit" disabled={!products.length}>Receive stock</button>
 		</form>
 	</section>
-
-	<section class="operations-panel" aria-labelledby="profiles-title">
-		<div class="section-heading">
-			<h2 id="profiles-title">Maintenance profiles</h2>
-			<p>Open a CRUD profile to create, update, or review master records.</p>
-		</div>
-		<div class="maintenance-grid">
-			{#each maintenance as card}
-				<a href={card.href}>
-					<span class="profile-icon" aria-hidden="true">
-						{#if card.icon === 'warehouse'}
-							<svg viewBox="0 0 24 24"
-								><ellipse cx="12" cy="5" rx="8" ry="2.5" /><path
-									d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"
-								/></svg
-							>
-						{:else if card.icon === 'item'}
-							<svg viewBox="0 0 24 24"
-								><rect x="5" y="3" width="14" height="18" rx="2" /><path
-									d="M9 7h6M9 11h6M9 15h3"
-								/></svg
-							>
-						{:else if card.icon === 'payment'}
-							<svg viewBox="0 0 24 24"
-								><path d="M4 10h16M5 10v9m4-9v9m6-9v9m4-9v9M3 21h18M12 3l9 5H3l9-5Z" /></svg
-							>
-						{:else}
-							<svg viewBox="0 0 24 24"
-								><circle cx="12" cy="8" r="3" /><path d="M5 20c.9-3.3 3.3-5 7-5s6.1 1.7 7 5" /></svg
-							>
-						{/if}
-					</span>
-					<span class="profile-copy">
-						<strong>{card.label}</strong>
-						<span>{card.detail}</span>
-						<b>Open profile <span aria-hidden="true">→</span></b>
-					</span>
-				</a>
-			{/each}
-		</div>
-	</section>
-
-	<section class="directory-panel" aria-label="Inventory directories">
-		<div class="tabs" role="tablist" aria-label="Inventory directory">
-			{#each tabs as tab}
-				<button
-					class:active={activeTab === tab}
-					type="button"
-					role="tab"
-					aria-selected={activeTab === tab}
-					onclick={() => (activeTab = tab)}>{tab}</button
-				>
-			{/each}
+	{#if transferProductId}
+		{@const transferItem = inventoryItems.find((item) => String(item.id) === transferProductId)}
+		<section class="restock-panel" id="store-transfer-panel" aria-labelledby="store-transfer-title">
+			<div class="section-heading"><h2 id="store-transfer-title">Transfer stock to store</h2><p>{transferItem?.product_name ?? 'Selected item'} · {transferItem?.warehouseStock ?? 0} available in warehouse. The cashier can sell only store stock.</p></div>
+			{#if page.form?.transferError}<p class="restock-message error" role="alert">{page.form.transferError}</p>{/if}
+			{#if page.form?.transferSuccess}<p class="restock-message success" role="status">{page.form.transferSuccess}</p>{/if}
+			<form method="POST" action="?/transferToStore" class="restock-form transfer-form" use:enhance>
+				<input type="hidden" name="productId" value={transferProductId} />
+				<label>Quantity to move<input name="quantity" type="number" min="1" max={transferItem?.warehouseStock ?? 0} step="1" bind:value={transferQuantity} required /></label>
+				<label>Note<input name="remarks" maxlength="500" placeholder="Optional transfer note" /></label>
+				<button class="add-button" type="submit" disabled={!transferItem || transferItem.warehouseStock < 1}>Transfer to store</button>
+				<button class="row-restock" type="button" onclick={() => (transferProductId = '')}>Cancel</button>
+			</form>
+		</section>
+	{/if}
+	<section class="directory-panel" aria-label="Inventory items">
+		<div class="directory-heading">
+			<div><h2>Inventory items</h2><p>Store availability, reserve stock, and refill settings for each product.</p></div>
+			<span class="directory-count">{filteredItems.length} of {inventoryItems.length} items</span>
 		</div>
 		<div class="toolbar">
 			<label class="search">
 				<svg viewBox="0 0 24 24" aria-hidden="true"
 					><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg
 				>
-				<input
-					bind:value={query}
-					placeholder={`Search ${activeTab.toLowerCase()}...`}
-					aria-label={`Search ${activeTab.toLowerCase()}`}
-				/>
+				<input bind:value={query} placeholder="Search by item, SKU, or category" aria-label="Search inventory" />
 			</label>
 			<select bind:value={statusFilter} aria-label="Filter by status">
 				<option>All statuses</option>
@@ -333,58 +303,29 @@
 				<option>Out of stock</option>
 			</select>
 		</div>
-		{#if activeTab === 'Items'}
-			<div class="table-wrap">
-				<table>
-					<thead>
-						<tr
-							><th>Item / SKU</th><th>Category ID</th><th>On hand</th><th>Reorder point</th><th
-								>Unit price</th
-							><th>Status</th><th>Action</th></tr
-						>
-					</thead>
-					<tbody>
-						{#each filteredItems as item (item.id)}
-							<tr>
-								<td><strong>{item.product_name}</strong><small>{item.sku}</small></td>
-								<td>{item.category_id ?? '—'}</td>
-								<td
-									class="number"
-									class:low-number={item.status === 'Low stock'}
-									class:zero-number={item.status === 'Out of stock'}>{item.stock}</td
-								>
-								<td class="number">{item.reorder_level}</td>
-								<td class="price">{money(Number(item.selling_price))}</td>
-								<td
-									><span
-										class="status"
-										class:low={item.status === 'Low stock'}
-										class:out={item.status === 'Out of stock'}><i></i>{item.status}</span
-									></td><td><a class="row-restock" href="#restock-title" onclick={() => selectRestockProduct(item)}>Restock</a></td
-								>
-							</tr>
-						{:else}
-							<tr
-								><td class="no-results" colspan="7"
-									>No items match your search and status filters.</td
-								></tr
-							>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{:else}
-			<div class="empty-directory" role="tabpanel">
-				<h2>{activeTab} directory</h2>
-				<p>Use the maintenance profiles above to manage {activeTab.toLowerCase()} records.</p>
-			</div>
-		{/if}
-		{#if activeTab === 'Items'}
-			<div class="directory-footer">
-				Showing {filteredItems.length} of {inventoryItems.length} inventory items
-				<span>Live inventory</span>
-			</div>
-		{/if}
+		<div class="table-wrap">
+			<table>
+				<thead><tr><th>Item</th><th>Category</th><th>Store</th><th>Warehouse</th><th>Auto refill</th><th>Reorder at</th><th>Price</th><th>Status</th><th></th></tr></thead>
+				<tbody>
+					{#each filteredItems as item (item.id)}
+						<tr>
+							<td class="item-cell"><strong>{item.product_name}</strong><small>{item.sku}</small></td>
+							<td>{item.categoryName}</td>
+							<td class="number" class:low-number={item.status === 'Low stock'} class:zero-number={item.status === 'Out of stock'}>{item.storeStock}<small>in store</small></td>
+							<td class="number">{item.warehouseStock}<small>in warehouse</small></td>
+							<td class="refill-rule">At {item.refillLevel}, add {item.refillQuantity}</td>
+							<td>{item.reorder_level}</td>
+							<td class="price">{money(Number(item.selling_price))}</td>
+							<td><span class="status" class:low={item.status === 'Low stock'} class:out={item.status === 'Out of stock'}><i></i>{item.status}</span></td>
+							<td class="row-actions"><button class="row-restock" type="button" onclick={() => selectRestockProduct(item)}>Receive</button><button class="row-restock" type="button" onclick={() => prepareStoreTransfer(item)} disabled={item.warehouseStock < 1}>To store</button></td>
+						</tr>
+					{:else}
+						<tr><td class="no-results" colspan="9">No items match your search and status filters.</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+		<div class="directory-footer"><span>Store and warehouse quantities update independently.</span><a href="/staff/admin/inventory/profiles/item">Manage product settings</a></div>
 	</section>
 
 	<details class="workflow-disclosure">
@@ -509,8 +450,8 @@
 	.inventory-stats {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.7rem;
-		margin-bottom: 0.8rem;
+		gap: 0.85rem;
+		margin-bottom: 1rem;
 	}
 	.inventory-stats article {
 		min-width: 0;
@@ -518,7 +459,7 @@
 		border-radius: 0.7rem;
 		background: white;
 		box-shadow: 0 5px 16px rgba(32, 55, 88, 0.05);
-		padding: 0.8rem 0.9rem;
+		padding: 1rem 1.1rem;
 	}
 	.inventory-stats article > span,
 	.inventory-stats small {
@@ -541,22 +482,34 @@
 	.inventory-stats .warn {
 		color: #e77b0b;
 	}
-	.operations-panel,
+	.stock-alerts {
+		margin-bottom: 1rem;
+		border: 1px solid #f2c2a8;
+		border-radius: .8rem;
+		background: #fff8f4;
+		padding: 1rem 1.15rem;
+	}
+	.stock-alerts h2 { margin: 0; color: #8d3e19; font-size: .9rem; }
+	.stock-alerts p { margin: .25rem 0 .75rem; color: #8c6a5a; font-size: .7rem; }
+	.stock-alert-list { display: grid; gap: .45rem; }
+	.stock-alert-list article { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem 1rem; border: 1px solid #f2d6c8; border-radius: .55rem; background: white; padding: .65rem .8rem; font-size: .7rem; }
+	.stock-alert-list strong { color: #263752; }
+	.stock-alert-list span { color: #66768d; }
+	.stock-alert-list b { margin-left: auto; color: #a8421d; font-size: .62rem; text-transform: capitalize; }
 	.directory-panel,
 	.restock-panel {
-		margin-bottom: 0.8rem;
+		margin-bottom: 1rem;
 		border: 1px solid #e4eaf2;
 		border-radius: 0.8rem;
 		background: white;
 		box-shadow: 0 8px 24px rgba(32, 55, 88, 0.04);
 	}
-	.operations-panel {
-		padding: 0.85rem 0.95rem;
-	}
-	.restock-panel { padding: .85rem .95rem; }
+	.restock-panel { padding: 1.05rem 1.15rem; }
 	.restock-form { display: grid; grid-template-columns: 1.5fr .8fr 1.4fr auto; align-items: end; gap: .6rem; }
-	.restock-form label { display: grid; gap: .3rem; color: #66768d; font-size: .58rem; font-weight: 700; }
-	.restock-form input:not([type='hidden']) { box-sizing: border-box; width: 100%; min-width: 0; height: 2.35rem; border: 1px solid #e1e6ed; border-radius: .45rem; background: #fafbfc; color: #34445d; padding: .4rem .55rem; font: inherit; font-size: .62rem; }
+	.transfer-form { grid-template-columns: minmax(12rem, .8fr) minmax(14rem, 1fr) auto auto; }
+	.row-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+	.restock-form label { display: grid; gap: .4rem; color: #66768d; font-size: .7rem; font-weight: 700; }
+	.restock-form input:not([type='hidden']) { box-sizing: border-box; width: 100%; min-width: 0; height: 2.7rem; border: 1px solid #e1e6ed; border-radius: .45rem; background: #fafbfc; color: #34445d; padding: .55rem .7rem; font: inherit; font-size: .72rem; }
 	.restock-item-picker { position: relative; }
 	.restock-product-options { position: absolute; z-index: 20; top: calc(100% + .25rem); right: 0; left: 0; max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #dce3ed; border-radius: .5rem; background: white; box-shadow: 0 12px 28px rgba(23, 43, 77, .18); }
 	.restock-product-option { display: flex; width: 100%; min-height: 2.35rem; align-items: center; justify-content: space-between; gap: .75rem; border: 0; border-bottom: 1px solid #edf1f5; background: transparent; padding: .55rem .65rem; color: #34445d; font: inherit; font-size: .62rem; text-align: left; cursor: pointer; }
@@ -632,7 +585,7 @@
 	}
 	.profile-copy > strong {
 		color: #263752;
-		font-size: 0.59rem;
+		font-size: 0.7rem;
 	}
 	.profile-copy > span {
 		min-height: 1.45rem;
@@ -645,31 +598,28 @@
 		font-size: 0.52rem;
 	}
 	.directory-panel {
-		min-height: 19rem;
-		padding: 0 0.8rem 0.8rem;
+		padding: 1rem 1.1rem;
 	}
-	.tabs {
+	.directory-heading {
 		display: flex;
-		gap: 0.15rem;
-		overflow-x: auto;
-		border-bottom: 1px solid #e8edf4;
-		padding: 0 0.15rem;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: .35rem;
 	}
-	.tabs button {
-		border: 0;
-		border-bottom: 2px solid transparent;
-		background: transparent;
-		color: #8490a1;
-		padding: 0.8rem 0.55rem 0.6rem;
-		font: inherit;
-		font-size: 0.61rem;
-		font-weight: 700;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.tabs button.active {
-		border-color: #347af5;
-		color: #347af5;
+	.directory-heading h2 { margin: 0; color: #233a5d; font-size: 1rem; }
+	.directory-heading p { margin: .25rem 0 0; color: #8491a2; font-size: .7rem; }
+	.directory-count { flex: 0 0 auto; border-radius: 2rem; background: #edf4ff; color: #347af5; padding: .45rem .7rem; font-size: .68rem; font-weight: 800; }
+	.directory-footer a { color: #347af5; font-weight: 800; text-decoration: none; }
+	.refill-rule { color: #445a78; font-weight: 700; white-space: nowrap; }
+	.item-cell { min-width: 10rem; }
+	td.number small { color: #8c99aa; font-size: .58rem; font-weight: 500; }
+	.status { font-size: .62rem; }
+	.row-restock { display: inline-flex; border: 1px solid #cbd8e9; border-radius: .4rem; background: transparent; padding: .4rem .55rem; color: #347af5; font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
+	.row-restock:hover { border-color: #347af5; background: #eff6ff; }
+	.table-wrap { border: 1px solid #e7edf4; border-radius: .55rem; }
+	table {
+		min-width: 900px;
 	}
 	.toolbar {
 		display: flex;
@@ -716,7 +666,7 @@
 		color: #7f8b9d;
 		padding: 0.45rem 0.55rem;
 		font: inherit;
-		font-size: 0.57rem;
+		font-size: 0.68rem;
 	}
 	.table-wrap {
 		overflow-x: auto;
@@ -724,12 +674,11 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		min-width: 620px;
 	}
 	th {
 		background: #f3f5f8;
 		color: #7e8998;
-		font-size: 0.51rem;
+		font-size: 0.62rem;
 		text-align: left;
 		text-transform: uppercase;
 	}
@@ -744,9 +693,9 @@
 		border-bottom: 1px solid #e9edf2;
 		padding: 0.7rem 0.45rem;
 	}
-	td {
+		td {
 		color: #7c8798;
-		font-size: 0.57rem;
+		font-size: 0.72rem;
 	}
 	td strong,
 	td small {
@@ -754,12 +703,12 @@
 	}
 	td strong {
 		color: #2b3b54;
-		font-size: 0.58rem;
+		font-size: 0.7rem;
 	}
 	td small {
 		margin-top: 0.12rem;
 		color: #9ba5b3;
-		font-size: 0.5rem;
+		font-size: 0.61rem;
 	}
 	.number,
 	.price {
@@ -815,7 +764,7 @@
 		gap: 0.5rem;
 		padding-top: 0.65rem;
 		color: #8894a5;
-		font-size: 0.52rem;
+		font-size: 0.65rem;
 	}
 	.directory-footer span {
 		color: #9ba5b3;
@@ -878,6 +827,7 @@
 	}
 	:global(html[data-theme='dark'] .inventory-page .inventory-topbar),
 	:global(html[data-theme='dark'] .inventory-page .inventory-stats article),
+	:global(html[data-theme='dark'] .inventory-page .stock-alerts),
 	:global(html[data-theme='dark'] .inventory-page .operations-panel),
 	:global(html[data-theme='dark'] .inventory-page .directory-panel),
 	:global(html[data-theme='dark'] .inventory-page .restock-panel),
@@ -885,6 +835,13 @@
 		border-color: #334866;
 		background: #172640;
 	}
+	:global(html[data-theme='dark'] .inventory-page .stock-alerts) { border-color: #7b4a36; background: #2b2430; }
+	:global(html[data-theme='dark'] .inventory-page .stock-alerts h2),
+	:global(html[data-theme='dark'] .inventory-page .stock-alert-list b) { color: #ffd0b8; }
+	:global(html[data-theme='dark'] .inventory-page .stock-alerts p),
+	:global(html[data-theme='dark'] .inventory-page .stock-alert-list span) { color: #d4b5a5; }
+	:global(html[data-theme='dark'] .inventory-page .stock-alert-list article) { border-color: #664638; background: #172640; }
+	:global(html[data-theme='dark'] .inventory-page .stock-alert-list strong) { color: #edf4ff; }
 	:global(html[data-theme='dark'] .inventory-page h1),
 	:global(html[data-theme='dark'] .inventory-page h2),
 	:global(html[data-theme='dark'] .inventory-page h3),
@@ -896,10 +853,16 @@
 		color: #edf4ff;
 	}
 	:global(html[data-theme='dark'] .inventory-page .maintenance-grid a),
+	:global(html[data-theme='dark'] .inventory-page .row-restock),
 	:global(html[data-theme='dark'] .inventory-page .workflow-links a) {
 		border-color: #415878;
 		background: #101d35;
 	}
+	:global(html[data-theme='dark'] .inventory-page .directory-heading p),
+	:global(html[data-theme='dark'] .inventory-page .directory-footer span),
+	:global(html[data-theme='dark'] .inventory-page td.number small) { color: #9fb0c7; }
+	:global(html[data-theme='dark'] .inventory-page .refill-rule) { color: #c9d6e8; }
+	:global(html[data-theme='dark'] .inventory-page .directory-count) { background: #203a60; color: #8eb7ff; }
 	:global(html[data-theme='dark'] .inventory-page .search),
 	:global(html[data-theme='dark'] .inventory-page .toolbar select),
 	:global(html[data-theme='dark'] .inventory-page .restock-form input),
@@ -907,6 +870,18 @@
 		border-color: #415878;
 		background: #172640;
 	}
+	:global(html[data-theme='dark'] .inventory-page .restock-form input:not([type='hidden'])) {
+		color: #edf4ff;
+		caret-color: #8eb7ff;
+	}
+	:global(html[data-theme='dark'] .inventory-page .restock-form input::placeholder) { color: #91a3bd; opacity: 1; }
+	:global(html[data-theme='dark'] .inventory-page .restock-form input:focus-visible) {
+		border-color: #76a7ff;
+		outline: 2px solid rgb(65 120 216 / 35%);
+		outline-offset: 1px;
+	}
+	:global(html[data-theme='dark'] .inventory-page .restock-form label) { color: #c9d6e8; }
+	:global(html[data-theme='dark'] .inventory-page .section-heading p) { color: #a9bad0; }
 	:global(html[data-theme='dark'] .inventory-page .restock-product-option) {
 		border-color: #334866;
 		color: #edf4ff;
@@ -970,6 +945,7 @@
 			grid-template-columns: repeat(2, 1fr);
 		}
 		.restock-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.transfer-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	@media (max-width: 420px) {
 		.date-chip {
@@ -992,5 +968,6 @@
 			grid-template-columns: 1fr;
 		}
 		.restock-form { grid-template-columns: 1fr; }
+		.transfer-form { grid-template-columns: 1fr; }
 	}
 </style>

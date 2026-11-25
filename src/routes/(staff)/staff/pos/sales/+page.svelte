@@ -8,50 +8,32 @@
 	type ChartPoint = { label: string; amount: number };
 
 	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	let { data } = $props();
 	let period = $state<SalesPeriod>('Daily Sales');
 	let mobileSidebarOpen = $state(false);
-	const monthlyChart: ChartPoint[] = [
-		{ label: 'May', amount: 390 },
-		{ label: 'Jun', amount: 520 },
-		{ label: 'Jul', amount: 460 },
-		{ label: 'Aug', amount: 680 },
-		{ label: 'Sep', amount: 610 },
-		{ label: 'Oct', amount: 840 }
-	];
-
-	const weeklyChart: ChartPoint[] = [
-		{ label: 'Mon', amount: 420 },
-		{ label: 'Tue', amount: 570 },
-		{ label: 'Wed', amount: 490 },
-		{ label: 'Thu', amount: 700 },
-		{ label: 'Fri', amount: 650 },
-		{ label: 'Sat', amount: 820 },
-		{ label: 'Sun', amount: 760 }
-	];
-	const dailyChart: ChartPoint[] = [
-		{ label: 'Mon', amount: 360 },
-		{ label: 'Tue', amount: 440 },
-		{ label: 'Wed', amount: 390 },
-		{ label: 'Thu', amount: 650 }
-	];
+	const monthlyChart: ChartPoint[] = data.metrics.monthly;
+	const weeklyChart: ChartPoint[] = data.metrics.weekly;
+	const dailyChart: ChartPoint[] = data.metrics.daily;
 	const chartPoints = $derived(
 		period === 'Daily Sales' ? dailyChart : period === 'Weekly' ? weeklyChart : monthlyChart
 	);
 	const chartDescription = $derived(
 		period === 'Daily Sales'
-			? 'Monday through Thursday · this week'
+			? 'Daily revenue � last 7 days'
 			: period === 'Weekly'
-				? 'Daily revenue · this week'
-				: 'Monthly revenue · this year'
+				? 'Weekly revenue � last 8 weeks'
+				: 'Monthly revenue � last 12 months'
 	);
 	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
 		new Date()
 	);
+	const chartMin = $derived(Math.min(0, ...chartPoints.map((point) => point.amount)));
+	const chartMax = $derived(Math.max(1, ...chartPoints.map((point) => point.amount)));
 	const chartPolyline = $derived(
 		chartPoints
 			.map((point, index) => {
 				const x = 50 + (index * 430) / Math.max(chartPoints.length - 1, 1);
-				const y = 196 - ((point.amount - 250) / 700) * 170;
+				const y = 196 - ((point.amount - chartMin) / (chartMax - chartMin)) * 170;
 				return `${x},${Math.max(18, Math.min(196, y))}`;
 			})
 			.join(' ')
@@ -59,7 +41,7 @@
 	const markerPoints = $derived(
 		chartPoints.map((point, index) => {
 			const x = 50 + (index * 430) / Math.max(chartPoints.length - 1, 1);
-			const y = 196 - ((point.amount - 250) / 700) * 170;
+			const y = 196 - ((point.amount - chartMin) / (chartMax - chartMin)) * 170;
 			return { ...point, x, y: Math.max(18, Math.min(196, y)) };
 		})
 	);
@@ -68,18 +50,16 @@
 		const rows = [
 			['Period', period],
 			['Metric', 'Value'],
-			['Total revenue', '48250'],
-			['Transactions', '1284'],
-			['Active members', '342'],
-			['Average basket', '37.58'],
+			['Total revenue (7 days)', String(data.metrics.revenue)],
+			['Transactions (7 days)', String(data.metrics.transactions)],
+			['Customers today', String(data.metrics.customers)],
+			['Average basket', String(data.metrics.average)],
 			[],
 			['Category', 'Share'],
-			['Grocery', '68%'],
-			['Services', '24%'],
-			['Other', '8%'],
+			...data.categoryBreakdown.map((category: { name: string; share: number }) => [category.name, `${category.share}%`]),
 			[],
-			['Chart period', 'Revenue (₱)'],
-			...chartPoints.map((point) => [point.label, String(point.amount * 100)])
+			['Chart period', 'Revenue (PHP)'],
+			...chartPoints.map((point) => [point.label, String(point.amount)])
 		];
 		const csv = rows
 			.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
@@ -164,27 +144,11 @@
 		</header>
 
 		<section class="sales-metrics" aria-label="Sales summary">
-			<article>
-				<span>Total revenue</span><strong>₱48,250</strong><small class="up"
-					>↑ 12.4% <i>vs last week</i></small
-				>
-			</article>
-			<article>
-				<span>Transactions</span><strong>1,284</strong><small class="up"
-					>↑ 8.1% <i>vs last week</i></small
-				>
-			</article>
-			<article>
-				<span>Active members</span><strong>342</strong><small class="steady"
-					>→ 0.0% <i>no change</i></small
-				>
-			</article>
-			<article>
-				<span>Avg. basket</span><strong>₱37.58</strong><small class="down"
-					>↓ 2.3% <i>vs last week</i></small
-				>
-			</article>
-		</section>
+<article><span>Total revenue (7 days)</span><strong>&#8369;{data.metrics.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong><small>Recorded cash sales</small></article>
+<article><span>Transactions (7 days)</span><strong>{data.metrics.transactions.toLocaleString()}</strong><small>Completed cash sales</small></article>
+<article><span>Customers today</span><strong>{data.metrics.customers.toLocaleString()}</strong><small>Distinct customer accounts</small></article>
+<article><span>Average basket (7 days)</span><strong>&#8369;{data.metrics.average.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong><small>Revenue per transaction</small></article>
+</section>
 
 		<div class="sales-toolbar">
 			<div class="period-tabs" role="tablist" aria-label="Sales period">
@@ -210,12 +174,10 @@
 						<h2 id="sales-analysis-title">Sales Analysis</h2>
 						<p>{chartDescription}</p>
 					</div>
-					<span class="trend-badge">↑ Trending up</span>
+					<span class="trend-badge">↑ Based on saved sales</span>
 				</div>
 				<div class="chart-wrap">
-					<div class="y-axis" aria-hidden="true">
-						<span>₱900</span><span>₱700</span><span>₱500</span><span>₱300</span>
-					</div>
+					<div class="y-axis" aria-hidden="true"><span>&#8369;{chartMax.toLocaleString('en-PH')}</span><span>&#8369;{(chartMax * 0.66).toLocaleString('en-PH')}</span><span>&#8369;{(chartMax * 0.33).toLocaleString('en-PH')}</span><span>&#8369;0</span></div>
 					<div class="line-chart">
 						<svg
 							viewBox="0 0 500 220"
@@ -231,7 +193,7 @@
 							<polyline points={chartPolyline} class="sales-line" />
 							{#each markerPoints as point (point.label)}
 								<circle cx={point.x} cy={point.y} r="4.5" class="sales-point">
-									<title>{point.label}: ₱{(point.amount * 100).toLocaleString()}</title>
+									<title>{point.label}: ₱{point.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</title>
 								</circle>
 							{/each}
 						</svg>
@@ -243,25 +205,11 @@
 			</section>
 
 			<section class="sales-panel category-panel" aria-labelledby="category-sales-title">
-				<div class="panel-heading">
-					<div>
-						<h2 id="category-sales-title">This week's sales</h2>
-						<p>By category</p>
-					</div>
-				</div>
-				<div
-					class="category-chart"
-					role="img"
-					aria-label="Grocery 68 percent, services 24 percent, other 8 percent"
-				>
-					<div class="donut"><strong>68%</strong><span>Grocery</span></div>
-				</div>
-				<div class="category-legend">
-					<div class="grocery"><span><i></i>Grocery</span><strong>68%</strong></div>
-					<div class="services"><span><i></i>Services</span><strong>24%</strong></div>
-					<div class="other"><span><i></i>Other</span><strong>8%</strong></div>
-				</div>
-			</section>
+<div class="panel-heading"><div><h2 id="category-sales-title">This week's sales</h2><p>By category</p></div></div>
+<div class="category-chart" role="img" aria-label="Category share based on saved sales"><div class="donut"><strong>{data.categoryBreakdown[0]?.share ?? 0}%</strong><span>{data.categoryBreakdown[0]?.name ?? 'No sales'}</span></div></div>
+<div class="category-legend">
+{#each data.categoryBreakdown as category, index (category.name)}<div class:services={index === 1} class:other={index > 1}><span><i></i>{category.name}</span><strong>{category.share}%</strong></div>{:else}<p>No category sales recorded this week.</p>{/each}
+</div></section>
 		</div>
 		<footer class="sales-footer">
 			<span>© {new Date().getFullYear()} QCU Coop Store · Admin Portal</span>

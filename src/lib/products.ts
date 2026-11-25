@@ -6,6 +6,7 @@ export type ProductVariant = {
 export interface Product {
 	id: string;
 	name: string;
+	description?: string;
 	image?: string;
 	images?: string[];
 	price?: number;
@@ -13,6 +14,9 @@ export interface Product {
 	variants?: ProductVariant[];
 	category: ProductCategory;
 	lowStock?: boolean;
+	stock?: number;
+	featured?: boolean;
+	size?: string;
 }
 
 export type ProductCategory =

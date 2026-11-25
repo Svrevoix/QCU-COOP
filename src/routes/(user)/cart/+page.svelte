@@ -1,7 +1,7 @@
 <script lang="ts">
 	import CartItem from '$lib/CartItem.svelte';
+	import { goto } from '$app/navigation';
 	import { cartItems, cartTotal, removeFromCart, updateCartQuantity } from '$lib/cart';
-	import { recordPurchaseOrder } from '$lib/orders';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -13,6 +13,11 @@
 	let checkoutItemKeys = $state<string[]>([]);
 	const memberTeacher = $derived(page.data.user?.role === 'teacher' && page.data.user?.coopMember === true);
 	let deletionItemKeys = $state<string[]>([]);
+	let placingOrder = $state(false);
+	let orderError = $state('');
+	let savedOrderNumber = $state('');
+	let savedOrderTotal = $state<number | null>(null);
+	let savedOrderPieces = $state(0);
 
 	const formatPrice = (value: number) =>
 		new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
@@ -23,7 +28,7 @@
 	let checkoutDiscount = $derived(memberTeacher ? Math.round(checkoutSubtotal * 0.2 * 100) / 100 : 0);
 	let checkoutTotal = $derived(checkoutSubtotal - checkoutDiscount);
 	let activeSelectionKeys = $derived(isEditingCart ? deletionItemKeys : checkoutItemKeys);
-	let qrPayload = $derived(`QCU-COOP|${orderReference}|TOTAL:${checkoutTotal.toFixed(2)}|ITEMS:${checkoutPieceCount}`);
+	let qrPayload = $derived(`QCU-COOP|${orderReference}|TOTAL:${(savedOrderTotal ?? checkoutTotal).toFixed(2)}|ITEMS:${savedOrderPieces || checkoutPieceCount}`);
 	let qrCodeUrl = $derived(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=svg&data=${encodeURIComponent(qrPayload)}`);
 
 	$effect(() => {
@@ -59,23 +64,34 @@
 		isEditingCart = false;
 	}
 
-	function confirmOrder() {
-		orderReference = `QCU-${Date.now().toString().slice(-8)}`;
-		recordPurchaseOrder({
-			id: orderReference,
-			date: new Date().toISOString().slice(0, 10),
-			status: 'Ready for pickup',
-			items: checkoutCartItems.map((item) => ({ ...item })),
-			subtotal: checkoutSubtotal,
-			discount: checkoutDiscount,
-			total: checkoutTotal
-		});
-		checkoutStage = 'qr';
+	async function confirmOrder() {
+		if (placingOrder || !checkoutCartItems.length) return;
+		placingOrder = true;
+		orderError = '';
+		try {
+			const response = await fetch('/api/qr-orders', {
+				method: 'POST', headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ items: checkoutCartItems.map((item) => ({ productId: Number(item.productId), quantity: item.quantity })) })
+			});
+			const result = await response.json() as { message?: string; orderReference?: string; orderNumber?: string; totalAmount?: number };
+			if (!response.ok) throw new Error(result.message || 'The order could not be saved. Please try again.');
+			orderReference = result.orderReference || result.orderNumber || '';
+			savedOrderNumber = result.orderNumber || orderReference;
+			savedOrderTotal = Number(result.totalAmount ?? checkoutTotal);
+			savedOrderPieces = checkoutPieceCount;
+			for (const item of checkoutCartItems) removeFromCart(item.productId, item.sku);
+			checkoutItemKeys = [];
+			checkoutStage = 'qr';
+		} catch (cause) {
+			orderError = cause instanceof Error ? cause.message : 'The order could not be saved. Please try again.';
+		} finally {
+			placingOrder = false;
+		}
 	}
 
 	function closeCheckout() {
 		if (checkoutStage === 'qr') {
-			window.location.href = '/';
+			void goto('/orders');
 			return;
 		}
 
@@ -153,14 +169,15 @@
 				</div>
 				{#if memberTeacher}<div class="checkout-line"><span>Items subtotal</span><b>{formatPrice(checkoutSubtotal)}</b></div><div class="checkout-line"><span>Cooperative member discount (20%)</span><b>−{formatPrice(checkoutDiscount)}</b></div>{/if}
 				<div class="checkout-total"><span>Total to pay</span><strong>{formatPrice(checkoutTotal)}</strong></div>
-				<button type="button" class="confirm-button" onclick={confirmOrder}>Confirm order <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+				{#if orderError}<p class="order-error" role="alert">{orderError}</p>{/if}
+				<button type="button" class="confirm-button" onclick={confirmOrder} disabled={placingOrder}>{placingOrder ? 'Saving order…' : 'Place order'} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
 			{:else}
 				<p class="modal-eyebrow">Order confirmed</p>
-				<h2 id="checkout-title">Scan to continue</h2>
-				<p class="qr-copy">Present this QR code to the QCU COOP cashier to retrieve your order and payment total.</p>
+				<h2 id="checkout-title">Order request saved</h2>
+				<p class="qr-copy">Show this order QR code to the cashier. Payment is completed at the counter.</p>
 				<img class="qr-code" src={qrCodeUrl} alt={`QR code for order ${orderReference}`} />
-				<p class="order-reference">{orderReference}</p>
-				<div class="checkout-total"><span>Amount due</span><strong>{formatPrice(checkoutTotal)}</strong></div>
+				<p class="order-reference">{savedOrderNumber}</p>
+				<div class="checkout-total"><span>Order total</span><strong>{formatPrice(savedOrderTotal ?? checkoutTotal)}</strong></div>
 				<button type="button" class="confirm-button" onclick={closeCheckout}>Done</button>
 			{/if}
 		</div>
@@ -206,6 +223,8 @@
 	.checkout-total strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; }
 	.confirm-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; border: 0; border-radius: 0.7rem; background: #155bd8; padding: 0.9rem 1rem; color: white; font: inherit; font-size: 0.9rem; font-weight: 800; cursor: pointer; }
 	.confirm-button:hover { background: #0d4fc7; }
+	.confirm-button:disabled { opacity: .6; cursor: wait; }
+	.order-error { margin: .75rem 0 0; border-radius: .55rem; background: #fff1f2; padding: .65rem .75rem; color: #b42336; font-size: .74rem; line-height: 1.45; }
 	.confirm-button svg { width: 1rem; height: 1rem; }
 	.qr-copy { margin: -0.65rem 0 1.25rem; color: #607897; font-size: 0.8rem; line-height: 1.55; }
 	.qr-code { display: block; width: min(100%, 13.75rem); aspect-ratio: 1; margin: 0 auto 1rem; border: 0.7rem solid #f4f7fb; image-rendering: pixelated; }

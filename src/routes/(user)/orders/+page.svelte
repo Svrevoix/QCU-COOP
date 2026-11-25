@@ -1,21 +1,45 @@
 <script lang="ts">
 	import { addToCart } from '$lib/cart';
 	import { handleImageError } from '$lib/imageFallback';
-	import { purchaseOrders, type OrderStatus } from '$lib/orders';
+	import type { OrderStatus } from '$lib/orders';
+	let { data } = $props();
 
 	type OrderFilter = 'All orders' | OrderStatus;
+	type HistoryOrder = {
+		id: string;
+		qrReference: string;
+		date: string;
+		status: OrderStatus;
+		total: number;
+		items: Array<{
+			productId: string;
+			sku: string;
+			quantity: number;
+			unitPrice: number;
+			name: string;
+			variant: string;
+			image?: string;
+			category: string;
+		}>;
+	};
 
-	const filters: OrderFilter[] = ['All orders', 'Claimed', 'Ready for pickup', 'Cancelled'];
+	const filters: OrderFilter[] = ['All orders', 'Pending confirmation', 'Ready for pickup', 'Claimed', 'Cancelled'];
 	let activeFilter = $state<OrderFilter>('All orders');
 	let selectedLineKeys = $state<string[]>([]);
 	let reorderQuantities = $state<Record<string, number>>({});
 	let reorderNotice = $state('');
+	let qrOrder = $state<HistoryOrder | null>(null);
 
-	const filteredOrders = $derived(
-		$purchaseOrders.filter((order) => activeFilter === 'All orders' || order.status === activeFilter)
-	);
+	const orders = $derived(data.orders as HistoryOrder[]);
+	const filteredOrders = $derived(orders.filter((order) => activeFilter === 'All orders' || order.status === activeFilter));
+	const qrPayload = $derived(qrOrder
+		? `QCU-COOP|${qrOrder.qrReference}|TOTAL:${qrOrder.total.toFixed(2)}|ITEMS:${qrOrder.items.reduce((sum, item) => sum + item.quantity, 0)}`
+		: '');
+	const qrCodeUrl = $derived(qrPayload
+		? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=svg&data=${encodeURIComponent(qrPayload)}`
+		: '');
 	const selectedLines = $derived(
-		$purchaseOrders.flatMap((order) => order.items
+		orders.flatMap((order) => order.items
 			.filter((item) => selectedLineKeys.includes(lineKey(order.id, item.productId, item.sku)))
 			.map((item) => ({ ...item, quantity: reorderQuantities[lineKey(order.id, item.productId, item.sku)] ?? item.quantity })))
 	);
@@ -30,10 +54,22 @@
 		return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
 	}
 
+	function imageSource(source: string) {
+		return /^https?:\/\//i.test(source) || source.startsWith('/') ? source : `/${source}`;
+	}
+
+	function canShowQr(order: HistoryOrder) {
+		return order.status === 'Pending confirmation' || order.status === 'Ready for pickup';
+	}
+
+	function openOrderQr(order: HistoryOrder) {
+		if (canShowQr(order)) qrOrder = order;
+	}
+
 	function getFilterCount(filter: OrderFilter) {
 		return filter === 'All orders'
-			? $purchaseOrders.length
-			: $purchaseOrders.filter((order) => order.status === filter).length;
+			? orders.length
+			: orders.filter((order) => order.status === filter).length;
 	}
 
 	function toggleLine(orderId: string, productId: string, sku: string, quantity: number) {
@@ -80,6 +116,10 @@
 	}
 </script>
 
+<svelte:window onkeydown={(event) => {
+	if (event.key === 'Escape') qrOrder = null;
+}} />
+
 <svelte:head>
 	<title>Purchase history | QCU COOP SHOP</title>
 	<meta name="description" content="Review previous QCU COOP orders and reorder items." />
@@ -90,7 +130,7 @@
 		<a class="back-button" href="/" aria-label="Back to home">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
 		</a>
-		<div class="toolbar-title"><h1>Purchase history</h1><p>{$purchaseOrders.length} orders <span>·</span> QCU COOP</p></div>
+		<div class="toolbar-title"><h1>Purchase history</h1><p>{orders.length} orders <span>·</span> QCU COOP</p></div>
 		<a class="shop-link" href="/shop">Shop</a>
 	</header>
 
@@ -108,8 +148,8 @@
 				{#each filteredOrders as order (order.id)}
 					<section class="order-block" aria-labelledby={`order-${order.id}`}>
 						<header class="order-header">
-							<div class="order-meta"><p>Order <strong id={`order-${order.id}`}>{order.id}</strong><span>·</span>{new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(`${order.date}T12:00:00`))}</p><h2>Items</h2></div>
-							<div class="order-actions"><span class="order-count">{order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} pcs</span><span class="status-badge" class:claimed={order.status === 'Claimed'} class:ready={order.status === 'Ready for pickup'} class:cancelled={order.status === 'Cancelled'}>{order.status}</span><button type="button" class="select-order" onclick={() => toggleOrder(order.id, order.items)}>{orderSelectionState(order.id, order.items).allSelected ? 'Deselect all' : 'Select all'}</button></div>
+							<div class="order-meta"><p>Order <strong id={`order-${order.id}`}>{order.id}</strong><span>·</span>{new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(order.date))}</p><h2>Items</h2></div>
+							<div class="order-actions"><span class="order-count">{order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} pcs</span><span class="status-badge" class:claimed={order.status === 'Claimed' || order.status === 'Delivered'} class:ready={order.status === 'Ready for pickup'} class:pending={order.status === 'Pending confirmation'} class:cancelled={order.status === 'Cancelled'}>{order.status}</span>{#if canShowQr(order)}<button type="button" class="select-order qr-order-button" onclick={() => openOrderQr(order)}>View pickup QR</button>{/if}<button type="button" class="select-order" onclick={() => toggleOrder(order.id, order.items)}>{orderSelectionState(order.id, order.items).allSelected ? 'Deselect all' : 'Select all'}</button></div>
 						</header>
 
 						<div class="order-items">
@@ -121,7 +161,7 @@
 										<span></span>
 									</label>
 									<div class="item-thumbnail">
-										{#if item.image}<img src={item.image.startsWith('/') ? item.image : `/${item.image}`} alt={item.name} onerror={(event) => handleImageError(event, item.name)} />{:else}<span aria-hidden="true">{item.name.slice(0, 1)}</span>{/if}
+										{#if item.image}<img src={imageSource(item.image)} alt={item.name} onerror={(event) => handleImageError(event, item.name)} />{:else}<span aria-hidden="true">{item.name.slice(0, 1)}</span>{/if}
 									</div>
 									<div class="item-info"><h3>{item.name}</h3><p>{item.variant}</p><code>{item.sku}</code></div>
 									<div class="quantity-control" aria-label={`Reorder quantity for ${item.name}`}>
@@ -152,6 +192,21 @@
 	</div>
 </footer>
 
+{#if qrOrder}
+	<div class="qr-overlay" role="presentation" onclick={(event) => {
+		if (event.target === event.currentTarget) qrOrder = null;
+	}}>
+		<div class="qr-modal" role="dialog" aria-modal="true" aria-labelledby="pickup-qr-title">
+			<button type="button" class="qr-close" aria-label="Close pickup QR" onclick={() => (qrOrder = null)}>×</button>
+			<p class="qr-eyebrow">Pickup QR</p>
+			<h2 id="pickup-qr-title">{qrOrder.id}</h2>
+			<p class="qr-instructions">Show this code to the cashier to find your pending order.</p>
+			<img class="history-qr-code" src={qrCodeUrl} alt={`Pickup QR code for order ${qrOrder.id}`} />
+			<div class="qr-total"><span>Order total</span><strong>{formatPrice(qrOrder.total)}</strong></div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	:global(body) { margin: 0; background: #061d42; color: #f4f8ff; font-family: 'Montserrat', sans-serif; }
 	.history-page { min-height: calc(100vh - 4rem); background: #061d42; padding-bottom: 8rem; }
@@ -181,6 +236,17 @@
 	.status-badge.ready { background: #3e3212; color: #f4c85b; }
 	.status-badge.cancelled { background: #45202c; color: #ff8d9c; }
 	.select-order { border: 1px solid #dce9f8; border-radius: .65rem; background: #f5f8fc; padding: .65rem .9rem; color: #10294b; font: inherit; font-size: .74rem; font-weight: 800; cursor: pointer; }
+	.qr-order-button { border-color: #155bd8; background: #155bd8; color: #fff; }
+	.qr-order-button:hover { background: #0d4fc7; }
+	.qr-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgba(3, 18, 42, .72); backdrop-filter: blur(4px); }
+	.qr-modal { position: relative; display: grid; width: min(100%, 24rem); justify-items: center; box-sizing: border-box; border-radius: 1rem; background: #fff; padding: 2rem; color: #10294b; text-align: center; box-shadow: 0 24px 70px rgba(3, 18, 42, .35); }
+	.qr-close { position: absolute; top: .8rem; right: .8rem; display: grid; width: 2rem; height: 2rem; place-items: center; border: 0; border-radius: 50%; background: #edf3fa; color: #345477; font-size: 1.3rem; cursor: pointer; }
+	.qr-eyebrow { margin: .2rem 0 0; color: #155bd8; font-size: .68rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+	.qr-modal h2 { max-width: 100%; margin: .45rem 0 0; overflow-wrap: anywhere; font-size: 1.15rem; }
+	.qr-instructions { margin: .5rem 0 1rem; color: #617895; font-size: .76rem; line-height: 1.5; }
+	.history-qr-code { display: block; width: min(100%, 15rem); aspect-ratio: 1; border: .65rem solid #f4f7fb; border-radius: .5rem; box-sizing: border-box; image-rendering: pixelated; }
+	.qr-total { display: flex; width: 100%; justify-content: space-between; gap: 1rem; margin-top: 1rem; border-top: 1px solid #d9e0ea; padding-top: .9rem; color: #617895; font-size: .75rem; font-weight: 700; }
+	.qr-total strong { color: #10294b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95rem; }
 	.order-items { display: grid; }
 	.order-item { display: grid; grid-template-columns: 1.25rem 5.25rem minmax(8rem, 1fr) 8.25rem 7rem; align-items: start; gap: 1rem; border-bottom: 1px solid #1d385c; padding: 1.15rem 0; }
 	.item-checkbox { display: grid; height: 5.25rem; place-items: center; cursor: pointer; }
@@ -244,6 +310,7 @@
 		.item-price { grid-column: 3; grid-row: 3; justify-items: start; text-align: left; }
 		.order-count { width: 100%; }
 		.status-badge { margin-right: auto; }
+		.qr-modal { padding: 1.5rem; }
 		.reorder-inner { width: min(100% - 1.25rem, 68rem); }
 		.reorder-button { padding: .7rem .85rem; font-size: .72rem; }
 		.selection-summary strong { font-size: 1rem; }

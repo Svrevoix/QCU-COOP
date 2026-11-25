@@ -61,5 +61,57 @@ export const actions: Actions = {
 		const response = await fetch(`${url}/rest/v1/utility_accounts`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
 		if (!response.ok) return fail(502, { success: false, message: `Could not add utility account (Supabase HTTP ${response.status}).` });
 		return { success: true };
+	},
+	addBill: async ({ request: formRequest, locals }) => {
+		if (locals.user?.role !== 'admin') throw error(403, 'Administrator access required.');
+		const form = await formRequest.formData();
+		const accountId = Number(form.get('accountId'));
+		const billingMonth = Number(form.get('billingMonth'));
+		const billingYear = Number(form.get('billingYear'));
+		const amountDue = Number(form.get('amountDue'));
+		const amountPaid = Number(form.get('amountPaid') || 0);
+		const dueDate = String(form.get('dueDate') ?? '').trim();
+		const paymentDate = String(form.get('paymentDate') ?? '').trim();
+		if (!Number.isInteger(accountId) || accountId < 1 || !Number.isInteger(billingMonth) || billingMonth < 1 || billingMonth > 12 || !Number.isInteger(billingYear) || billingYear < 2000 || billingYear > 9999 || !Number.isFinite(amountDue) || amountDue <= 0 || !Number.isFinite(amountPaid) || amountPaid < 0 || amountPaid > amountDue) {
+			return fail(400, { success: false, message: 'Choose an account and valid billing period and amounts. Paid amount cannot exceed the amount due.' });
+		}
+		const status = amountPaid >= amountDue ? 'paid' : amountPaid > 0 ? 'partial' : 'pending';
+		const payload = {
+			utility_account_id: accountId,
+			billing_month: billingMonth,
+			billing_year: billingYear,
+			amount_due: amountDue,
+			amount_paid: amountPaid,
+			due_date: dueDate || null,
+			payment_date: paymentDate || null,
+			official_receipt_no: String(form.get('receiptNumber') ?? '').trim() || null,
+			status,
+			remarks: String(form.get('remarks') ?? '').trim() || null
+		};
+		const { url, headers } = apiConfig();
+		const response = await fetch(`${url}/rest/v1/utility_bills`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
+		if (!response.ok) return fail(502, { success: false, message: `Could not add utility bill (Supabase HTTP ${response.status}).` });
+		return { success: true, billAdded: true };
+	},
+	markBillPaid: async ({ request: formRequest, locals }) => {
+		if (locals.user?.role !== 'admin') throw error(403, 'Administrator access required.');
+		const form = await formRequest.formData();
+		const billId = Number(form.get('billId'));
+		if (!Number.isInteger(billId) || billId < 1) return fail(400, { success: false, message: 'Choose a valid bill to mark as paid.' });
+		const lookup = await request('utility_bills?' + new URLSearchParams({ select: 'id,amount_due,status', id: `eq.${billId}`, limit: '1' }));
+		if (!lookup.ok) return fail(502, { success: false, message: `Could not load the bill (Supabase HTTP ${lookup.status}).` });
+		const [bill] = await lookup.json() as Array<{ id: number; amount_due: number; status: string }>;
+		if (!bill) return fail(404, { success: false, message: 'This bill no longer exists. Refresh the page and try again.' });
+		if (bill.status.toLowerCase() === 'cancelled') return fail(400, { success: false, message: 'Cancelled bills cannot be marked as paid.' });
+		if (bill.status.toLowerCase() === 'paid') return { success: true, statusUpdated: true };
+		const { url, headers } = apiConfig();
+		const today = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map((part) => [part.type, part.value]));
+		const response = await fetch(`${url}/rest/v1/utility_bills?id=eq.${billId}`, {
+			method: 'PATCH',
+			headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+			body: JSON.stringify({ amount_paid: Number(bill.amount_due), payment_date: `${today.year}-${today.month}-${today.day}`, status: 'paid' })
+		});
+		if (!response.ok) return fail(502, { success: false, message: `Could not mark the bill as paid (Supabase HTTP ${response.status}).` });
+		return { success: true, statusUpdated: true };
 	}
 };
