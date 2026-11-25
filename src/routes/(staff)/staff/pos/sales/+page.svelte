@@ -19,10 +19,10 @@
 	);
 	const chartDescription = $derived(
 		period === 'Daily Sales'
-			? 'Daily revenue · last 7 days'
+			? 'Daily revenue  last 7 days'
 			: period === 'Weekly'
-				? 'Weekly revenue · last 8 weeks'
-				: 'Monthly revenue · last 12 months'
+				? 'Weekly revenue  last 8 weeks'
+				: 'Monthly revenue  last 12 months'
 	);
 	const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
 		new Date()
