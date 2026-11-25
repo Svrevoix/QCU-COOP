@@ -85,7 +85,7 @@ const productVariants: Record<string, ProductVariant[]> = {
 	'QCU Jacket': [{ sku: 'IT00117', price: 600 }], 'QCPU Jacket': [{ sku: 'IT00120', price: 500 }], 'QCU Umbrella': [{ sku: 'IT00118', price: 170 }], 'Thermal Bottle with Holder': [{ sku: 'IT00166', price: 250 }], 'Thermal Bottle without Holder': [{ sku: 'IT00167', price: 230 }],
 	'ID Lace Case (Landscape)': [{ sku: 'IT00054', price: 25 }], 'ID Lace Case (Portrait)': [{ sku: 'IT00055', price: 25 }], 'Lanyard (Admin)': [{ sku: 'IT00045', price: 85 }], 'Lanyard (Faculty)': [{ sku: 'IT00050', price: 85 }], 'Lanyard (BS Accountancy)': [{ sku: 'IT00046', price: 85 }], 'Lanyard (BS Computer Engineering)': [{ sku: 'IT00170', price: 85 }], 'Lanyard (BS Computer Science)': [{ sku: 'IT00171', price: 85 }], 'Lanyard (BS Education)': [{ sku: 'IT00048', price: 85 }], 'Lanyard (BS Electrical Engineering)': [{ sku: 'IT00232', price: 85 }], 'Lanyard (BS Electronics Engineering)': [{ sku: 'IT00047', price: 85 }], 'Lanyard (BS Entrep)': [{ sku: 'IT00049', price: 85 }], 'Lanyard (BS Industrial Engineering)': [{ sku: 'IT00051', price: 85 }], 'Lanyard (BS Information System)': [{ sku: 'IT00172', price: 85 }], 'Lanyard (BS Information Technology)': [{ sku: 'IT00052', price: 85 }], 'Lanyard (BS Management in Accounting)': [{ sku: 'IT00053', price: 85 }],
 	'Badge Pin (25MM)': [{ sku: 'IT00230', price: 15 }], 'Badge Pin (32MM)': [{ sku: 'IT00231', price: 20 }], 'Badge Pin (58MM)': [{ sku: 'IT00270', price: 25 }], 'Coin Purse': [{ sku: 'IT00156', price: 20 }], 'Duo Small Keychain': [{ sku: 'IT00228', price: 20 }], 'Regular Keychain': [{ sku: 'IT00229', price: 25 }], 'Big Keychain': [{ sku: 'IT00274', price: 35 }], 'San Rio': [{ sku: 'IT00119', price: 10 }], 'Sticker Pack': [{ sku: 'IT00271', price: 15 }], 'SALE QCU Jacket (New)': [{ sku: 'IT00224', price: 300 }], 'SALE QCU Jacket (Old)': [{ sku: 'IT00223', price: 250 }], 'SALE QCU Umbrella': [{ sku: 'IT00225', price: 85 }],
-	'Coke Kasalo': [{ sku: 'IT00150', price: 40 }], 'Coke Soda': [{ sku: 'IT00136', price: 20 }], 'Fruit Soda Kasalo': [{ sku: 'IT00144', price: 40 }], 'Mt. Dew Kasalo': [{ sku: 'IT00132', price: 40 }], 'Mt. Dew Soda': [{ sku: 'IT00139', price: 20 }], 'Pepsi Soda': [{ sku: 'IT00133', price: 20 }], 'RC Soda': [{ sku: 'IT00137', price: 20 }], 'Rootbeer Soda': [{ sku: 'IT00138', price: 20 }], 'Royal Grapes in Can': [{ sku: 'IT00182', price: 40 }], 'Royal Kasalo': [{ sku: 'IT00164', price: 40 }], 'Royal Soda': [{ sku: 'IT00135', price: 20 }], 'Sprite Soda': [{ sku: 'IT00134', price: 20 }], 'Chuckie Chocolate': [{ sku: 'IT00184', price: 25 }], 'Nutriboost Strawberry': [{ sku: 'IT00183', price: 30 }], 'Nutrifizz Sparkling Drink': [{ sku: 'IT00189', price: 40 }], 'Pocari Sweat': [{ sku: 'IT00226', price: 25 }], Tropicana: [{ sku: 'IT00155', price: 22 }], 'Vida Sparkling Drink': [{ sku: 'IT00188', price: 40 }], Vitamilk: [{ sku: 'IT00145', price: 22 }], Deedoo: [{ sku: 'IT00227', price: 15 }], 'Richeese Creamy Cheese': [{ sku: 'IT00219', price: 15 }], 'Richoco Chocolate': [{ sku: 'IT00216', price: 15 }], 'Richoco Cookies and Cream': [{ sku: 'IT00218', price: 15 }], 'Richoco Milk Vanilla': [{ sku: 'IT00217', price: 15 }],
+	'Coke Kasalo': [{ sku: 'IT00150', price: 40 }], 'Coke Soda': [{ sku: 'IT00136', price: 20 }], 'Fruit Soda Kasalo': [{ sku: 'IT00144', price: 40 }], 'Mt. Dew Kasalo': [{ sku: 'IT00132', price: 40 }], 'Mt. Dew Soda': [{ sku: 'IT00139', price: 20 }], 'Pepsi Soda': [{ sku: 'IT00133', price: 20 }], 'RC Soda': [{ sku: 'IT00137', price: 20 }], 'Rootbeer Soda': [{ sku: 'IT00138', price: 20 }], 'Royal Grapes in Can': [{ sku: 'IT00182', price: 40 }], 'Royal Kasalo': [{ sku: 'IT00164', price: 40 }], 'Royal Soda': [{ sku: 'IT00135', price: 20 }], 'Sprite Soda': [{ sku: 'IT00134', price: 20 }], 'Chuckie Chocolate': [{ sku: 'IT00184', price: 25 }], 'Nutriboost Strawberry': [{ sku: 'IT00183', price: 30 }], 'Nutrifizz Sparkling Drink': [{ sku: 'IT00189', price: 40 }], 'Pocari Sweat': [{ sku: 'IT00226', price: 25 }], Tropicana: [{ sku: 'IT00155', price: 22 }], 	'Vida Sparkling Drink': [{ sku: 'IT00188', price: 40 }], Vitamilk: [{ sku: 'IT00145', price: 22 }], Deedoo: [{ sku: 'IT00227', price: 15 }], 'Richeese Creamy Cheese': [{ sku: 'IT00219', price: 15 }], Richoco: [{ sku: 'IT00216', price: 15 }, { sku: 'IT00218', price: 15 }, { sku: 'IT00217', price: 15 }],
 	'Paper Bowl (390CC)': [{ sku: 'IT00109', price: 265 }], 'Paper Cups (12oz)': [{ sku: 'IT00173', price: 0 }], 'Paper Cups (520CC)': [{ sku: 'IT00112', price: 65 }], 'Paper Cups (8oz)': [{ sku: 'IT00113', price: 48 }], 'Paper Plate': [{ sku: 'IT00115', price: 30 }], 'Siomai Plate': [{ sku: 'IT00123', price: 28 }], Toothpick: [{ sku: 'IT00124', price: 10 }], 'Wooden Fork': [{ sku: 'IT00126', price: 28 }], 'Wooden Spoon': [{ sku: 'IT00127', price: 28 }], 'Wooden Spoon & Fork': [{ sku: 'IT00128', price: 28 }],
 	Alcohol: [{ sku: 'IT00185', price: 25 }], "Johnson's Baby Powder": [{ sku: 'IT00186', price: 30 }], Hairnet: [{ sku: 'IT00175', price: 10 }], Napkin: [{ sku: 'IT00203', price: 10 }], 'Rexona Deo': [{ sku: 'IT00178', price: 7 }], 'Safeguard Bar Lemon': [{ sku: 'IT00187', price: 30 }], Tissue: [{ sku: 'IT00146', price: 15 }], Toothbrush: [{ sku: 'IT00174', price: 25 }], Toothpaste: [{ sku: 'IT00179', price: 8 }], 'Wet Wipes': [{ sku: 'IT00125', price: 20 }], 'Band Aid with Cotton Balls': [{ sku: 'IT00005', price: 3 }], Facemask: [{ sku: 'IT00022', price: 10 }], 'Dishwashing Liquid': [{ sku: 'IT00163', price: 135 }], Sponge: [{ sku: 'IT00193', price: 15 }],
 	'Eco Bag (Large)': [{ sku: 'IT00173', price: 10 }], 'Eco Bag (Small)': [{ sku: 'IT00272', price: 20 }], 'Fashion Pin (Large)': [{ sku: 'IT00198', price: 10 }], 'Fashion Pin (Medium)': [{ sku: 'IT00199', price: 15 }], 'Flower Hair Clip': [{ sku: 'IT00273', price: 15 }], 'Hair Clip (Large)': [{ sku: 'IT00042', price: 25 }], 'Hair Clip (Regular)': [{ sku: 'IT00043', price: 10 }], 'Hair Clip (Small)': [{ sku: 'IT00044', price: 5 }], Lunchbox: [{ sku: 'IT00162', price: 200 }], 'Pardible with Design': [{ sku: 'IT00211', price: 10 }], Pardible: [{ sku: 'IT00210', price: 2 }],
@@ -144,7 +144,7 @@ const categoryDefinitions: CategoryDefinition[] = [
 			'Coke Kasalo', 'Coke Soda', 'Fruit Soda Kasalo', 'Mt. Dew Kasalo', 'Mt. Dew Soda', 'Pepsi Soda',
 			'RC Soda', 'Rootbeer Soda', 'Royal Grapes in Can', 'Royal Kasalo', 'Royal Soda', 'Sprite Soda',
 			'Chuckie Chocolate', 'Nutriboost Strawberry', 'Nutrifizz Sparkling Drink', 'Pocari Sweat', 'Tropicana',
-			'Vida Sparkling Drink', 'Vitamilk', 'Deedoo', 'Richeese Creamy Cheese', 'Richoco Chocolate',
+			'Vida Sparkling Drink', 'Vitamilk', 'Deedoo', 'Richeese Creamy Cheese', 'Richoco',
 			'Richoco Cookies and Cream', 'Richoco Milk Vanilla', 'Paper Bowl (390CC)', 'Paper Cups (12oz)',
 			'Paper Cups (520CC)', 'Paper Cups (8oz)', 'Paper Plate', 'Siomai Plate', 'Toothpick', 'Wooden Fork',
 			'Wooden Spoon', 'Wooden Spoon & Fork'
@@ -266,7 +266,67 @@ const productImages: Record<string, string> = {
 	'Lanyard (BS Industrial Engineering)': 'images/lanyards/lanyard-industrial-engineering.webp',
 	'Lanyard (BS Information System)': 'images/lanyards/lanyard_information-systems.webp',
 	'Lanyard (BS Information Technology)': 'images/lanyards/lanyard-information-technology.webp',
-	'Lanyard (BS Management in Accounting)': 'images/lanyards/lanyard-management-accountancy.webp'
+	'Lanyard (BS Management in Accounting)': 'images/lanyards/lanyard-management-accountancy.webp',
+	'Coke Kasalo': 'images/foods/catalog/coke-kasalo.webp',
+	'Coke Soda': 'images/foods/catalog/coke-soda.webp',
+	'Fruit Soda Kasalo': 'images/foods/catalog/fruit-soda-kasalo.webp',
+	'Mt. Dew Kasalo': 'images/foods/catalog/mountain-dew-kasalo.webp',
+	'RC Soda': 'images/foods/catalog/rc-soda.webp',
+	'Royal Grapes in Can': 'images/foods/catalog/royal-grapes-in-can.webp',
+	'Royal Kasalo': 'images/foods/catalog/royal-kasalo.webp',
+	'Chuckie Chocolate': 'images/foods/catalog/chuckie-chocolate.webp',
+	'Nutriboost Strawberry': 'images/foods/catalog/nutriboost-strawberry.webp',
+	'Nutrifizz Sparkling Drink': 'images/foods/catalog/nutrifizz-sparkling-drink.webp',
+	'Pocari Sweat': 'images/foods/catalog/pocari-sweat.webp',
+	Tropicana: 'images/foods/catalog/tropicana.webp',
+	'Vida Sparkling Drink': 'images/foods/catalog/vida-sparkling-drink.webp',
+	Vitamilk: 'images/foods/catalog/vitamilk-banana.webp',
+	Deedoo: 'images/foods/catalog/deedoo.webp',
+	'Richeese Creamy Cheese': 'images/foods/catalog/richeese-creamy-cheese.webp',
+	'Richoco Chocolate': 'images/foods/catalog/richoco-chocolate.webp',
+	'Paper Bowl (390CC)': 'images/foods/catalog/paperbowl-390cc.webp',
+	'Paper Cups (12oz)': 'images/foods/catalog/12oz-cups-removebg.webp',
+	'Paper Cups (520CC)': 'images/foods/catalog/520cc-paper-cups.webp',
+	'Paper Cups (8oz)': 'images/foods/catalog/papercups-8oz.webp',
+	'Paper Plate': 'images/foods/catalog/paperplate.webp',
+	'Siomai Plate': 'images/foods/catalog/siomai-plate.webp',
+	Toothpick: 'images/foods/catalog/toothpicks-removebg.webp',
+	'Ballpen (Gel Ink)': 'images/stationaries/catalog/ballpen-gel-ink.webp',
+	Pencil: 'images/stationaries/catalog/pencil.webp',
+	'Bond Paper Ream (A4)': 'images/stationaries/catalog/bondpaper-ream-a4.webp',
+	'Bond Paper Ream (Long)': 'images/stationaries/catalog/bondpaper-ream-long.webp',
+	'Bond Paper Ream (Short)': 'images/stationaries/catalog/bondpaper-ream-short.webp',
+	Cartolina: 'images/stationaries/catalog/cartolina.webp',
+	'Colored Paper (3PHP, 2PCS)': 'images/stationaries/catalog/colored-paper.webp',
+	'Double Sided Tape': 'images/stationaries/catalog/doublesided-tape.webp',
+	'Folder (Plastic Cover Long)': 'images/stationaries/catalog/folder-with-plastic-cover.webp',
+	'Folder (Plastic Cover Short)': 'images/stationaries/catalog/folder-with-plastic-cover.webp',
+	'Graphing Paper': 'images/stationaries/catalog/graphing-paper.webp',
+	'Index Card (1/1)': 'images/stationaries/catalog/index-card.webp',
+	'Index Card (1/4)': 'images/stationaries/catalog/index-card.webp',
+	'Index Card (1/8)': 'images/stationaries/catalog/index-card-one-eighth.webp',
+	'Mailing Envelope': 'images/stationaries/catalog/mailing-envelope.webp',
+	'Masking Tape': 'images/stationaries/catalog/masking-tape.webp',
+	'1/8 Illustration Board': 'images/stationaries/catalog/one-eighth-illustration-board.webp',
+	'1/4 Illustration Board': 'images/stationaries/catalog/one-fourth-illustration-board.webp',
+	'1/4 Illustration Board (Alternative)': 'images/stationaries/catalog/one-fourth-illustration-board.webp',
+	'Paper Clip': 'images/stationaries/catalog/paperclip.webp',
+	'Paper Clip (Large)': 'images/stationaries/catalog/paperclip.webp',
+	'Plastic Envelope (Long)': 'images/stationaries/catalog/plastic-envelope-long.webp',
+	'Shoe Glue': 'images/stationaries/catalog/shoe-glue.webp',
+	'Yellow Pad (Long Plastic)': 'images/stationaries/catalog/yellow-pad.webp',
+	'Yellow Pad (One Whole)': 'images/stationaries/catalog/yellow-pad.webp',
+	'Yellow Pad (Per Pcs)': 'images/stationaries/catalog/yellow-pad.webp',
+	'Yellow Pad (Short Plastic)': 'images/stationaries/catalog/yellow-pad.webp',
+	Alcohol: 'images/hygiene/catalog/alcohol-ethyl.webp',
+	"Johnson's Baby Powder": 'images/hygiene/catalog/johnson-baby-powder.webp',
+	Hairnet: 'images/hygiene/catalog/hairnet.webp',
+	Napkin: 'images/hygiene/catalog/napkin.webp',
+	'Safeguard Bar Lemon': 'images/hygiene/catalog/safeguard-bar-lemon.webp',
+	Tissue: 'images/hygiene/catalog/tissue.webp',
+	'Dishwashing Liquid': 'images/hygiene/catalog/dishwashing-liquid.webp',
+	Sponge: 'images/hygiene/catalog/sponge.webp',
+	Richoco: 'images/foods/catalog/richoco-chocolate.webp'
 };
 
 const productImageSets: Record<string, string[]> = {
@@ -287,15 +347,30 @@ const productImageSets: Record<string, string[]> = {
 	],
 	'Ballpen (Sign Pen)': ['images/stationaries/sign_pen-blue-removebg.webp', 'images/stationaries/sign_pen-red-removebg.webp'],
 	'Filler Notebook': ['images/stationaries/notebook-1.webp', 'images/stationaries/notebook.webp'],
+	Alcohol: ['images/hygiene/catalog/alcohol-ethyl.webp', 'images/hygiene/catalog/alcohol-isopropyhl.webp'],
+	Vitamilk: [
+		'images/foods/catalog/vitamilk-banana.webp',
+		'images/foods/catalog/vitamilk-choco.webp',
+		'images/foods/catalog/vitamilk-strawberry.webp',
+		'images/foods/catalog/vitamilk-ube.webp',
+		'images/foods/catalog/vitamilk-vanilla.webp'
+	],
 	Facemask: ['images/hygiene/face_mask-black-50-removebg.webp', 'images/hygiene/face_mask-white-10-removebg.webp']
 };
 
+const productNameAliases: Record<string, string> = {
+	'Richoco Cookies and Cream': 'Richoco',
+	'Richoco Milk Vanilla': 'Richoco'
+};
+
 export const productCatalog: Product[] = categoryDefinitions.flatMap(({ category, prefix, items }) =>
-	items.map((item, index) => {
-		const name = typeof item === 'string' ? item : item.name;
+	items.flatMap((item, index) => {
+		const itemName = typeof item === 'string' ? item : item.name;
+		const name = productNameAliases[itemName] ?? itemName;
+		if (name !== itemName) return [];
 		const variants = productVariants[name];
 
-		return {
+		return [{
 			id: `${prefix.toLowerCase()}-${index + 1}`,
 			name,
 			image: productImages[name] ?? productImageSets[name]?.[0],
@@ -303,6 +378,6 @@ export const productCatalog: Product[] = categoryDefinitions.flatMap(({ category
 			sku: variants?.[0]?.sku ?? `${prefix}-${String(index + 1).padStart(3, '0')}`,
 			category,
 			...(variants ? { variants, price: variants[0].price } : typeof item === 'string' ? {} : { price: item.price })
-		};
+		}];
 	})
 );

@@ -9,7 +9,7 @@ import { registerApplicant } from '$lib/server/registration';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const mode = String(data.get('mode') ?? 'login');
 		const password = String(data.get('password') ?? '');
@@ -128,7 +128,9 @@ export const actions: Actions = {
 				? '/staff/admin'
 				: result.user.role === 'cashier'
 					? '/staff/pos/register'
-					: '/'
+					: url.searchParams.get('redirect') === '/shop'
+						? '/shop'
+						: '/'
 		);
 	}
 };

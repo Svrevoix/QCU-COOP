@@ -1,7 +1,7 @@
 <script lang="ts">
 	import CartItem from '$lib/CartItem.svelte';
 	import { goto } from '$app/navigation';
-	import { cartItems, cartTotal, removeFromCart, updateCartQuantity } from '$lib/cart';
+	import { cartItems, removeFromCart, updateCartQuantity } from '$lib/cart';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -18,6 +18,7 @@
 	let savedOrderNumber = $state('');
 	let savedOrderTotal = $state<number | null>(null);
 	let savedOrderPieces = $state(0);
+	let knownCartItemKeys: string[] = [];
 
 	const formatPrice = (value: number) =>
 		new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
@@ -28,15 +29,38 @@
 	let checkoutDiscount = $derived(memberTeacher ? Math.round(checkoutSubtotal * 0.2 * 100) / 100 : 0);
 	let checkoutTotal = $derived(checkoutSubtotal - checkoutDiscount);
 	let activeSelectionKeys = $derived(isEditingCart ? deletionItemKeys : checkoutItemKeys);
-	let qrPayload = $derived(`QCU-COOP|${orderReference}|TOTAL:${(savedOrderTotal ?? checkoutTotal).toFixed(2)}|ITEMS:${savedOrderPieces || checkoutPieceCount}`);
+	let activeSelectedCartItems = $derived(
+		$cartItems.filter((item) => activeSelectionKeys.includes(item.productId + item.sku))
+	);
+	let activeSelectedPieceCount = $derived(
+		activeSelectedCartItems.reduce((sum, item) => sum + item.quantity, 0)
+	);
+	let activeSelectedSubtotal = $derived(
+		activeSelectedCartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+	);
+	let allItemsSelected = $derived(
+		$cartItems.length > 0 &&
+			$cartItems.every((item) => activeSelectionKeys.includes(item.productId + item.sku))
+	);
+	let qrPayload = $derived(
+		`QCU-COOP|${orderReference}|TOTAL:${(savedOrderTotal ?? checkoutTotal).toFixed(2)}|ITEMS:${savedOrderPieces || checkoutPieceCount}`
+	);
 	let qrCodeUrl = $derived(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=svg&data=${encodeURIComponent(qrPayload)}`);
 
 	$effect(() => {
 		const validItemKeys = $cartItems.map((item) => item.productId + item.sku);
+		const newItemKeys = validItemKeys.filter((key) => !knownCartItemKeys.includes(key));
 		const validCheckoutKeys = checkoutItemKeys.filter((key) => validItemKeys.includes(key));
 		const validDeletionKeys = deletionItemKeys.filter((key) => validItemKeys.includes(key));
-		if (validCheckoutKeys.length !== checkoutItemKeys.length) checkoutItemKeys = validCheckoutKeys;
+		const nextCheckoutKeys = [...validCheckoutKeys, ...newItemKeys.filter((key) => !validCheckoutKeys.includes(key))];
+		if (
+			nextCheckoutKeys.length !== checkoutItemKeys.length ||
+			nextCheckoutKeys.some((key, index) => key !== checkoutItemKeys[index])
+		) {
+			checkoutItemKeys = nextCheckoutKeys;
+		}
 		if (validDeletionKeys.length !== deletionItemKeys.length) deletionItemKeys = validDeletionKeys;
+		knownCartItemKeys = validItemKeys;
 	});
 
 	function openCheckout() {
@@ -49,6 +73,12 @@
 		const nextSelection = selected ? [...selectedKeys, itemKey] : selectedKeys.filter((key) => key !== itemKey);
 		if (isEditingCart) deletionItemKeys = nextSelection;
 		else checkoutItemKeys = nextSelection;
+	}
+
+	function toggleSelectAll(selected: boolean) {
+		const allItemKeys = $cartItems.map((item) => item.productId + item.sku);
+		if (isEditingCart) deletionItemKeys = selected ? allItemKeys : [];
+		else checkoutItemKeys = selected ? allItemKeys : [];
 	}
 
 	function toggleEditCart() {
@@ -110,48 +140,104 @@
 	<title>Your cart | QCU COOP SHOP</title>
 </svelte:head>
 
-<main class="cart-page">
-	<section class="cart-content" aria-labelledby="items-heading">
-		<div class="cart-heading">
-			<h1 id="items-heading">Items</h1>
-			<div class="cart-heading-actions">
-				<span>{$cartItems.length} item{$cartItems.length === 1 ? '' : 's'} · {activeSelectionKeys.length} selected</span>
-				{#if $cartItems.length}
-					<button type="button" class:editing={isEditingCart} class="edit-cart-button" onclick={toggleEditCart}>{isEditingCart ? 'Done' : 'Edit Cart'}</button>
-				{/if}
+<div class="cart-viewport">
+	<div class="cart-layout">
+		<section class="cart-content" aria-labelledby="items-heading">
+			<div class="cart-heading">
+				<div>
+					<h1 id="items-heading">Items</h1>
+					<p>{$cartItems.length} item{$cartItems.length === 1 ? '' : 's'} · {activeSelectionKeys.length} selected</p>
+				</div>
+				<div class="cart-heading-actions">
+					<label class="select-all-control">
+						<input
+							type="checkbox"
+							checked={allItemsSelected}
+							disabled={!$cartItems.length}
+							onchange={(event) => toggleSelectAll(event.currentTarget.checked)}
+						/>
+						<span>Select all</span>
+					</label>
+					{#if $cartItems.length}
+						<button
+							type="button"
+							class="cart-edit-button"
+							class:editing={isEditingCart}
+							onclick={toggleEditCart}
+						>
+							{isEditingCart ? 'Done' : 'Edit Cart'}
+						</button>
+					{/if}
+				</div>
 			</div>
-		</div>
 
-		{#if $cartItems.length}
-			<div class="cart-list">
-				{#each $cartItems as item (item.productId + item.sku)}
-					<CartItem
-						{item}
-						selected={activeSelectionKeys.includes(item.productId + item.sku)}
-						selectionMode={isEditingCart ? 'delete' : 'checkout'}
-						onSelectionChange={(selected) => updateSelection(item.productId + item.sku, selected)}
-						onQuantityChange={(amount) => updateCartQuantity(item.productId, item.sku, amount)}
-					/>
-				{/each}
-			</div>
-		{:else}
-			<div class="empty-cart"><h2>Your cart is empty</h2><a href="/shop">Browse the shop</a></div>
-		{/if}
-	</section>
-</main>
-
-<footer class="cart-summary">
-	<div class="summary-inner">
-		<div><span>{isEditingCart ? 'Cart total' : 'Selected total'}</span><strong>{formatPrice(isEditingCart ? $cartTotal : checkoutTotal)}</strong></div>
-		<div class="summary-actions">
-			{#if isEditingCart}
-				<button type="button" class="delete-button" onclick={deleteSelectedItems} disabled={!deletionItemKeys.length}>Delete</button>
+			{#if $cartItems.length}
+				<div class="cart-list">
+					{#each $cartItems as item (item.productId + item.sku)}
+						<CartItem
+							{item}
+							selected={activeSelectionKeys.includes(item.productId + item.sku)}
+							selectionMode={isEditingCart ? 'delete' : 'checkout'}
+							onSelectionChange={(selected) => updateSelection(item.productId + item.sku, selected)}
+							onQuantityChange={(amount) => updateCartQuantity(item.productId, item.sku, amount)}
+							onRemove={() => removeFromCart(item.productId, item.sku)}
+						/>
+					{/each}
+				</div>
 			{:else}
-				<button type="button" class="checkout-button" onclick={openCheckout} disabled={!checkoutCartItems.length}>Checkout <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+				<div class="empty-cart">
+					<h2>Your cart is empty</h2>
+					<a href="/shop">Browse the shop</a>
+				</div>
 			{/if}
-		</div>
+		</section>
+
+		<aside class="order-summary-card" aria-labelledby="order-summary-title">
+			<h2 id="order-summary-title">Order summary</h2>
+			<div class="summary-row">
+				<span>Selected items</span>
+				<strong>{activeSelectedCartItems.length} · {activeSelectedPieceCount} pcs</strong>
+			</div>
+			<div class="pickup-location">
+				<span>Pickup location</span>
+				<strong>Coop Office, Bautista Building Basement</strong>
+			</div>
+			<div class="summary-row">
+				<span>Subtotal</span>
+				<strong>{formatPrice(activeSelectedSubtotal)}</strong>
+			</div>
+			{#if memberTeacher && !isEditingCart}
+				<div class="summary-row discount-row">
+					<span>Member discount</span>
+					<strong>−{formatPrice(checkoutDiscount)}</strong>
+				</div>
+			{/if}
+			<div class="summary-total">
+				<span>{isEditingCart ? 'Selected to remove' : 'Selected total'}</span>
+				<strong>{formatPrice(isEditingCart ? activeSelectedSubtotal : checkoutTotal)}</strong>
+			</div>
+			{#if isEditingCart}
+				<button
+					type="button"
+					class="cart-delete-button"
+					onclick={deleteSelectedItems}
+					disabled={!deletionItemKeys.length}
+				>
+					Delete selected
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="cart-checkout-button"
+					onclick={openCheckout}
+					disabled={!checkoutCartItems.length}
+				>
+					Checkout <span aria-hidden="true">→</span>
+				</button>
+			{/if}
+		</aside>
 	</div>
-</footer>
+</div>
 
 {#if checkoutStage}
 	<div class="checkout-overlay" role="presentation" onclick={(event) => event.target === event.currentTarget && closeCheckout()}>
@@ -185,31 +271,59 @@
 {/if}
 
 <style>
-	:global(body) { margin: 0; background: #f9fbff; font-family: 'Montserrat', sans-serif; color: #061d42; }
-	.cart-page { min-height: calc(100vh - 10.25rem); padding: 2.25rem 1.25rem 10rem; background: #fff; }
-	.cart-content { max-width: 62rem; margin: 0 auto; }
-	.cart-heading { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid #d9e0ea; }
-	.cart-heading h1 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: 0; }
-	.cart-heading span { color: #7d93b8; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-	.cart-heading-actions { display: flex; align-items: center; gap: 1rem; }
-	.edit-cart-button { border: 1px solid #c6d3e2; border-radius: 0.45rem; background: white; padding: 0.4rem 0.65rem; color: #345477; font: inherit; font-size: 0.7rem; font-weight: 800; cursor: pointer; }
-	.edit-cart-button:hover, .edit-cart-button.editing { border-color: #155bd8; color: #155bd8; }
-	.cart-summary { position: fixed; right: 0; bottom: 0; left: 0; z-index: 20; border-top: 1px solid #d7e0ec; background: rgba(255, 255, 255, 0.96); box-shadow: 0 -8px 24px rgba(6, 29, 66, 0.08); backdrop-filter: blur(10px); }
-	.summary-inner { display: flex; align-items: center; justify-content: space-between; max-width: 66rem; min-height: 6.5rem; margin: 0 auto; padding: 0 1.25rem; }
-	.summary-inner div { display: grid; gap: 0.2rem; }
-	.summary-inner div span { color: #7890b6; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
-	.summary-inner div strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.45rem; }
-	.summary-actions { display: flex; align-items: center; gap: 0.75rem; }
-	.delete-button { border: 0; background: transparent; color: #6b7f9d; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
-	.delete-button:hover { color: #bd1d34; }
-	.delete-button:disabled { color: #b5c0cf; cursor: not-allowed; }
-	.checkout-button { display: inline-flex; align-items: center; gap: 0.65rem; min-width: 11.5rem; justify-content: center; border: 0; border-radius: 0.75rem; background: #155bd8; padding: 1rem 1.35rem; color: white; font: inherit; font-size: 0.95rem; font-weight: 800; cursor: pointer; box-shadow: 0 5px 12px rgba(21, 91, 216, 0.24); transition: transform 150ms ease, background 150ms ease; }
-	.checkout-button:hover { background: #0d4fc7; transform: translateY(-1px); }
-	.checkout-button:disabled { cursor: not-allowed; background: #9aacc7; box-shadow: none; transform: none; }
-	.checkout-button svg { width: 1.15rem; height: 1.15rem; }
+	:global(body) { margin: 0; background: #e6f0fa; font-family: 'Montserrat', sans-serif; color: #0c2340; }
+	.cart-viewport { display: flex; width: 100%; height: 100%; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; box-sizing: border-box; background: #e6f0fa; padding: 1rem; color: #0c2340; }
+	.cart-layout { display: flex; width: 100%; height: 100%; min-height: 0; max-width: 72rem; flex: 1; flex-direction: column; gap: 1rem; margin: 0 auto; }
+	.cart-content { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; }
+	.cart-heading { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 1rem; padding: 0 0 0.85rem; border-bottom: 1px solid rgba(148, 163, 184, 0.3); }
+	.cart-heading h1 { margin: 0; color: #0c2340; font-size: 1.25rem; font-weight: 800; letter-spacing: 0; }
+	.cart-heading p { margin: 0.3rem 0 0; color: #64748b; font-size: 0.72rem; font-weight: 600; }
+	.cart-heading-actions { display: flex; align-items: center; gap: 0.75rem; }
+	.select-all-control { display: inline-flex; align-items: center; gap: 0.45rem; color: #38506f; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+	.select-all-control input { width: 1rem; height: 1rem; accent-color: #2563eb; }
+	.select-all-control input:disabled { cursor: not-allowed; }
+	.cart-edit-button { border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 999px; background: rgba(37, 99, 235, 0.1); padding: 0.45rem 0.8rem; color: #1d4ed8; font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+	.cart-edit-button:hover, .cart-edit-button.editing { background: rgba(37, 99, 235, 0.16); }
+	.cart-list { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 0.75rem; overflow-y: auto; overscroll-behavior: contain; padding: 0.85rem 0.25rem 0.25rem 0; }
+	.empty-cart { display: grid; flex: 1; align-content: center; justify-items: center; gap: 0.75rem; padding: 2rem 0; text-align: center; }
+	.empty-cart h2 { margin: 0; color: #0c2340; font-size: 1.25rem; }
+	.empty-cart a { color: #2563eb; font-weight: 700; }
+	.order-summary-card { flex: 0 0 auto; border: 1px solid rgba(186, 230, 253, 0.7); border-radius: 1rem; background: #f4f9ff; padding: 1rem; color: #0c2340; }
+	.order-summary-card h2 { margin: 0 0 0.8rem; color: #0c2340; font-size: 1rem; font-weight: 800; }
+	.summary-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.65rem; font-size: 0.78rem; }
+	.summary-row span, .pickup-location span { color: #64748b; font-weight: 600; }
+	.summary-row strong { color: #0c2340; font-size: 0.8rem; font-weight: 700; text-align: right; }
+	.pickup-location { display: grid; gap: 0.25rem; margin-top: 0.75rem; border-top: 1px solid rgba(148, 163, 184, 0.25); padding-top: 0.75rem; }
+	.pickup-location span { font-size: 0.7rem; font-weight: 700; }
+	.pickup-location strong { color: #0c2340; font-size: 0.76rem; font-weight: 700; line-height: 1.4; }
+	.discount-row strong { color: #047857; }
+	.summary-total { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.8rem; border-top: 1px solid rgba(148, 163, 184, 0.3); padding-top: 0.8rem; }
+	.summary-total span { color: #38506f; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+	.summary-total strong { color: #0c2340; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; font-weight: 800; }
+	.cart-checkout-button, .cart-delete-button { display: flex; width: 100%; align-items: center; justify-content: center; gap: 0.6rem; margin-top: 1rem; border: 0; border-radius: 0.75rem; padding: 0.85rem 1rem; color: white; font: inherit; font-size: 0.9rem; font-weight: 800; cursor: pointer; transition: background 150ms ease; }
+	.cart-checkout-button { background: linear-gradient(to right, #2563eb, #3b82f6, #0ea5e9); }
+	.cart-checkout-button:hover { background: linear-gradient(to right, #3b82f6, #0ea5e9, #22d3ee); }
+	.cart-delete-button { background: #dc2626; }
+	.cart-delete-button:hover { background: #b91c1c; }
+	.cart-checkout-button:disabled, .cart-delete-button:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+	.cart-delete-button { background: #b91c1c; }
+	.cart-delete-button:disabled { background: #e2e8f0; }
+	:global(html[data-theme='dark'] .cart-viewport) { background: #0f172a; color: #f1f5f9; }
+	:global(html[data-theme='dark'] .cart-heading) { border-color: rgba(255, 255, 255, 0.1); }
+	:global(html[data-theme='dark'] .cart-heading h1), :global(html[data-theme='dark'] .empty-cart h2) { color: #f1f5f9; }
+	:global(html[data-theme='dark'] .cart-heading p), :global(html[data-theme='dark'] .select-all-control) { color: #94a3b8; }
+	:global(html[data-theme='dark'] .cart-edit-button) { border-color: rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: #cbd5e1; }
+	:global(html[data-theme='dark'] .cart-edit-button:hover), :global(html[data-theme='dark'] .cart-edit-button.editing) { background: rgba(255, 255, 255, 0.1); }
+	:global(html[data-theme='dark'] .order-summary-card) { border-color: rgba(255, 255, 255, 0.1); background: #162038; color: #f1f5f9; }
+	:global(html[data-theme='dark'] .order-summary-card h2), :global(html[data-theme='dark'] .summary-row strong), :global(html[data-theme='dark'] .pickup-location strong), :global(html[data-theme='dark'] .summary-total strong) { color: #f1f5f9; }
+	:global(html[data-theme='dark'] .summary-row span), :global(html[data-theme='dark'] .pickup-location span), :global(html[data-theme='dark'] .summary-total span) { color: #94a3b8; }
+	:global(html[data-theme='dark'] .pickup-location), :global(html[data-theme='dark'] .summary-total) { border-color: rgba(255, 255, 255, 0.1); }
+	:global(html[data-theme='dark'] .cart-checkout-button:disabled), :global(html[data-theme='dark'] .cart-delete-button:disabled) { background: #1e293b; color: #64748b; }
+	:global(html[data-theme='dark'] .cart-checkout-button:not(:disabled)) { background: linear-gradient(to right, #2563eb, #6366f1, #0ea5e9); }
+	:global(html[data-theme='dark'] .cart-checkout-button:not(:disabled):hover) { background: linear-gradient(to right, #3b82f6, #38bdf8, #67e8f9); }
 	.checkout-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1rem; background: rgba(3, 18, 42, 0.58); backdrop-filter: blur(4px); }
-	.checkout-modal { position: relative; width: min(100%, 31rem); max-height: calc(100vh - 2rem); overflow-y: auto; border-radius: 0.85rem; background: white; padding: 2rem; box-shadow: 0 24px 70px rgba(3, 18, 42, 0.3); }
-	.modal-close { position: absolute; top: 1rem; right: 1rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: #eef3f9; color: #38506f; font-size: 1.25rem; cursor: pointer; }
+	.checkout-modal { position: relative; width: min(100%, 31rem); max-height: calc(100vh - 2rem); overflow-y: auto; border: 1px solid rgba(186, 230, 253, 0.7); border-radius: 1rem; background: #f4f9ff; padding: 2rem; box-shadow: 0 24px 70px rgba(3, 18, 42, 0.3); }
+	.modal-close { position: absolute; top: 1rem; right: 1rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: #e6f0fa; color: #38506f; font-size: 1.25rem; cursor: pointer; }
 	.modal-eyebrow { margin: 0; color: #155bd8; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
 	.checkout-modal h2 { margin: 0.5rem 2rem 1.4rem 0; color: #061d42; font-size: 1.4rem; font-weight: 800; }
 	.checkout-items { max-height: 15rem; overflow-y: auto; border-top: 1px solid #d9e0ea; }
@@ -229,16 +343,30 @@
 	.qr-copy { margin: -0.65rem 0 1.25rem; color: #607897; font-size: 0.8rem; line-height: 1.55; }
 	.qr-code { display: block; width: min(100%, 13.75rem); aspect-ratio: 1; margin: 0 auto 1rem; border: 0.7rem solid #f4f7fb; image-rendering: pixelated; }
 	.order-reference { margin: 0 0 1.25rem; color: #607897; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-align: center; }
-	.empty-cart { padding: 5rem 0; text-align: center; }
-	.empty-cart h2 { margin: 0 0 1rem; font-size: 1.25rem; }
-	.empty-cart a { color: #155bd8; font-weight: 700; }
-	@media (max-width: 600px) {
-		.cart-page { padding: 1.5rem 1rem 9rem; }
-		.cart-heading span { display: none; }
+	@media (min-width: 1024px) {
+		.cart-viewport { padding: 1.5rem; }
+		.cart-layout { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2rem; }
+		.cart-content { grid-column: span 8; }
+		.order-summary-card { position: sticky; top: 1.5rem; grid-column: span 4; align-self: start; padding: 1.5rem; }
+	}
+	@media (max-width: 700px) {
+		.cart-viewport { padding: 0.75rem; }
+		.cart-heading { gap: 0.5rem; padding-bottom: 0.65rem; }
+		.cart-heading h1 { font-size: 1.1rem; }
+		.cart-heading p { font-size: 0.66rem; }
 		.cart-heading-actions { gap: 0.5rem; }
-		.summary-inner { min-height: 5.75rem; }
-		.summary-actions { gap: 0.4rem; }
-		.delete-button { font-size: 0.68rem; }
-		.checkout-button { min-width: auto; padding: 0.9rem 1rem; }
+		.select-all-control { gap: 0.3rem; font-size: 0.68rem; }
+		.cart-edit-button { padding: 0.4rem 0.65rem; font-size: 0.66rem; }
+		.cart-list { gap: 0.6rem; padding-top: 0.65rem; }
+		.order-summary-card { padding: 0.8rem 0.9rem; }
+		.order-summary-card h2 { margin-bottom: 0.5rem; font-size: 0.92rem; }
+		.summary-row, .pickup-location { margin-top: 0.5rem; }
+		.pickup-location { padding-top: 0.5rem; }
+		.summary-total { margin-top: 0.6rem; padding-top: 0.6rem; }
+		.summary-total strong { font-size: 1.1rem; }
+		.cart-checkout-button, .cart-delete-button { margin-top: 0.7rem; padding: 0.7rem; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.cart-checkout-button, .cart-delete-button { transition: none; }
 	}
 </style>

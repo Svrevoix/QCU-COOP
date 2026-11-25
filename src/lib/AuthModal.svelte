@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Role } from '$lib/session';
+	import { theme } from '$lib/stores/theme';
 
 	/**
 	 * Split-screen authentication overlay shown after logging out.
@@ -22,12 +22,8 @@
 	let showPassword = $state(false);
 	let studentId = $state('');
 	let password = $state('');
-	let isDarkMode = $state(false);
+	let isDarkMode = $derived($theme === 'dark');
 	let authError = $state('');
-
-	onMount(() => {
-		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
-	});
 
 	// Total credential erasure whenever the parent signals a sign-out.
 	$effect(() => {
@@ -56,9 +52,7 @@
 	}
 
 	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-		localStorage.setItem('qcu-theme', isDarkMode ? 'dark' : 'light');
+		theme.toggle();
 	}
 
 	// Digits-only typing mask: auto-inserts a dash after the first 2 digits, capped at "NN-NNNN".

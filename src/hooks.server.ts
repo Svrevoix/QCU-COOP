@@ -1,7 +1,7 @@
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { readSession } from '$lib/server/auth';
 
-const customerAccountRoutes = ['/shop', '/products', '/cart', '/orders', '/account'];
+const customerAccountRoutes = ['/products', '/cart', '/orders', '/account'];
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = await readSession(event.cookies);

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { avatarImage } from '$lib/profile';
+	import { theme } from '$lib/stores/theme';
 
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
@@ -12,7 +12,7 @@
 	);
 
 	let fileInput = $state<HTMLInputElement>();
-	let isDarkMode = $state(false);
+	let isDarkMode = $derived($theme === 'dark');
 	let showPasswordForm = $state(false);
 	let showNewPassword = $state(false);
 	let newPassword = $state('');
@@ -37,9 +37,7 @@
 
 	// Flips the system-wide dark/light theme and persists the choice.
 	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-		localStorage.setItem('qcu-theme', isDarkMode ? 'dark' : 'light');
+		theme.toggle();
 	}
 
 	function togglePasswordForm() {
@@ -68,10 +66,6 @@
 		passwordNotice = 'Temporary password preview updated for this session only. Sign-in credentials are unchanged.';
 		passwordNoticeType = 'success';
 	}
-
-	onMount(() => {
-		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
-	});
 </script>
 
 <main class="account-page">

@@ -4,6 +4,8 @@
 	import { addToCart } from '$lib/cart';
 	import { handleImageError } from '$lib/imageFallback';
 	import type { Product } from '$lib/products';
+	import type { ProductCategory } from '$lib/products';
+	import { productThumbnailClasses } from '$lib/productPresentation';
 	let { data } = $props();
 	import { productMatchesTag, productSubcategories } from '$lib/productFilters';
 
@@ -20,6 +22,32 @@
 		textbooks: 'Academic textbooks',
 		books: 'Academic textbooks',
 		operations: 'Financial & co-op operations'
+	};
+	const quickViewCategoryLabels: Record<ProductCategory, string> = {
+		supplies: 'School & Office',
+		uniforms: 'Uniforms',
+		merchandise: 'QCU Merchandise',
+		food: 'Food & Snacks',
+		care: 'Personal Care',
+		bags: 'Bags & Accessories',
+		textbooks: 'Textbooks',
+		operations: 'Co-op Services'
+	};
+	const productDescriptionsByCategory: Record<ProductCategory, string> = {
+		supplies: 'Everyday essentials for notes, assignments, and campus work.',
+		uniforms: 'Official QCU apparel for everyday campus wear.',
+		merchandise: 'A practical way to show your QCU pride around campus.',
+		food: 'A quick snack or drink for your next campus break.',
+		care: 'A handy personal-care essential for your day on campus.',
+		bags: 'A useful everyday carry item for campus.',
+		textbooks: 'An academic reference to support your coursework.',
+		operations: 'A cooperative service for QCU members.'
+	};
+	const productCardDescriptionsByName: Record<string, string> = {
+		'Ballpen (Black)': 'Smooth black ink for everyday writing.',
+		'CBAA T-Shirt (XS, S, M, L, XL, 2XL, 3XL)': 'Official CBAA uniform · sizes XS–3XL',
+		'Coke Kasalo': 'Share-size cola for campus breaks.',
+		Alcohol: 'Ethyl or isopropyl options for everyday hygiene.'
 	};
 
 	const categoryAliases: Record<string, string> = {
@@ -60,10 +88,14 @@
 			return matchesTag && matchesSearch;
 		})
 	);
+	const productCardPrice = (product: Product) =>
+		product.price ?? product.variants?.[0]?.price;
+	const productCardDescription = (product: Product) =>
+		productCardDescriptionsByName[product.name] ?? productDescriptionsByCategory[product.category];
 
 	let selectedProduct = $state<Product | null>(null);
 	let quantity = $state(1);
-	let selectedSize = $state('One size');
+	let selectedChoice = $state('One size');
 	let activeImageIndex = $state(0);
 	let touchStartX = $state<number | null>(null);
 	let showBuyNowCheckout = $state(false);
@@ -82,12 +114,18 @@
 		};
 	}
 
-	function getProductSizes(name: string) {
-		const sizes =
-			name
-				.match(/\(([^)]+)\)$/)?.[1]
-				?.split(',')
-				.map((size) => size.trim()) ?? [];
+	const productChoiceLabelsByProduct: Record<string, string[]> = {
+		Richoco: ['Chocolate', 'Cookies and Cream', 'Milk Vanilla']
+	};
+
+	function getProductOptions(product: Product) {
+		const explicitSize =
+			product.size && product.size !== 'One size' ? [product.size] : undefined;
+		const options =
+			explicitSize ??
+			productChoiceLabelsByProduct[product.name] ??
+			product.name.match(/\(([^)]+)\)$/)?.[1]?.split(',').map((option) => option.trim()) ??
+			[];
 		const sizeLabels: Record<string, string> = {
 			XS: 'XS',
 			S: 'SMALL',
@@ -100,16 +138,10 @@
 			'5XL': '5XL'
 		};
 
-		return sizes.map((size) => sizeLabels[size] ?? size);
+		return options.map((option) => sizeLabels[option] ?? option);
 	}
 
-	let availableSizes = $derived(
-		selectedProduct
-			? selectedProduct.size && selectedProduct.size !== 'One size'
-				? [selectedProduct.size]
-				: getProductSizes(selectedProduct.name)
-			: []
-	);
+	let availableOptions = $derived(selectedProduct ? getProductOptions(selectedProduct) : []);
 	let selectedImages = $derived(
 		selectedProduct?.images?.length
 			? selectedProduct.images
@@ -136,21 +168,29 @@
 			'Yellow'
 		],
 		'Hair Clip (Large)': ['Blue', 'Pink', 'Violet', 'Yellow'],
-		Facemask: ['Black (50 pcs)', 'White (10 pcs)']
+		Facemask: ['Black (50 pcs)', 'White (10 pcs)'],
+		Alcohol: ['Ethyl', 'Isopropyl'],
+		Vitamilk: ['Banana', 'Chocolate', 'Strawberry', 'Ube', 'Vanilla']
 	};
 	let imageVariantLabels = $derived(
 		selectedProduct ? (imageVariantLabelsByProduct[selectedProduct.name] ?? []) : []
 	);
 	let hasImageVariants = $derived(imageVariantLabels.length > 1);
-	let variantLabel = $derived(selectedProduct?.category === 'uniforms' ? 'Size' : 'Type');
+	let variantLabel = $derived(
+		selectedProduct?.category === 'uniforms'
+			? 'Size'
+			: selectedProduct?.category === 'food'
+				? 'Flavor'
+				: 'Type'
+	);
 
 	function openProduct(product: Product) {
 		selectedProduct = product;
 		quantity = 1;
 		activeImageIndex = 0;
-		selectedSize =
+		selectedChoice =
 			imageVariantLabelsByProduct[product.name]?.[0] ??
-			getProductSizes(product.name)[0] ??
+			getProductOptions(product)[0] ??
 			'One size';
 		isAdding = false;
 		if (addToCartResetTimer) {
@@ -159,9 +199,26 @@
 		}
 	}
 
+	let lastPreviewRequest: string | null = null;
+	$effect(() => {
+		if (page.url.searchParams.get('preview') !== '1') {
+			lastPreviewRequest = null;
+			return;
+		}
+		const previewRequest = `${catalogCategory}:${searchQuery}`;
+		if (lastPreviewRequest === previewRequest) return;
+		const productToPreview = data.products.find(
+			(product) =>
+				product.category === catalogCategory && product.name.toLowerCase() === searchQuery
+		);
+		if (!productToPreview) return;
+		lastPreviewRequest = previewRequest;
+		openProduct(productToPreview);
+	});
+
 	function selectImage(index: number) {
 		activeImageIndex = Math.max(0, Math.min(selectedImages.length - 1, index));
-		if (hasImageVariants) selectedSize = imageVariantLabels[activeImageIndex];
+		if (hasImageVariants) selectedChoice = imageVariantLabels[activeImageIndex];
 	}
 
 	function moveImage(direction: number) {
@@ -186,6 +243,16 @@
 			clearTimeout(addToCartResetTimer);
 			addToCartResetTimer = undefined;
 		}
+		if (page.url.searchParams.get('preview') === '1') {
+			const searchParams = new URLSearchParams(page.url.searchParams);
+			searchParams.delete('preview');
+			const query = searchParams.toString();
+			goto(`${page.url.pathname}${query ? `?${query}` : ''}`, {
+				keepFocus: true,
+				noScroll: true,
+				replaceState: true
+			});
+		}
 	}
 
 	function changeQuantity(amount: number) {
@@ -193,7 +260,10 @@
 	}
 
 	let stockRemaining = $derived(selectedProduct?.stock ?? 0);
-	let selectedVariant = $derived(selectedProduct?.variants?.[availableSizes.indexOf(selectedSize)]);
+	let selectedOptionIndex = $derived(
+		hasImageVariants ? imageVariantLabels.indexOf(selectedChoice) : availableOptions.indexOf(selectedChoice)
+	);
+	let selectedVariant = $derived(selectedProduct?.variants?.[selectedOptionIndex]);
 	let selectedProductPrice = $derived(selectedVariant?.price ?? selectedProduct?.price);
 	let buyNowTotal = $derived((selectedProductPrice ?? 0) * quantity);
 	let buyNowPayload = $derived(
@@ -209,8 +279,8 @@
 		addToCart({
 			productId: selectedProduct.id,
 			name: selectedProduct.name,
-			image: selectedProduct.image,
-			variant: selectedSize,
+			image: selectedImages[activeImageIndex] ?? selectedProduct.image,
+			variant: selectedChoice,
 			sku: selectedVariant?.sku ?? selectedProduct.sku,
 			unitPrice: selectedProductPrice,
 			quantity,
@@ -250,52 +320,32 @@
 	<meta name="description" content="Choose products from the QCU Coop Shop catalog." />
 </svelte:head>
 
-<section class="product-page mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
-	<header class="selection-header">
-		<div class="selection-heading">
-			<p class="selection-eyebrow">
-				QCU Coop Store <span aria-hidden="true">/</span> Product selection
-			</p>
-			<h1>{categoryTitle}</h1>
-			<p class="selection-subtitle">
-				Choose an item to see its details, available options, and stock.
-			</p>
-		</div>
-		<div class="selection-actions">
-			<div class="relative">
-				<button
-					type="button"
-					onclick={() => (showFilters = !showFilters)}
-					class="filter-trigger"
-					aria-label="Filter products"
-					aria-expanded={showFilters}
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10m-7 6h4" />
-					</svg>
-					<span>Filters</span>
-				</button>
+<section class="product-page mx-auto max-w-5xl px-4 py-8 text-[#0C2340] sm:py-10 dark:text-slate-100">
+	<div class="mb-6 border-t border-sky-200/80 pt-4 dark:border-white/10">
+		<p class="text-xs font-bold uppercase tracking-[0.24em] text-sky-500">03</p>
+		<div class="mt-2 flex flex-wrap items-end justify-between gap-4">
+			<div>
+				<h1 class="text-3xl font-black tracking-tight text-[#0C2340] sm:text-4xl dark:text-slate-100">Product selection</h1>
+				<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{categoryTitle}</p>
 			</div>
-			<a href="/shop" class="back-to-shop">
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"
-					><path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6" /></svg
-				>
-				Back to shop
-			</a>
+			<div class="relative flex items-center gap-3">
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => showFilters = !showFilters}
+						class="flex h-10 w-10 items-center justify-center rounded-full border border-sky-300/80 bg-sky-100 text-[#0C2340] transition hover:bg-sky-200 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+						aria-label="Filter products"
+						aria-expanded={showFilters}
+					>
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10m-7 6h4" />
+						</svg>
+					</button>
+				</div>
+				<a href="/shop" class="rounded-xl border border-sky-200/80 bg-[#F4F9FF] px-3 py-2 text-sm font-bold text-[#0C2340] transition-colors hover:bg-sky-100 dark:border-white/10 dark:bg-[#162038] dark:text-slate-200 dark:hover:bg-slate-800">Back to shop</a>
+			</div>
 		</div>
-	</header>
+	</div>
 
 	<div class="catalog-summary" aria-live="polite">
 		<p>
@@ -313,54 +363,28 @@
 	</div>
 
 	{#if showFilters}
-		<div
-			class="filter-modal fixed inset-0 z-[90] flex items-start justify-end bg-[#07152d]/35 p-4 backdrop-blur-sm"
-			role="presentation"
-			onclick={(event) => event.target === event.currentTarget && (showFilters = false)}
-		>
-			<div
-				class="filter-panel flex h-[min(70vh,560px)] w-full max-w-md flex-col rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="filter-panel-title"
-			>
-				<div class="flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<p class="text-[10px] font-bold tracking-[0.18em] text-sky-600 uppercase">
-							{categoryTitle}
-						</p>
-						<h2 id="filter-panel-title" class="mt-1 text-xl font-black text-[#07152d]">
-							Filter products
-						</h2>
-					</div>
-					<button
-						type="button"
-						onclick={() => (showFilters = false)}
-						class="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white text-xl font-bold text-[#07152d] shadow-md transition hover:bg-sky-50"
-						aria-label="Close filters">×</button
-					>
+	<div class="filter-modal fixed inset-0 z-[90] flex items-start justify-end bg-[#07152d]/35 p-4 backdrop-blur-sm" role="presentation" onclick={(event) => event.target === event.currentTarget && (showFilters = false)}>
+		<div class="filter-panel flex h-[min(70vh,560px)] w-full max-w-md flex-col rounded-3xl border border-sky-200/80 bg-[#F4F9FF] p-6 text-[#0C2340] shadow-2xl dark:border-white/10 dark:bg-[#162038] dark:text-slate-100" role="dialog" aria-modal="true" aria-labelledby="filter-panel-title">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div>
+						<p class="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">{categoryTitle}</p>
+						<h2 id="filter-panel-title" class="mt-1 text-xl font-black text-[#0C2340] dark:text-slate-100">Filter products</h2>
 				</div>
+				<button type="button" onclick={() => showFilters = false} class="flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/80 bg-sky-100 text-xl font-bold text-[#0C2340] shadow-sm transition hover:bg-sky-200 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700" aria-label="Close filters">×</button>
+			</div>
 				<div class="mt-5 min-h-0 overflow-y-auto pr-1">
 					{#each availableSubcategories as mapping}
-						<div class="border-b border-zinc-100 py-4 first:pt-0 last:border-b-0">
+						<div class="border-b border-sky-100 py-4 first:pt-0 last:border-b-0 dark:border-white/10">
 							<div class="flex items-center justify-between gap-3">
-								<p class="text-xs font-black text-[#07152d]">{mapping.name}</p>
-								{#if activeMapping.name === mapping.name}<span
-										class="text-[10px] font-bold tracking-wider text-sky-600 uppercase">Active</span
-									>{/if}
+								<p class="text-xs font-black text-[#0C2340] dark:text-slate-100">{mapping.name}</p>
+								{#if activeMapping.name === mapping.name}<span class="text-[10px] font-bold uppercase tracking-wider text-sky-600">Active</span>{/if}
 							</div>
 							<div class="mt-3 flex flex-wrap gap-2">
 								{#each mapping.tags as tag}
 									<button
 										type="button"
-										onclick={() => {
-											activeSubcategory = mapping.name;
-											activeProductTag = activeProductTag === tag ? '' : tag;
-										}}
-										class="rounded-full border px-3 py-1.5 text-xs font-bold transition {activeProductTag ===
-											tag && activeMapping.name === mapping.name
-											? 'border-[#233f91] bg-[#233f91] text-white'
-											: 'border-zinc-200 bg-zinc-50 text-[#07152d] hover:border-[#233f91] hover:text-[#233f91]'}"
+										onclick={() => { activeSubcategory = mapping.name; activeProductTag = activeProductTag === tag ? '' : tag; }}
+										class="rounded-full border px-3 py-1.5 text-xs font-bold transition {activeProductTag === tag && activeMapping.name === mapping.name ? 'border-blue-600 bg-blue-600 text-white dark:border-sky-500 dark:bg-blue-700' : 'border-sky-200 bg-white/80 text-[#0C2340] hover:border-blue-500 hover:text-blue-700 dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:border-sky-400 dark:hover:text-sky-300'}"
 										aria-pressed={activeProductTag === tag && activeMapping.name === mapping.name}
 									>
 										{tag}
@@ -370,66 +394,80 @@
 						</div>
 					{/each}
 				</div>
-				<div class="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-4">
-					<p class="text-[10px] font-bold tracking-[0.18em] text-zinc-400 uppercase">
-						Product tags
-					</p>
-					{#if activeProductTag}
-						<button
-							type="button"
-							onclick={() => (activeProductTag = '')}
-							class="text-[10px] font-bold text-[#233f91] underline underline-offset-2"
-							>Clear tag</button
-						>
-					{/if}
-				</div>
+				<div class="mt-4 flex items-center justify-between gap-3 border-t border-sky-100 pt-4 dark:border-white/10">
+					<p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-400">Product tags</p>
+				{#if activeProductTag}
+					<button type="button" onclick={() => activeProductTag = ''} class="text-[10px] font-bold text-blue-700 underline underline-offset-2 dark:text-sky-300">Clear tag</button>
+				{/if}
 			</div>
 		</div>
+	</div>
 	{/if}
 
 	{#if visibleProducts.length}
-		<div class="product-grid grid gap-4" class:single-result={visibleProducts.length === 1}>
-			{#each visibleProducts as product}
-				<article class="product-card">
-					<div class="product-card-image">
-						<img
-							src={product.image || placeholderImage}
-							alt={product.name}
-							onerror={(event) => handleImageError(event, product.name)}
-						/>
-					</div>
-					<div class="product-card-info">
-						<div class="product-card-badges">
-							{#if product.stock !== undefined && product.stock <= 0}
-								<span class="out-of-stock-badge">Out of stock</span>
-							{:else if product.lowStock}
-								<span class="low-stock-badge">Low stock</span>
-							{/if}
+	<div class="product-grid grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		{#each visibleProducts as product}
+			<article class="catalog-product-card group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-sky-200/80 bg-[#F4F9FF] p-5 text-[#0C2340] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-md dark:border-white/10 dark:bg-[#162038] dark:text-slate-100">
+				<div class="mb-3 flex items-center justify-between gap-2">
+					<span class="max-w-[70%] truncate rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:bg-blue-950/70 dark:text-sky-300">
+						{quickViewCategoryLabels[product.category]}
+					</span>
+					{#if product.lowStock}
+						<span class="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+							<span class="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true"></span>
+							Low stock
+						</span>
+					{:else}
+						<span class="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+							<span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
+							In stock
+						</span>
+					{/if}
+				</div>
+				<div class="catalog-product-image relative mb-4 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-sky-200/60 bg-sky-100/80 p-2 dark:border-white/10 dark:bg-slate-800/85">
+					{#if product.image}
+						<img src={product.image} alt={product.name} onerror={(event) => handleImageError(event, product.name)} class={productThumbnailClasses(product.name)} />
+					{:else}
+						<div class="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500" aria-hidden="true">
+							<svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="m3 16 5-5 4 4 3-3 6 6M15 9h.01" />
+							</svg>
+							<span class="text-xs">No photo yet</span>
 						</div>
-						<h2>{product.name}</h2>
-						<div class="product-card-price">
-							<span
-								>{product.price !== undefined
-									? `₱${product.price.toFixed(2)}`
-									: 'Price to be set'}</span
-							>
-							<span class="product-sku">{product.sku}</span>
-						</div>
-						<button type="button" onclick={() => openProduct(product)} class="select-product-button"
-							>View product</button
-						>
+					{/if}
+				</div>
+				<div class="flex flex-1 flex-col">
+					<h2 class="line-clamp-3 min-h-[4.125rem] text-base font-semibold leading-snug text-[#0C2340] dark:text-white">{product.name}</h2>
+					<p class="mt-1 line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-slate-600 dark:text-slate-400">
+						{productCardDescription(product)}
+					</p>
+					<div class="mt-auto flex items-center justify-between gap-3 border-t border-sky-200/70 pt-4 dark:border-white/10">
+						{#if productCardPrice(product) === undefined}
+							<span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Price TBA</span>
+						{:else}
+							<strong class="text-lg font-bold text-[#0C2340] dark:text-white">
+								₱{productCardPrice(product)?.toFixed(2)}
+							</strong>
+						{/if}
+						{#if productCardPrice(product) === undefined}
+							<span class="cursor-not-allowed rounded-lg bg-slate-200/70 px-3 py-2 text-xs font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-400" aria-disabled="true">Check at Coop</span>
+						{:else}
+							<button type="button" onclick={() => openProduct(product)} class="button-primary inline-flex shrink-0 items-center gap-1 px-3 py-2 text-xs">
+								<span aria-hidden="true">+</span> Add
+							</button>
+						{/if}
 					</div>
-				</article>
-			{/each}
-		</div>
+				</div>
+			</article>
+		{/each}
+	</div>
 	{:else}
 		<div class="empty-catalog">
 			<p class="empty-catalog-title">No products found</p>
 			<p>Try another search or clear the selected filters.</p>
 			{#if activeProductTag}
-				<button type="button" class="clear-filter" onclick={() => (activeProductTag = '')}
-					>Clear filters</button
-				>
+				<button type="button" class="clear-filter" onclick={() => (activeProductTag = '')}>Clear filters</button>
 			{:else}
 				<a href="/products?category={catalogCategory}">Clear search</a>
 			{/if}
@@ -438,38 +476,13 @@
 </section>
 
 {#if selectedProduct && !showBuyNowCheckout}
-	<div
-		use:portal
-		class="product-modal fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
-		role="presentation"
-		onclick={(event) => event.target === event.currentTarget && closeProduct()}
-	>
-		<div
-			class="modal-panel relative grid max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl sm:grid-cols-2"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="product-modal-title"
-		>
-			<button
-				type="button"
-				onclick={closeProduct}
-				class="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-xl text-[#07152d] shadow-sm transition hover:bg-zinc-100"
-				aria-label="Close product details">×</button
-			>
+	<div use:portal class="product-modal fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md" role="presentation" onclick={(event) => event.target === event.currentTarget && closeProduct()}>
+		<div class="product-details-panel relative grid max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-sky-200/80 bg-[#F4F9FF] text-[#0C2340] shadow-2xl dark:border-white/10 dark:bg-[#162038] dark:text-slate-100 sm:grid-cols-2" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+			<button type="button" onclick={closeProduct} class="product-details-close absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-sky-100/80 text-xl text-slate-600 shadow-sm transition hover:bg-sky-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700" aria-label="Close product preview">×</button>
 
-			<div
-				class="product-modal-image relative flex aspect-[4/3] min-h-72 items-center justify-center overflow-hidden rounded-2xl bg-white p-8 text-center sm:aspect-auto sm:min-h-full"
-				role="region"
-				aria-label="Product image carousel"
-				ontouchstart={handleImageTouchStart}
-				ontouchend={handleImageTouchEnd}
-			>
-				<img
-					src={selectedImages[activeImageIndex]}
-					alt={`${selectedProduct.name} view ${activeImageIndex + 1}`}
-					onerror={(event) => handleImageError(event, selectedProduct?.name ?? 'product')}
-					class="h-full w-full object-contain"
-				/>
+			<div class="product-modal-image relative flex min-h-72 items-center justify-center p-4 text-center sm:min-h-full sm:p-6" role="region" aria-label="Product image carousel" ontouchstart={handleImageTouchStart} ontouchend={handleImageTouchEnd}>
+				<div class="relative flex min-h-72 w-full items-center justify-center overflow-hidden rounded-2xl border border-sky-200/50 bg-[#E6F0FA] p-6 dark:border-white/5 dark:bg-[#0F172A]/80">
+					<img src={selectedImages[activeImageIndex]} alt={`${selectedProduct.name} view ${activeImageIndex + 1}`} onerror={(event) => handleImageError(event, selectedProduct?.name ?? 'product')} class="max-h-72 max-w-full object-contain drop-shadow-md" />
 				{#if selectedImages.length > 1}
 					<button
 						type="button"
@@ -494,25 +507,19 @@
 						{/each}
 					</div>
 				{/if}
+				</div>
 			</div>
 
-			<div class="flex flex-col p-6 sm:p-8">
-				<span class="text-[10px] font-bold tracking-[0.2em] text-sky-600 uppercase"
-					>Product details</span
-				>
-				<h2 id="product-modal-title" class="mt-2 text-2xl leading-tight font-black text-[#07152d]">
-					{selectedProduct.name}
-				</h2>
-				<p class="mt-2 text-2xl font-black text-[#233f91]">
-					{selectedProductPrice !== undefined
-						? `₱${selectedProductPrice.toFixed(2)}`
-						: 'Price to be set'}
-				</p>
-				<p class="mt-2 font-mono text-xs text-zinc-400">SKU: {selectedProduct.sku}</p>
-
-				<div class="mt-6 rounded-xl bg-sky-50 px-4 py-3">
-					<p class="text-xs font-bold tracking-wider text-[#233f91] uppercase">Availability</p>
-					<p class="mt-1 text-lg font-black text-[#233f91]">
+			<div class="flex min-w-0 flex-col p-5 sm:p-6">
+				<div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-sky-400">
+					<span>{quickViewCategoryLabels[selectedProduct.category]}</span>
+					<span class="text-slate-500 dark:text-slate-400">• {selectedVariant?.sku ?? selectedProduct.sku}</span>
+				</div>
+				<h2 id="product-modal-title" class="mt-2 text-2xl font-bold leading-tight text-[#0C2340] dark:text-slate-100">{selectedProduct.name}</h2>
+				<div class="mt-3 flex flex-wrap items-center gap-2.5">
+					<p class="text-2xl font-bold text-blue-700 dark:text-sky-300">{selectedProductPrice !== undefined ? `₱${selectedProductPrice.toFixed(2)}` : 'Price to be set'}</p>
+					<span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+						<span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
 						{#if stockRemaining <= 0}
 							Out of stock
 						{:else if selectedProduct.lowStock}
@@ -520,60 +527,46 @@
 						{:else}
 							{stockRemaining} available
 						{/if}
-					</p>
+					</span>
 				</div>
+				<p class="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{productDescriptionsByCategory[selectedProduct.category]}</p>
 
-				{#if availableSizes.length || hasImageVariants}
-					<div class="mt-5">
-						<p class="mb-2 text-xs font-bold text-[#07152d]">{variantLabel}</p>
+				{#if availableOptions.length || hasImageVariants}
+					<div class="mt-4">
+						<p class="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-300">{variantLabel}</p>
 						<div class="flex flex-wrap gap-2">
-							{#each hasImageVariants ? imageVariantLabels : availableSizes as size, index}
+							{#each hasImageVariants ? imageVariantLabels : availableOptions as option, index}
 								<button
 									type="button"
-									onclick={() => (hasImageVariants ? selectImage(index) : (selectedSize = size))}
-									class="rounded-full border px-4 py-2 text-xs font-bold transition {selectedSize ===
-									size
-										? 'border-[#233f91] bg-[#233f91] text-white'
-										: 'border-zinc-200 bg-white text-[#07152d] hover:border-[#233f91] hover:text-[#233f91]'}"
-									aria-pressed={selectedSize === size}
+									onclick={() => hasImageVariants ? selectImage(index) : selectedChoice = option}
+									class="rounded-xl px-3 py-2 text-xs font-semibold transition {selectedChoice === option ? 'bg-blue-600 text-white' : 'bg-sky-100/80 text-slate-700 hover:bg-sky-200/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}"
+									aria-pressed={selectedChoice === option}
 								>
-									{size}
+									{option}
 								</button>
 							{/each}
 						</div>
 					</div>
 				{/if}
 
-				<div
-					class="mt-5 flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2"
-				>
-					<span class="text-xs font-bold text-[#07152d]">Quantity</span>
+				<div class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-slate-900/60">
+					<span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Quantity</span>
 					<div class="flex items-center gap-3">
-						<button
-							type="button"
-							onclick={() => changeQuantity(-1)}
-							class="h-8 w-8 rounded-full bg-zinc-100 text-lg text-[#07152d] transition hover:bg-zinc-200"
-							aria-label="Decrease quantity">−</button
-						>
-						<span class="min-w-5 text-center text-sm font-black text-[#07152d]">{quantity}</span>
-						<button
-							type="button"
-							onclick={() => changeQuantity(1)}
-							disabled={quantity >= stockRemaining}
-							class="h-8 w-8 rounded-full bg-[#233f91] text-lg text-white transition hover:bg-[#1d347a]"
-							aria-label="Increase quantity">+</button
-						>
+						<button type="button" onclick={() => changeQuantity(-1)} class="h-8 w-8 rounded-full bg-sky-100 text-lg text-slate-700 transition hover:bg-sky-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" aria-label="Decrease quantity">−</button>
+						<span class="min-w-5 text-center text-sm font-bold text-[#0C2340] dark:text-slate-100">{quantity}</span>
+						<button type="button" onclick={() => changeQuantity(1)} disabled={quantity >= stockRemaining} class="h-8 w-8 rounded-full bg-blue-600 text-lg text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Increase quantity">+</button>
 					</div>
 				</div>
+				<p class="mt-2 text-right text-xs font-medium text-slate-500 dark:text-slate-400">
+					Subtotal: {selectedProductPrice !== undefined ? `₱${(selectedProductPrice * quantity).toFixed(2)}` : 'Price to be set'}
+				</p>
 
-				<div class="mt-6 grid grid-cols-2 gap-3">
+				<div class="mt-4 grid grid-cols-2 gap-3">
 					<button
 						type="button"
 						onclick={addSelectedProductToCart}
 						disabled={isAdding || stockRemaining <= 0}
-						class="relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full px-4 text-sm font-bold text-white transition-colors duration-300 {isAdding
-							? 'bg-emerald-500 hover:bg-emerald-500'
-							: 'bg-[#233f91] hover:bg-[#1d347a]'} disabled:cursor-not-allowed disabled:opacity-50"
+						class="button-primary relative flex h-12 w-full items-center justify-center overflow-hidden px-4 text-sm {isAdding ? 'from-emerald-600 to-emerald-500 dark:from-emerald-600 dark:to-emerald-500' : ''} disabled:cursor-not-allowed disabled:opacity-50"
 						aria-live="polite"
 					>
 						<span
@@ -605,9 +598,8 @@
 						type="button"
 						onclick={openBuyNowCheckout}
 						disabled={stockRemaining <= 0}
-						class="w-full rounded-full bg-[#233f91] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#1d347a] disabled:cursor-not-allowed disabled:opacity-50"
-						>Buy now</button
-					>
+						class="button-primary w-full px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+					>Buy now</button>
 				</div>
 			</div>
 		</div>
@@ -625,11 +617,7 @@
 			<p class="buy-now-eyebrow">Direct checkout</p>
 			<h2 id="buy-now-title">Scan to pay</h2>
 			<div class="buy-now-item">
-				<div>
-					<strong>{selectedProduct.name}</strong><span
-						>{selectedSize} · {quantity} pc{quantity === 1 ? '' : 's'}</span
-					>
-				</div>
+				<div><strong>{selectedProduct.name}</strong><span>{selectedChoice} · {quantity} pc{quantity === 1 ? '' : 's'}</span></div>
 				<b>₱{buyNowTotal.toFixed(2)}</b>
 			</div>
 			<img class="buy-now-qr" src={buyNowQrCodeUrl} alt={`QR code for order ${buyNowReference}`} />
@@ -938,7 +926,7 @@
 		background: #233f91;
 	}
 
-	.modal-panel {
+	.product-details-panel {
 		max-height: calc(100dvh - 2rem);
 	}
 
@@ -950,27 +938,14 @@
 		animation: contentSlideIn 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	}
 
-	.product-grid.single-result {
-		justify-content: center;
-	}
-
-	.product-card {
-		display: flex;
-		min-width: 0;
-		flex-direction: column;
-		overflow: hidden;
-		border: 1px solid var(--selection-line);
-		border-radius: 1.1rem;
-		background: var(--selection-surface);
-		color: var(--selection-ink);
-		box-shadow: 0 8px 22px rgba(27, 47, 81, 0.08);
+	.catalog-product-card {
 		animation: cardReveal 700ms ease-out both;
 		transition:
 			transform 180ms ease,
 			box-shadow 180ms ease;
 	}
 
-	.product-card:hover {
+	.catalog-product-card:hover {
 		transform: translateY(-3px);
 		box-shadow: 0 14px 28px rgba(27, 47, 81, 0.14);
 	}
@@ -1149,15 +1124,15 @@
 		background: #4b82f3;
 	}
 
-	.product-card:nth-child(2) {
+	.catalog-product-card:nth-child(2) {
 		animation-delay: 80ms;
 	}
 
-	.product-card:nth-child(3) {
+	.catalog-product-card:nth-child(3) {
 		animation-delay: 160ms;
 	}
 
-	.product-card:nth-child(4) {
+	.catalog-product-card:nth-child(4) {
 		animation-delay: 240ms;
 	}
 
@@ -1195,7 +1170,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.product-page,
 		.product-grid,
-		.product-card {
+		.catalog-product-card {
 			animation: none;
 		}
 	}

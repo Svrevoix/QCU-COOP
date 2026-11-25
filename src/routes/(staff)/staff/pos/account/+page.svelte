@@ -6,13 +6,14 @@
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
 	import StaffLogout from '$lib/components/StaffLogout.svelte';
 	import { avatarStorageKey } from '$lib/profile';
+	import { theme } from '$lib/stores/theme';
 
 	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
-	let isDarkMode = $state(false);
+	let isDarkMode = $derived($theme === 'dark');
 	let mobileSidebarOpen = $state(false);
 
 	function handleImageSelect(event: Event) {
@@ -31,16 +32,13 @@
 	}
 
 	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-		localStorage.setItem('qcu-theme', isDarkMode ? 'dark' : 'light');
+		theme.toggle();
 	}
 
 	onMount(() => {
 		avatar = user?.profileId
 			? localStorage.getItem(avatarStorageKey(user.profileId))
 			: null;
-		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 	});
 
 	$effect(() => {

@@ -1,6 +1,59 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
+
+html[data-theme='light'] .site-header.shop-header {
+	background: rgba(234, 242, 252, 0.78) !important;
+	color: #0c2340 !important;
+	border-bottom: 1px solid rgba(125, 161, 205, 0.3);
+	box-shadow: 0 4px 16px rgba(12, 35, 64, 0.04);
+	backdrop-filter: blur(14px);
+}
+
+html[data-theme='dark'] .site-header.shop-header {
+	background: rgba(15, 23, 42, 0.78) !important;
+	color: #f1f5f9 !important;
+	border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+	box-shadow: 0 4px 16px rgba(2, 6, 23, 0.12);
+	backdrop-filter: blur(14px);
+}
+
+main.landing-viewport {
+	display: flex;
+	flex: 1 0 auto;
+	flex-direction: column;
+	min-height: calc(100dvh - 4rem);
+	background: transparent !important;
+}
+
+main.landing-viewport > .hero-section {
+	display: flex;
+	flex: 1 0 auto;
+	min-height: min-content;
+	align-items: center;
+	padding-top: clamp(1rem, 3vh, 2.5rem);
+	padding-bottom: clamp(1rem, 3vh, 2.5rem);
+}
+
+main.landing-viewport > footer {
+	flex: 0 0 auto;
+}
+
+@media (min-width: 1024px) and (max-height: 800px) {
+	main.landing-viewport > .hero-section {
+		padding-top: 1.25rem;
+		padding-bottom: 1.25rem;
+	}
+}
 
 @layer components {
+	.button-primary {
+		@apply bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 text-white font-semibold rounded-xl shadow-md shadow-blue-600/20 hover:from-blue-500 hover:via-sky-500 hover:to-cyan-400 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-300 dark:from-blue-600 dark:via-indigo-500 dark:to-sky-500 dark:hover:from-blue-500 dark:hover:via-sky-400 dark:hover:to-cyan-300;
+	}
+
+	.button-secondary {
+		@apply bg-gradient-to-r from-sky-100 to-blue-100 hover:from-blue-600 hover:to-sky-500 text-[#0C2340] hover:text-white border border-sky-300/80 hover:border-transparent dark:from-slate-800/90 dark:to-blue-950/80 dark:hover:from-blue-600 dark:hover:to-sky-500 dark:text-sky-100 dark:hover:text-white dark:border-sky-400/25 font-semibold rounded-xl transition-all duration-300;
+	}
+
 	:where(
 		.profile-avatar-button,
 		.profile-avatar,
@@ -45,5 +98,15 @@
 
 	:where(.theme-switch) {
 		flex-shrink: 0;
+	}
+
+	.login-to-shop {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.3rem 0.625rem;
+		font-size: 0.75rem;
+		text-decoration: none;
+		white-space: nowrap;
 	}
 }

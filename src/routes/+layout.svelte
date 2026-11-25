@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount, setContext } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import './layout.css';
 	import { cartItemCount, cartPieceCount, setCartAccount } from '$lib/cart';
 	import { avatarImage } from '$lib/profile';
 	import { setPurchaseHistoryAccount } from '$lib/orders';
+	import { productCatalog, type Product, type ProductCategory } from '$lib/products';
+	import { theme } from '$lib/stores/theme';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
@@ -13,6 +15,31 @@
 	let showMobileMenu = $state(false);
 	let searchQuery = $state('');
 	let searchInput = $state<HTMLInputElement>();
+	let desktopSearchContainer = $state<HTMLFormElement>();
+	let mobileSearchContainer = $state<HTMLFormElement>();
+	let showSearchSuggestions = $state(false);
+	let isDarkMode = $derived($theme === 'dark');
+	const searchCategoryLabels: Record<ProductCategory, string> = {
+		supplies: 'School & Office',
+		uniforms: 'Uniforms',
+		merchandise: 'QCU Merchandise',
+		food: 'Food & Snacks',
+		care: 'Personal Care',
+		bags: 'Bags & Accessories',
+		textbooks: 'Textbooks',
+		operations: 'Co-op Services'
+	};
+	const apparelSizes = new Set(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']);
+	let searchResults = $derived.by(() => {
+		const query = searchQuery.trim().toLowerCase();
+		if (!query) return [];
+
+		return productCatalog.filter((product) => {
+			const codes = [product.sku, ...(product.variants ?? []).map((variant) => variant.sku)].join(' ');
+			const searchableText = `${product.name} ${product.category} ${searchCategoryLabels[product.category]} ${codes}`;
+			return searchableText.toLowerCase().includes(query);
+		}).slice(0, 6);
+	});
 
 	// Fallback identity shown on the avatar badge before any session is authenticated.
 	const placeholderStudentId = '23-1111';
@@ -22,6 +49,11 @@
 	let isAuthenticated = $derived(!!page.data.user);
 	let isAdmin = $derived(page.data.user?.role === 'admin');
 	let isPublicLanding = $derived(page.url.pathname === '/' && !isAuthenticated);
+	let isStorefront = $derived(
+		page.url.pathname === '/' ||
+			page.url.pathname.startsWith('/shop') ||
+			page.url.pathname.startsWith('/products')
+	);
 
 	$effect(() => {
 		const profileId = page.data.user?.profileId ?? null;
@@ -39,6 +71,7 @@
 	let loadingPathname = $state<string>(page.url.pathname);
 	let loadingStartedAt = 0;
 	let loadingTimer: ReturnType<typeof setTimeout> | undefined;
+	let skipStorefrontLoading = false;
 	let loadingKind = $derived.by(() => {
 		const pathname = loadingPathname;
 		if (pathname === '/login') return 'login';
@@ -68,8 +101,29 @@
 	function submitSearch() {
 		const query = searchQuery.trim();
 		if (!query) return;
+		showSearchSuggestions = false;
 		showMobileMenu = false;
 		goto(`/products?query=${encodeURIComponent(query)}`);
+	}
+
+	function cleanProductTitle(name: string) {
+		const sizeList = name.match(/\(([^()]*)\)$/)?.[1]?.split(',').map((size) => size.trim());
+		return sizeList?.length && sizeList.every((size) => apparelSizes.has(size))
+			? name.slice(0, name.lastIndexOf('(')).trim()
+			: name;
+	}
+
+	function formatProductPrice(product: Product) {
+		const prices = [product.price, ...(product.variants ?? []).map((variant) => variant.price)]
+			.filter((price): price is number => typeof price === 'number' && Number.isFinite(price));
+		return prices.length ? `₱${Math.min(...prices).toFixed(2)}` : 'Price unavailable';
+	}
+
+	function openSearchResult(product: Product) {
+		showSearchSuggestions = false;
+		searchQuery = '';
+		showMobileMenu = false;
+		goto(`/products?category=${encodeURIComponent(product.category)}&query=${encodeURIComponent(product.name)}&preview=1`);
 	}
 
 	function toggleProfileMenu() {
@@ -106,18 +160,34 @@
 		await goto('/login', { invalidateAll: true });
 	}
 
-	// Closes the dropdown when a click lands outside of its container.
 	function handleWindowClick(event: MouseEvent) {
-		if (!showProfileMenu) return;
-		if (profileMenuContainer && !profileMenuContainer.contains(event.target as Node)) {
+		const target = event.target as Node;
+		if (showProfileMenu && profileMenuContainer && !profileMenuContainer.contains(target)) {
 			showProfileMenu = false;
+		}
+		if (
+			showSearchSuggestions &&
+			!desktopSearchContainer?.contains(target) &&
+			!mobileSearchContainer?.contains(target)
+		) {
+			showSearchSuggestions = false;
 		}
 	}
 
-	beforeNavigate(({ to }) => {
+	function isHomeOrShopPath(pathname: string | undefined) {
+		return pathname === '/' || pathname === '/shop' || pathname?.startsWith('/shop/') === true;
+	}
+
+	beforeNavigate(({ from, to }) => {
 		clearTimeout(loadingTimer);
+		skipStorefrontLoading =
+			isHomeOrShopPath(from?.url.pathname) && isHomeOrShopPath(to?.url.pathname);
 		loadingStartedAt = Date.now();
 		loadingPathname = to?.url.pathname ?? page.url.pathname;
+		if (skipStorefrontLoading) {
+			showLoadingSkeleton = false;
+			return;
+		}
 		showLoadingSkeleton = true;
 	});
 
@@ -139,6 +209,11 @@
 	afterNavigate(() => {
 		showMobileMenu = false;
 		loadingPathname = page.url.pathname;
+		if (skipStorefrontLoading) {
+			skipStorefrontLoading = false;
+			loadingStartedAt = 0;
+			return;
+		}
 		if (!loadingStartedAt) loadingStartedAt = Date.now();
 		finishPageLoading();
 	});
@@ -166,9 +241,7 @@
 	});
 
 	onMount(() => {
-		// Applies the previously saved theme (set from the Account page) on load.
-		const savedTheme = localStorage.getItem('qcu-theme');
-		if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+		theme.initialize();
 		cashierSidebarState.collapsed = true;
 		loadingStartedAt = Date.now();
 		finishPageLoading();
@@ -179,11 +252,70 @@
 			window.removeEventListener('click', handleWindowClick);
 		};
 	});
+
+	function toggleTheme() {
+		theme.toggle();
+	}
 </script>
+
+{#snippet searchSuggestions(id: string)}
+	{#if showSearchSuggestions && searchQuery.trim().length > 0}
+		<div
+			id={id}
+			role="listbox"
+			aria-label="Product search suggestions"
+			class="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-2xl border border-sky-200/80 bg-[#F4F9FF] shadow-xl dark:border-white/10 dark:bg-[#162038]"
+		>
+			{#if searchResults.length > 0}
+				{#each searchResults as product (product.id)}
+					{@const image = product.image ?? product.images?.[0]}
+					{@const variantSummary = product.variants?.length
+						? product.variants.length > 1
+							? `${product.variants.length} variants`
+							: product.variants[0]?.sku
+						: product.sku}
+					<button
+						type="button"
+						role="option"
+						aria-label={`View ${cleanProductTitle(product.name)}`}
+						aria-selected="false"
+						onclick={() => openSearchResult(product)}
+						class="flex w-full items-center gap-3 border-b border-sky-100/80 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-sky-100/80 focus-visible:bg-sky-100/80 focus-visible:outline-none dark:border-white/5 dark:hover:bg-slate-800/80 dark:focus-visible:bg-slate-800/80"
+					>
+						<span class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-sky-200/60 bg-sky-100/80 dark:border-white/10 dark:bg-slate-800/85">
+							{#if image}
+								<img
+									src={image.startsWith('/') ? image : `/${image}`}
+									alt=""
+									aria-hidden="true"
+									loading="lazy"
+									class="h-full w-full object-contain p-1"
+								/>
+							{:else}
+								<svg class="h-5 w-5 text-sky-700 dark:text-sky-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v8.5" />
+								</svg>
+							{/if}
+						</span>
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-sm font-semibold text-[#0C2340] dark:text-slate-100">{cleanProductTitle(product.name)}</span>
+							<span class="mt-0.5 block truncate text-xs text-[#3B5578] dark:text-slate-400">{searchCategoryLabels[product.category]}{variantSummary ? ` · ${variantSummary}` : ''}</span>
+						</span>
+						<span class="shrink-0 text-sm font-bold text-blue-700 dark:text-sky-300">{formatProductPrice(product)}</span>
+					</button>
+				{/each}
+			{:else}
+				<p class="px-4 py-4 text-sm text-[#3B5578] dark:text-slate-400">No matching products found</p>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
 
 <svelte:window onkeydown={(event) => {
 	if (event.key === 'Escape') {
 		if (showLogoutConfirmation) closeLogoutConfirmation();
+		showSearchSuggestions = false;
 		showMobileMenu = false;
 	}
 }} />
@@ -195,6 +327,7 @@
 	<link href="https://googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </svelte:head>
 
+<div class={isStorefront ? 'storefront-shell min-h-screen flex flex-col justify-between bg-[#EAF2FC] text-[#0C2340] transition-colors duration-300 dark:bg-[#0B1120] dark:text-slate-100' : ''}>
 {#if page.url.pathname === '/cart'}
 	<header class="cart-shell-header">
 		<div class="cart-header-inner">
@@ -208,49 +341,91 @@
 		</div>
 	</header>
 {:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login' && page.url.pathname !== '/orders'}
-<header class="site-header bg-[#050c1e] text-white shadow-md relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
-	<div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+<header class="site-header {page.url.pathname === '/' ? 'landing-header text-[#0C2340] dark:text-slate-100' : page.url.pathname.startsWith('/shop') ? 'shop-header text-[#0C2340] dark:text-slate-100' : page.url.pathname.startsWith('/products') ? 'catalog-header text-[#0C2340] dark:text-slate-100' : 'bg-[#090D16] text-white shadow-md'} relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
+	<div class="{isStorefront ? 'w-full max-w-7xl mx-auto px-6 sm:px-10' : 'max-w-6xl mx-auto px-4'} h-16 flex items-center justify-between gap-4">
 		
 		{#if isAuthenticated}
-			<a href="/" class="site-brand text-xl font-black tracking-wider hover:text-blue-300 transition">
-				QCU COOP STORE
+			<a href="/" class="site-brand inline-flex items-center gap-2 text-xl font-black tracking-wider transition hover:text-blue-300">
+				<img class="h-9 w-9 rounded-lg object-contain dark:hidden" src="/images/logo/qcu_cooplogo-light-mode_bg.png" alt="" aria-hidden="true" />
+				<img class="hidden h-9 w-9 rounded-lg object-contain dark:block" src="/images/logo/qcu_cooplogo-dark-mode_bg.jpeg" alt="" aria-hidden="true" />
+				<span>QCU COOP STORE</span>
 			</a>
 		{:else}
-			<span class="site-brand text-xl font-black tracking-wider">QCU COOP STORE</span>
+			<span class="site-brand inline-flex items-center gap-2 text-xl font-black tracking-wider">
+				<img class="h-9 w-9 rounded-lg object-contain dark:hidden" src="/images/logo/qcu_cooplogo-light-mode_bg.png" alt="" aria-hidden="true" />
+				<img class="hidden h-9 w-9 rounded-lg object-contain dark:block" src="/images/logo/qcu_cooplogo-dark-mode_bg.jpeg" alt="" aria-hidden="true" />
+				<span>QCU COOP STORE</span>
+			</span>
 		{/if}
 		{#if !isAdmin && isAuthenticated && !isPublicLanding}
-			<form class="hidden sm:block flex-1 max-w-md mx-4 relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
+			<form
+				bind:this={desktopSearchContainer}
+				class="relative mx-4 hidden max-w-md flex-1 sm:block"
+				onsubmit={(event) => { event.preventDefault(); submitSearch(); }}
+			>
 				<input 
 					bind:this={searchInput}
 					type="text" 
 					bind:value={searchQuery}
+					onfocus={() => showSearchSuggestions = true}
+					oninput={() => showSearchSuggestions = true}
 					placeholder="Search essentials, uniforms..." 
-					class="w-full bg-zinc-900/60 border border-zinc-800 focus:border-blue-500 rounded-xl px-4 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 outline-none transition"
+					role="combobox"
+					aria-label="Search products"
+					aria-haspopup="listbox"
+					aria-autocomplete="list"
+					aria-expanded={showSearchSuggestions && searchQuery.trim().length > 0}
+					aria-controls="header-search-results"
+					class="header-search-input w-full rounded-xl border border-sky-200/80 bg-[#F4F9FF] px-4 py-2 pr-10 text-xs text-[#0C2340] outline-none transition placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/40 dark:border-white/10 dark:bg-[#162038] dark:text-slate-100 dark:placeholder:text-slate-400"
 				/>
-				<div class="absolute right-3 top-2.5 text-zinc-500 pointer-events-none">
+				<div class="pointer-events-none absolute right-3 top-3 text-slate-500 dark:text-slate-400">
 					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 					</svg>
 				</div>
+				{@render searchSuggestions('header-search-results')}
 			</form>
 		{/if}
 
 		<div class="flex items-center gap-4 font-medium text-sm shrink-0 ml-auto">
 			{#if !isAdmin && !isPublicLanding}
-				<nav class="hidden md:grid {isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'} items-center gap-1 rounded-full bg-blue-900/40 border border-blue-400/30 p-1 shadow-inner shadow-black/20">
-					<div class="pointer-events-none absolute"></div>
+				<nav class="storefront-nav relative hidden w-44 {isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'} items-center gap-1 rounded-full border border-blue-400/30 bg-blue-900/40 p-1 shadow-inner shadow-black/20 md:grid">
+					<span
+						aria-hidden="true"
+						class="nav-active-indicator"
+						class:shop-active={activeNav === 'aisle'}
+						class:single={!isAuthenticated}
+						class:nav-active={activeNav === 'home' || activeNav === 'aisle'}
+					></span>
 					<a href="/" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'home' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
-						{#if activeNav === 'home'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
 						Home
 					</a>
 					{#if isAuthenticated}
 						<a href="/shop" class="relative z-10 rounded-full px-4 py-2 text-center text-xs transition-colors {activeNav === 'aisle' ? 'text-blue-900' : 'text-blue-200 hover:text-white'}">
-							{#if activeNav === 'aisle'}<span class="absolute inset-0 -z-10 rounded-full bg-white shadow-sm"></span>{/if}
 							Shop
 						</a>
 					{/if}
 				</nav>
 			{/if}
+
+			<button
+				type="button"
+				class="theme-toggle flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/80 bg-white/70 shadow-sm transition-all hover:bg-white dark:border-white/10 dark:bg-slate-800/80 dark:hover:bg-slate-700/80"
+				onclick={toggleTheme}
+				aria-pressed={isDarkMode}
+				aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+			>
+				{#if isDarkMode}
+					<svg class="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<circle cx="12" cy="12" r="4" />
+						<path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" />
+					</svg>
+				{:else}
+					<svg class="h-5 w-5 text-[#0C2340]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+					</svg>
+				{/if}
+			</button>
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
 			<!-- Keyed on role+id so the avatar visual force-resets/remounts on every identity change. -->
@@ -261,7 +436,7 @@
 						<span class="student-id-badge" aria-hidden="true">{displayedId}</span>
 						<button
 							type="button"
-							class="profile-avatar-button"
+							class="profile-avatar-button border border-sky-300/70 bg-sky-100 text-[#0C2340] transition-colors hover:bg-sky-200/90 dark:border-white/10 dark:bg-[#1E293B] dark:text-sky-100 dark:hover:bg-slate-700"
 							onclick={toggleProfileMenu}
 							aria-haspopup="menu"
 							aria-expanded={showProfileMenu}
@@ -296,24 +471,22 @@
 					{/if}
 				</div>
 			{/key}
-			{:else}
-				<a href="/login" class="rounded-full border border-blue-400/40 px-4 py-2 text-xs font-bold text-blue-100 hover:bg-blue-900/40">Sign in</a>
 			{/if}
 
 			{#if isAuthenticated && !isPublicLanding && !isAdmin}
 				<a
 					href="/cart"
-					class="cart-icon-button relative p-2 text-zinc-300 hover:text-blue-300 transition"
+					class="cart-icon-button relative flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/70 bg-sky-100/80 text-[#0C2340] transition-colors hover:bg-sky-200/80 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80"
 					aria-label="View Shopping Cart"
 				>
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 					</svg>
-					<span class="cart-count-badge absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#050c1e]">
+					<span class="cart-count-badge absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#090D16]">
 						{$cartPieceCount}
 					</span>
 				</a>
-				<a href="/orders" class="relative p-2 text-zinc-300 hover:text-blue-300 transition" aria-label="Purchase history" title="Purchase history">
+				<a href="/orders" class="flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/70 bg-sky-100/80 text-[#0C2340] transition-colors hover:bg-sky-200/80 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80" aria-label="Purchase history" title="Purchase history">
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
 				</a>
 			{/if}
@@ -347,13 +520,26 @@
 				onclick={() => (showMobileMenu = false)}
 			></button>
 			<nav id="mobile-navigation" class="mobile-menu-panel" aria-label="Mobile navigation">
-			<form class="mobile-menu-search relative" onsubmit={(event) => { event.preventDefault(); submitSearch(); }}>
+			<form
+				bind:this={mobileSearchContainer}
+				class="mobile-menu-search relative"
+				onsubmit={(event) => { event.preventDefault(); submitSearch(); }}
+			>
 				<input 
 					type="text" 
 					bind:value={searchQuery}
+					onfocus={() => showSearchSuggestions = true}
+					oninput={() => showSearchSuggestions = true}
 					placeholder="Search essentials, uniforms..." 
+					role="combobox"
+					aria-label="Search products"
+					aria-haspopup="listbox"
+					aria-autocomplete="list"
+					aria-expanded={showSearchSuggestions && searchQuery.trim().length > 0}
+					aria-controls="mobile-search-results"
 					class="mobile-menu-search-input"
 				/>
+				{@render searchSuggestions('mobile-search-results')}
 			</form>
 
 			{#if isAuthenticated}
@@ -405,19 +591,21 @@
 	.cart-back-button svg { width: 1.25rem; height: 1.25rem; }
 	.cart-header-title { margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
 	.cart-header-meta { margin: 0.25rem 0 0; color: #a8bddf; font-size: 0.625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+	main.cart-layout-main { display: flex; box-sizing: border-box; height: calc(100dvh - 5rem); min-height: 0; flex-direction: column; overflow: hidden; background: #e6f0fa; }
+	:global(html[data-theme='dark'] main.cart-layout-main) { background: #0f172a; }
 	@media (min-width: 1024px) and (min-height: 700px) {
 		main.landing-viewport {
 			display: flex;
 			flex-direction: column;
-			height: calc(100dvh - 4rem);
-			min-height: 0;
-			overflow: hidden;
+			height: auto;
+			min-height: calc(100dvh - 4rem);
+			overflow: visible;
 		}
 
 		:global(main.landing-viewport > .hero-section) {
 			display: flex;
-			flex: 1 1 auto;
-			min-height: 0;
+			flex: 1 0 auto;
+			min-height: min-content;
 			align-items: center;
 			padding-top: clamp(1rem, 3vh, 2.5rem);
 			padding-bottom: clamp(1rem, 3vh, 2.5rem);
@@ -427,14 +615,19 @@
 			flex: 0 0 auto;
 		}
 	}
+	@media (min-width: 1024px) and (max-height: 800px) {
+		:global(main.landing-viewport > .hero-section) {
+			padding-top: 1.25rem;
+			padding-bottom: 1.25rem;
+		}
+	}
 
 	/* Profile trigger: student ID pill placed left of the avatar button */
 	.profile-menu-container { position: relative; display: inline-flex; }
 	.site-brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.profile-trigger { display: flex; align-items: center; gap: 0.5rem; }
 	.student-id-badge { background: #2563eb; color: #ffffff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1; padding: 0.35rem 0.7rem; border-radius: 9999px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
-	.profile-avatar-button { position: relative; display: grid; flex: 0 0 2.75rem; aspect-ratio: 1; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; background: #17233d; color: #d9e8ff; cursor: pointer; overflow: hidden; transition: background 150ms ease, border-color 150ms ease; }
-	.profile-avatar-button:hover { background: #243557; }
+	.profile-avatar-button { position: relative; display: grid; flex: 0 0 2.75rem; aspect-ratio: 1; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 50%; cursor: pointer; overflow: hidden; }
 	.profile-avatar { display: grid; flex: 0 0 auto; aspect-ratio: 1; width: 1.3rem; height: 1.3rem; place-items: center; }
 	.profile-avatar-image { display: block; flex: 0 0 auto; aspect-ratio: 1; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
@@ -454,19 +647,39 @@
 	:global(html[data-theme='dark']) { color-scheme: dark; background: #07152d; }
 	:global(html[data-theme='dark'] body) { background: #07152d; color: #edf4ff; }
 	:global(html[data-theme='dark'] main.min-h-screen) { background: #101d35 !important; }
+	:global(html[data-theme='dark'] main.landing-viewport) { background: transparent !important; }
+	:global(main.shop-viewport) { background: transparent !important; flex: 1 0 auto; min-width: 0; }
+	:global(html[data-theme='dark'] main.shop-viewport) { background: transparent !important; }
+	:global(main.landing-viewport) { background: transparent !important; flex: 1 0 auto; }
+	.storefront-shell { isolation: isolate; }
+	:global(html[data-theme='dark'] .storefront-shell) { color: #f1f5f9; }
 	:global(html[data-theme='dark'] .product-page), :global(html[data-theme='dark'] .aisle-page) { color: #edf4ff; }
 	:global(html[data-theme='dark'] .cart-page) { background: #101d35 !important; }
 	:global(html[data-theme='dark'] .aisle-page h1), :global(html[data-theme='dark'] .product-page h1), :global(html[data-theme='dark'] .product-page h2), :global(html[data-theme='dark'] .cart-heading h1), :global(html[data-theme='dark'] .item-details h2) { color: #edf4ff !important; }
 	:global(html[data-theme='dark'] .aisle-page > div:first-child), :global(html[data-theme='dark'] .product-page > div:first-child) { border-color: #334866 !important; }
 	:global(html[data-theme='dark'] .product-page > div:first-child p), :global(html[data-theme='dark'] .product-page a) { color: #b8c8dd !important; }
 	:global(html[data-theme='dark'] .product-card), :global(html[data-theme='dark'] .aisle-card) { border-color: #3b61b5 !important; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24) !important; }
-	:global(html[data-theme='dark'] .filter-panel), :global(html[data-theme='dark'] .modal-panel), :global(html[data-theme='dark'] .buy-now-modal), :global(html[data-theme='dark'] .checkout-modal) { background: #172640 !important; color: #edf4ff; }
-	:global(html[data-theme='dark'] .featured-card) { background: #172640 !important; border-color: #334866 !important; }
-	:global(html[data-theme='dark'] .featured-card .featured-name), :global(html[data-theme='dark'] .featured-card .featured-price) { color: #edf4ff !important; }
-	:global(html[data-theme='dark'] .featured-card .featured-desc), :global(html[data-theme='dark'] .featured-card .featured-sku) { color: #b8c8dd !important; }
-	:global(html[data-theme='dark'] footer.bg-zinc-100) { background: #101d35 !important; border-color: #334866 !important; }
-	:global(html[data-theme='dark'] footer .text-zinc-900) { color: #edf4ff !important; }
-	:global(html[data-theme='dark'] footer .text-zinc-500), :global(html[data-theme='dark'] footer .text-zinc-400) { color: #b8c8dd !important; }
+	:global(html[data-theme='dark'] .filter-panel) { background: #162038 !important; color: #edf4ff; }
+	:global(html[data-theme='dark'] .modal-panel), :global(html[data-theme='dark'] .buy-now-modal), :global(html[data-theme='dark'] .checkout-modal) { background: #172640 !important; color: #edf4ff; }
+	:global(html[data-theme='dark'] .hero-section) {
+		background-color: transparent !important;
+		background-image: radial-gradient(circle at 72% 48%, rgba(56, 189, 248, 0.28), transparent 65%), radial-gradient(circle at 12% 18%, rgba(245, 158, 11, 0.08), transparent 36%) !important;
+		color: #f1f5f9 !important;
+	}
+	:global(html[data-theme='dark'] .hero-section::before) { background-image: radial-gradient(#94a3b8 1px, transparent 1px); }
+	:global(html[data-theme='dark'] .hero-section h1) { color: #f1f5f9 !important; }
+	:global(html[data-theme='dark'] .hero-section > .hero-inner > div:first-child > p) { color: #94a3b8 !important; }
+	:global(html[data-theme='dark'] .hero-gradient-text) { background-image: linear-gradient(to right, #60a5fa, #7dd3fc, #fcd34d) !important; }
+	:global(html[data-theme='dark'] .hero-eyebrow) { background: rgba(245, 158, 11, 0.15) !important; border-color: rgba(245, 158, 11, 0.3) !important; color: #fcd34d !important; }
+	:global(html[data-theme='dark'] .featured-card.featured-center) { background: #162038 !important; border-color: rgba(56, 189, 248, 0.2) !important; color: #f1f5f9 !important; box-shadow: 0 24px 48px -12px rgba(2, 6, 23, 0.75) !important; }
+	:global(html[data-theme='dark'] .featured-card:not(.featured-center)) { background: #11192e !important; border-color: rgba(125, 211, 252, 0.16) !important; color: #f1f5f9 !important; }
+	:global(html[data-theme='dark'] .featured-card .featured-name), :global(html[data-theme='dark'] .featured-card .featured-price) { color: #f1f5f9 !important; }
+	:global(html[data-theme='dark'] .featured-card .featured-desc), :global(html[data-theme='dark'] .featured-card .featured-sku) { color: #cbd5e1 !important; }
+	:global(html[data-theme='dark'] .featured-image-fallback) { border-color: rgba(125, 211, 252, 0.2); background: rgba(15, 23, 42, 0.7); color: #7dd3fc; }
+	:global(.landing-footer) { background: transparent !important; }
+	:global(html[data-theme='dark'] .landing-footer) { background: transparent !important; }
+	:global(html[data-theme='dark'] .landing-footer .footer-title) { color: #f1f5f9 !important; }
+	:global(html[data-theme='dark'] .landing-footer .footer-copy), :global(html[data-theme='dark'] .landing-footer .footer-meta) { color: #94a3b8 !important; }
 	:global(html[data-theme='dark'] .cart-summary) { background: rgba(16, 29, 53, 0.96) !important; border-color: #334866; }
 	:global(html[data-theme='dark'] .cart-heading), :global(html[data-theme='dark'] .checkout-line), :global(html[data-theme='dark'] .checkout-total) { border-color: #334866 !important; }
 	:global(html[data-theme='dark'] .empty-cart h2), :global(html[data-theme='dark'] .checkout-modal h2), :global(html[data-theme='dark'] .buy-now-modal h2) { color: #edf4ff !important; }
@@ -492,7 +705,7 @@
 	:global(html[data-theme='dark'] .filter-panel .text-\[\#07152d\]), :global(html[data-theme='dark'] .filter-panel .text-zinc-400) { color: #edf4ff !important; }
 	:global(html[data-theme='dark'] .filter-panel .bg-white), :global(html[data-theme='dark'] .filter-panel .bg-zinc-50) { background: #172640 !important; }
 	:global(html[data-theme='dark'] .filter-panel .border-zinc-200), :global(html[data-theme='dark'] .filter-panel .border-zinc-100) { border-color: #415878 !important; }
-	:global(html[data-theme='dark'] button[aria-label='Filter products']) { border-color: #3b82f6 !important; background: #172640 !important; color: #7ec8ff !important; }
+	:global(html[data-theme='dark'] button[aria-label='Filter products']) { border-color: rgba(255, 255, 255, 0.1) !important; background: #162038 !important; color: #7ec8ff !important; }
 	:global(html[data-theme='dark'] .logout-confirmation-modal) { background: #172640 !important; border-color: #334866 !important; }
 	:global(html[data-theme='dark'] .logout-confirmation-icon) { background: #3b1f24 !important; color: #fecaca !important; box-shadow: 0 0 0 8px #261b2a; }
 	:global(html[data-theme='dark'] .logout-confirmation-title) { color: #edf4ff !important; }
@@ -500,13 +713,23 @@
 	:global(html[data-theme='dark'] .logout-confirmation-cancel) { background: #2b3b56 !important; color: #edf4ff !important; }
 	:global(html[data-theme='dark'] .logout-confirmation-cancel:hover) { background: #374b6b !important; }
 	:global(html[data-theme='light'] .site-header) { background: #ffffff !important; color: #07152d !important; border-bottom: 1px solid #d9e2ec; box-shadow: 0 2px 10px rgba(7, 21, 45, 0.08); }
+	:global(html[data-theme='light'] .site-header.landing-header) { background: rgba(234, 242, 252, 0.8) !important; color: #0c2340 !important; border-bottom: 1px solid rgba(125, 161, 205, 0.3) !important; box-shadow: 0 4px 16px rgba(12, 35, 64, 0.04) !important; backdrop-filter: blur(14px); }
+	:global(html[data-theme='light'] .site-header.shop-header) { background: rgba(234, 242, 252, 0.8) !important; color: #0c2340 !important; border-bottom: 1px solid rgba(125, 161, 205, 0.3) !important; box-shadow: 0 4px 16px rgba(12, 35, 64, 0.04) !important; backdrop-filter: blur(14px); }
+	:global(html[data-theme='light'] .site-header.catalog-header) { background: rgba(234, 242, 252, 0.8) !important; color: #0c2340 !important; border-bottom: 1px solid rgba(125, 161, 205, 0.3) !important; box-shadow: 0 4px 16px rgba(12, 35, 64, 0.04) !important; backdrop-filter: blur(14px); }
 	:global(html[data-theme='light'] .site-header > div > a) { color: #07152d !important; }
-	:global(html[data-theme='light'] .site-header input) { background: #f5f7fa !important; border-color: #d9e2ec !important; color: #07152d !important; }
-	:global(html[data-theme='light'] .site-header .profile-avatar-button) { background: #edf2f8 !important; border-color: #d9e2ec !important; box-shadow: none; }
 	:global(html[data-theme='light'] .site-header nav:not(.mobile-menu-panel)) { background: #dbeafe !important; border-color: #93c5fd !important; box-shadow: none; }
 	:global(html[data-theme='light'] .site-header nav a), :global(html[data-theme='light'] .site-header nav button) { color: #1d4ed8 !important; }
-	:global(html[data-theme='light'] .site-header a[aria-label='View Shopping Cart']), :global(html[data-theme='light'] .site-header a[aria-label='Purchase history']), :global(html[data-theme='light'] .site-header .profile-avatar-button) { color: #38506f !important; }
-	:global(html[data-theme='dark'] .site-header) { background: #050c1e !important; }
+	:global(html[data-theme='dark'] .site-header) { background: #090d16 !important; }
+	:global(html[data-theme='dark'] .site-header.landing-header) { background: rgba(11, 17, 32, 0.8) !important; color: #f1f5f9 !important; border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important; box-shadow: 0 4px 16px rgba(2, 6, 23, 0.12) !important; backdrop-filter: blur(14px); }
+	:global(html[data-theme='dark'] .site-header.shop-header) { background: rgba(11, 17, 32, 0.8) !important; color: #f1f5f9 !important; border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important; box-shadow: 0 4px 16px rgba(2, 6, 23, 0.12) !important; backdrop-filter: blur(14px); }
+	:global(html[data-theme='dark'] .site-header.catalog-header) { background: rgba(11, 17, 32, 0.8) !important; color: #f1f5f9 !important; border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important; box-shadow: 0 4px 16px rgba(2, 6, 23, 0.12) !important; backdrop-filter: blur(14px); }
+	.nav-active-indicator { position: absolute; z-index: 0; top: .3125rem; bottom: .3125rem; left: .3125rem; width: calc(50% - .4375rem); border-radius: 9999px; background: #ffffff; box-shadow: 0 1px 3px rgba(15, 23, 42, .16); opacity: 0; pointer-events: none; transform: translateX(0); transition: transform 300ms cubic-bezier(.22, 1, .36, 1), opacity 180ms ease; }
+	.nav-active-indicator.nav-active { opacity: 1; }
+	.nav-active-indicator.shop-active { transform: translateX(calc(100% + .25rem)); }
+	.nav-active-indicator.single { width: calc(100% - .625rem); }
+	.theme-toggle { flex: 0 0 2.5rem; }
+	:global(.landing-header .cart-count-badge) { border-color: #e6f0fa !important; }
+	:global(html[data-theme='dark'] .landing-header .cart-count-badge) { border-color: #0f172a !important; }
 	:global(html[data-theme='dark'] .site-header nav:not(.mobile-menu-panel)) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
 	.mobile-menu-layer { position: fixed; z-index: 60; inset: 0; }
 	.mobile-menu-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(2, 6, 23, 0.58); }
@@ -518,7 +741,7 @@
 	.mobile-menu-search-input { box-sizing: border-box; width: 100%; min-height: 2.75rem; border: 1px solid #334155; border-radius: .65rem; background: #101d35; padding: .65rem .8rem; color: #f8fafc; font: inherit; font-size: .85rem; }
 	.mobile-menu-search-input::placeholder { color: #94a3b8; }
 	.mobile-menu-toggle { flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; place-items: center; }
-	.cart-icon-button { display: grid; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; aspect-ratio: 1; place-items: center; border-radius: 50%; }
+	.cart-icon-button { display: grid; flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; aspect-ratio: 1; place-items: center; border-radius: 50%; }
 	.cart-count-badge { flex: 0 0 1rem; width: 1rem; height: 1rem; aspect-ratio: 1; }
 	:global(html[data-theme='light'] .mobile-menu-panel) { border-color: #cbd5e1; background: #f8fafc; color: #0f172a; box-shadow: 12px 0 32px rgba(15, 23, 42, .2); }
 	:global(html[data-theme='light'] .mobile-menu-link) { color: #0f172a; }
@@ -535,6 +758,7 @@
 	@media (prefers-reduced-motion: reduce) { .mobile-menu-panel { animation: none; } }
 	@media (max-width: 560px) {
 		:global(.site-header > div) { gap: .35rem; padding-right: .625rem; padding-left: .625rem; }
+		:global(.site-header.landing-header > div), :global(.site-header.shop-header > div) { padding-right: 1.5rem; padding-left: 1.5rem; }
 		:global(.site-header > div > .ml-auto) { gap: .35rem; }
 		:global(.site-header .student-id-badge) { display: none; }
 		:global(.site-header .site-brand) { font-size: clamp(.8rem, 4vw, .95rem) !important; letter-spacing: .04em !important; }
@@ -827,9 +1051,22 @@
 	.dashboard-enter { animation: dashboard-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 </style>
 
-<main class="min-h-screen bg-zinc-50 font-sans" class:dashboard-enter={page.data.user !== null} class:landing-viewport={page.url.pathname === '/'} style="font-family: 'Montserrat', sans-serif;">
-	{@render children()}
-</main>
+{#key page.url.pathname}
+	<main
+		class="font-sans {isStorefront ? 'bg-transparent' : 'bg-zinc-50'}"
+		class:min-h-screen={!isStorefront && page.url.pathname !== '/cart'}
+		class:cart-layout-main={page.url.pathname === '/cart'}
+		class:dashboard-enter={page.data.user !== null && !isStorefront}
+		class:landing-viewport={page.url.pathname === '/'}
+		class:shop-viewport={page.url.pathname.startsWith('/shop')}
+		class:flex-1={isStorefront}
+		in:fade={{ duration: 200 }}
+		style="font-family: 'Montserrat', sans-serif;"
+	>
+		{@render children()}
+	</main>
+{/key}
+</div>
 
 {#if showLogoutConfirmation}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-[#050c1e]/70 p-4 backdrop-blur-md" role="presentation" onclick={(event) => event.target === event.currentTarget && closeLogoutConfirmation()}>

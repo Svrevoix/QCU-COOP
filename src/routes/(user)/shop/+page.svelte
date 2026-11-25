@@ -3,24 +3,27 @@
 </script>
 
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { addToCart } from '$lib/cart';
 	import { onMount } from 'svelte';
 	import type { Product, ProductCategory } from '$lib/products';
 	let { data } = $props();
+	import { productThumbnailClasses } from '$lib/productPresentation';
 
 	const categories: {
 		id: ProductCategory;
 		label: string;
 		icon: string;
 	}[] = [
-		{ id: 'supplies', label: 'School & Office', icon: 'book' },
+		{ id: 'supplies', label: 'School & Office', icon: 'pencil-ruler' },
 		{ id: 'uniforms', label: 'Uniforms', icon: 'shirt' },
-		{ id: 'merchandise', label: 'QCU Merchandise', icon: 'bag' },
-		{ id: 'food', label: 'Food & Snacks', icon: 'food' },
-		{ id: 'care', label: 'Personal Care', icon: 'care' },
-		{ id: 'bags', label: 'Bags & Accessories', icon: 'accessory' },
-		{ id: 'textbooks', label: 'Textbooks', icon: 'textbook' },
-		{ id: 'operations', label: 'Co-op Services', icon: 'services' }
+		{ id: 'merchandise', label: 'QCU Merchandise', icon: 'sparkles' },
+		{ id: 'food', label: 'Food & Snacks', icon: 'cup-soda' },
+		{ id: 'care', label: 'Personal Care', icon: 'heart-pulse' },
+		{ id: 'bags', label: 'Bags & Accessories', icon: 'backpack' },
+		{ id: 'textbooks', label: 'Textbooks', icon: 'book-open' },
+		{ id: 'operations', label: 'Co-op Services', icon: 'hand-coins' }
 	];
 	const categoryDescriptions: Record<ProductCategory, string> = {
 		supplies: 'Everyday essentials for class, projects, and your workspace.',
@@ -32,8 +35,30 @@
 		textbooks: 'Academic references selected for QCU students.',
 		operations: 'Co-op services, fees, and campus operations.'
 	};
+	const featuredMetadataByName: Record<string, string> = {
+		'Ballpen (Black)': 'Black ink · smooth everyday writing',
+		'CBAA T-Shirt (XS, S, M, L, XL, 2XL, 3XL)': 'Official CBAA uniform · sizes XS–3XL',
+		'QCU Jacket': 'QCU-branded campus outerwear',
+		'Coke Kasalo': 'Share-size cola for campus breaks',
+		Alcohol: 'Ethyl or isopropyl options',
+		'Eco Bag (Large)': 'Large reusable campus carry bag',
+		'CFAS: Conceptual Framework and Accounting Standards': 'Accounting standards reference',
+		'Regular Loan 1': 'Co-op loan service'
+	};
+	const apparelSizes = new Set(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']);
 	const categoryLabel = (category: ProductCategory) =>
 		categories.find((item) => item.id === category)?.label ?? 'QCU Coop';
+	const featuredMetadata = (product: Product) =>
+		featuredMetadataByName[product.name] ?? 'Campus essential';
+	const cleanFeaturedTitle = (name: string) => {
+		const options = name
+			.match(/\(([^()]*)\)$/)?.[1]
+			?.split(',')
+			.map((option) => option.trim());
+		return options?.length && options.every((option) => apparelSizes.has(option))
+			? name.slice(0, name.lastIndexOf('(')).trim()
+			: name;
+	};
 	const activeCategory = $derived(
 		categories.some((category) => category.id === page.url.searchParams.get('category'))
 			? (page.url.searchParams.get('category') ?? 'all')
@@ -45,12 +70,19 @@
 	let featuredTrack = $state<HTMLDivElement>();
 	let featuredInteractionPaused = $state(false);
 	let featuredInteractionTimer: ReturnType<typeof setTimeout> | undefined;
+	let featuredAddedProductId = $state<string | null>(null);
+	let featuredAddResetTimer: ReturnType<typeof setTimeout> | undefined;
 	let randomizedProducts = $state<Product[]>([]);
-	let discoveredProducts = $derived(
-		activeCategory === 'all'
-			? randomizedProducts
-			: randomizedProducts.filter((product) => product.category === activeCategory)
-	);
+	let discoveredProducts = $derived.by(() => {
+		const categoryProducts =
+			activeCategory === 'all'
+				? randomizedProducts
+				: randomizedProducts.filter((product) => product.category === activeCategory);
+		return [
+			...categoryProducts.filter((product) => Boolean(product.image)),
+			...categoryProducts.filter((product) => !product.image)
+		];
+	});
 	let visibleProducts = $derived(discoveredProducts.slice(0, 10));
 	let featuredProducts = $derived.by(() => {
 		const available = data.products.filter((product: Product) => product.featured);
@@ -62,17 +94,43 @@
 		const price = productPrice(product);
 		return price === undefined ? 'Price to be set' : `₱${price.toFixed(2)}`;
 	};
-	const productHref = (product: Product) => `/products?category=${product.category}`;
-
-	function moveFeatured(direction: number) {
-		const track = featuredTrack;
-		if (!track) return;
-		track.scrollBy({ left: direction * track.clientWidth * 0.78, behavior: 'smooth' });
-	}
+	const productHref = (product: Product) =>
+		`/products?category=${product.category}&query=${encodeURIComponent(product.name)}`;
+	const productPreviewHref = (product: Product) => `${productHref(product)}&preview=1`;
 
 	function pauseFeatured() {
 		featuredInteractionPaused = true;
 		if (featuredInteractionTimer) clearTimeout(featuredInteractionTimer);
+	}
+
+	function addFeaturedProduct(product: Product) {
+		const price = productPrice(product);
+		if (price === undefined) return;
+		if (!page.data.user?.profileId) {
+			void goto(`/login?next=${encodeURIComponent(productHref(product))}`);
+			return;
+		}
+
+		const namedOptions = product.name.match(/\(([^)]+)\)$/)?.[1];
+		const variant =
+			product.name === 'Alcohol' ? 'Ethyl' : namedOptions?.split(',')[0]?.trim() || 'One size';
+		const selectedVariant = product.variants?.[0];
+		addToCart({
+			productId: product.id,
+			name: product.name,
+			image: product.image,
+			variant,
+			sku: selectedVariant?.sku ?? product.sku,
+			unitPrice: selectedVariant?.price ?? price,
+			category: product.category
+		});
+
+		featuredAddedProductId = product.id;
+		if (featuredAddResetTimer) clearTimeout(featuredAddResetTimer);
+		featuredAddResetTimer = setTimeout(() => {
+			featuredAddedProductId = null;
+			featuredAddResetTimer = undefined;
+		}, 1600);
 	}
 
 	function resumeFeaturedSoon() {
@@ -192,6 +250,7 @@
 			window.removeEventListener('pageshow', replayReveals);
 			window.cancelAnimationFrame(animationFrame);
 			if (featuredInteractionTimer) clearTimeout(featuredInteractionTimer);
+			if (featuredAddResetTimer) clearTimeout(featuredAddResetTimer);
 			restoreScrollSettings();
 		};
 	});
@@ -205,8 +264,8 @@
 	/>
 </svelte:head>
 
-<main class="shop-page mx-auto max-w-5xl px-6 pt-6 pb-20 sm:px-8 lg:px-10">
-	<header class="shop-heading shop-reveal">
+<main class="shop-page mx-auto max-w-7xl pt-6 pb-20">
+	<header class="shop-heading shop-reveal mx-auto w-full max-w-5xl px-6 sm:px-8 lg:px-10">
 		{#if selectedCategory}
 			<a href="/shop" class="shop-breadcrumb">
 				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
@@ -214,8 +273,8 @@
 			</a>
 		{/if}
 		<p class="shop-eyebrow">{selectedCategory ? 'Browse category' : 'QCU COOP STORE'}</p>
-		<h1>{selectedCategory ? selectedCategory.label : 'Shop at QCU COOP'}</h1>
-		<p class="shop-subtitle">
+		<h1 class="text-[#0C2340] dark:text-white">{selectedCategory ? selectedCategory.label : 'Shop at QCU COOP'}</h1>
+		<p class="shop-subtitle text-[#3B5578] dark:text-slate-400">
 			{selectedCategory
 				? categoryDescriptions[selectedCategory.id]
 				: 'Select your items and create an order request to present at the counter.'}
@@ -223,119 +282,153 @@
 	</header>
 
 	{#if !selectedCategory}
-		<section class="shop-section shop-reveal" aria-labelledby="featured-title">
-			<div class="section-heading">
-				<div>
-					<p class="shop-eyebrow">Handpicked for campus</p>
-					<h2 id="featured-title">Featured items</h2>
+		<section class="shop-section featured-section shop-reveal" aria-labelledby="featured-title">
+			<div class="featured-content mx-auto max-w-7xl">
+				<div class="section-heading px-6 sm:px-8 lg:px-10">
+					<div>
+						<p class="shop-eyebrow">Handpicked for campus</p>
+						<h2 id="featured-title" class="text-[#0C2340] dark:text-white">Featured items</h2>
+					</div>
+					<span class="section-count">{featuredProducts.length} picks</span>
 				</div>
-				<span class="section-count">{featuredProducts.length} picks</span>
-			</div>
-			<div class="featured-mask">
-				<div
-					class="featured-track"
-					bind:this={featuredTrack}
-					role="region"
-					aria-label="Featured products"
-					onpointerdown={pauseFeatured}
-					onpointerup={resumeFeaturedSoon}
-					onpointercancel={resumeFeaturedSoon}
-				>
-					{#each [...featuredProducts, ...featuredProducts] as product, index (`${product.id}-${index}`)}
-						<a
-							class="featured-card"
-							href={productHref(product)}
-							aria-hidden={index >= featuredProducts.length}
-							tabindex={index >= featuredProducts.length ? -1 : undefined}
-						>
-							<div class="featured-topline">
-								<span class="featured-badge">Featured item</span>
-								<span class="featured-category">{categoryLabel(product.category)}</span>
-							</div>
-							<div class="featured-image" class:missing-image={!product.image}>
-								{#if product.image}
-									<img src={product.image} alt={product.name} onerror={handleProductImageError} />
-									<span class="no-image-label">No image available</span>
-								{:else}
-									<span class="no-image-label">No image available</span>
-								{/if}
-							</div>
-							<div class="featured-info">
-								{#if product.stock !== undefined && product.stock <= 0}
-									<span class="stock-badge stock-out">Out of stock</span>
-								{:else if product.lowStock}
-									<span class="stock-badge stock-low">Low stock · {product.stock} left</span>
-								{/if}
-								<h3>{product.name}</h3>
-								<p>{product.description?.trim() || categoryDescriptions[product.category]}</p>
-								<strong>{formatPrice(product)}</strong>
-							</div>
-						</a>
-					{/each}
+				<div class="featured-mask">
+					<div
+						class="featured-track mx-auto max-w-7xl px-6 sm:px-8 lg:px-10"
+						bind:this={featuredTrack}
+						role="region"
+						aria-label="Featured products"
+						onpointerdown={pauseFeatured}
+						onpointerup={resumeFeaturedSoon}
+						onpointercancel={resumeFeaturedSoon}
+					>
+						{#each [...featuredProducts, ...featuredProducts] as product, index (`${product.id}-${index}`)}
+							<article
+								class="featured-card group w-[235px] shrink-0 sm:w-[250px]"
+								aria-hidden={index >= featuredProducts.length}
+							>
+								<div class="featured-topline">
+									<span class="featured-category">{categoryLabel(product.category)}</span>
+									<span class="featured-stock"><span aria-hidden="true"></span>In stock</span>
+								</div>
+								<a
+									class="featured-main"
+									href={productHref(product)}
+									tabindex={index >= featuredProducts.length ? -1 : undefined}
+								>
+									<div
+										class="featured-image aspect-square w-full"
+										class:missing-image={!product.image}
+									>
+										{#if product.image}
+											<img
+												class={productThumbnailClasses(product.name)}
+												src={product.image}
+												alt={product.name}
+												onerror={handleProductImageError}
+											/>
+										{/if}
+										<div class="shop-featured-image-fallback" aria-hidden="true">
+											<svg viewBox="0 0 24 24" fill="none">
+												<rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+												<circle cx="9" cy="10" r="1.5" />
+												<path d="m5 17 4-4 3 3 2-2 5 4" />
+											</svg>
+											<span>No photo</span>
+										</div>
+									</div>
+									<div class="featured-info">
+										<h3>{cleanFeaturedTitle(product.name)}</h3>
+										<p>{featuredMetadata(product)}</p>
+									</div>
+								</a>
+								<div class="featured-footer">
+									<strong>{formatPrice(product)}</strong>
+									{#if productPrice(product) === undefined}
+										<button type="button" class="featured-add" disabled>Check at Coop</button>
+									{:else if page.data.user}
+										<button
+											type="button"
+											class="featured-add button-primary"
+											tabindex={index >= featuredProducts.length ? -1 : undefined}
+											aria-live="polite"
+											aria-label={featuredAddedProductId === product.id
+												? `${product.name} added to cart`
+												: `Add ${product.name} to cart`}
+											onclick={() => addFeaturedProduct(product)}
+										>
+											{featuredAddedProductId === product.id ? 'Added' : '+ Add'}
+										</button>
+									{:else}
+										<a class="button-secondary login-to-shop" href="/login?redirect=%2Fshop" tabindex={index >= featuredProducts.length ? -1 : undefined}>Login to shop</a>
+									{/if}
+								</div>
+							</article>
+						{/each}
+					</div>
 				</div>
-			</div>
-			<div class="carousel-controls" aria-label="Featured item navigation">
-				<button type="button" aria-label="Previous featured items" onclick={() => moveFeatured(-1)}>
-					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-				</button>
-				<button type="button" aria-label="Next featured items" onclick={() => moveFeatured(1)}>
-					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-				</button>
 			</div>
 		</section>
 
-		<section class="shop-section shop-reveal" aria-labelledby="categories-title">
+		<section
+			class="shop-section shop-reveal mx-auto w-full max-w-5xl px-6 sm:px-8 lg:px-10"
+			aria-labelledby="categories-title"
+		>
 			<div class="section-heading">
 				<div>
 					<p class="shop-eyebrow">Find what you need</p>
 					<h2 id="categories-title">Shop by category</h2>
 				</div>
-				<a class="text-link" href="/products">View all products</a>
+				<a class="button-secondary shop-view-all" href={page.data.user ? '/products' : '/login?redirect=%2Fshop'}>View all products</a>
 			</div>
 			<nav class="category-row" aria-label="Shop product categories">
 				{#each categories as category}
 					<a class="category-link" href={`/shop?category=${category.id}`}>
 						<span class="category-icon" aria-hidden="true">
-							{#if category.icon === 'book'}
-								<svg viewBox="0 0 24 24"
-									><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5z" /><path
-										d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8m-8 4h6"
-									/></svg
-								>
+							{#if category.icon === 'pencil-ruler'}
+								<svg viewBox="0 0 24 24">
+									<path d="m3 21 3-3L17 7a2.1 2.1 0 0 1 3 3L9 21a2.1 2.1 0 0 1-3-3Z" />
+									<path d="m14.5 6.5 3 3M3 21h5" />
+								</svg>
 							{:else if category.icon === 'shirt'}
-								<svg viewBox="0 0 24 24"
-									><path d="m8 4 4 2 4-2 5 3-2 4-3-1v11H8V10l-3 1-2-4z" /><path
-										d="M9 5a3 3 0 0 0 6 0"
-									/></svg
-								>
-							{:else if category.icon === 'bag'}
-								<svg viewBox="0 0 24 24"
-									><path d="M5 8h14l1 13H4z" /><path d="M9 8V6a3 3 0 0 1 6 0v2m-5 5h4" /></svg
-								>
-							{:else if category.icon === 'food'}
-								<svg viewBox="0 0 24 24"
-									><path d="M4 11h16l-2 9H6zM3 11l2-4h14l2 4M8 4l2 3m6-3-2 3" /><path
-										d="M9 15h.01M15 15h.01"
-									/></svg
-								>
-							{:else if category.icon === 'care'}
-								<svg viewBox="0 0 24 24"
-									><path d="M9 3h6v4H9zM7 7h10v14H7z" /><path d="M12 10v8m-4-4h8" /></svg
-								>
-							{:else if category.icon === 'accessory'}
-								<svg viewBox="0 0 24 24"
-									><path d="M4 8h16l1 12H3zM8 8V6a4 4 0 0 1 8 0v2" /><path d="M8 13h8" /></svg
-								>
-							{:else if category.icon === 'textbook'}
-								<svg viewBox="0 0 24 24"
-									><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5z" /><path
-										d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 6h8m-8 4h7"
-									/></svg
-								>
+								<svg viewBox="0 0 24 24">
+									<path d="m8 4 4 2 4-2 5 3-2 4-3-1v11H8V10l-3 1-2-4z" />
+									<path d="M9 5a3 3 0 0 0 6 0" />
+								</svg>
+							{:else if category.icon === 'sparkles'}
+								<svg viewBox="0 0 24 24">
+									<path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
+									<path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
+								</svg>
+							{:else if category.icon === 'cup-soda'}
+								<svg viewBox="0 0 24 24">
+									<path d="M5 8h14l-1 13H6L5 8Z" />
+									<path d="M7 8V5a2 2 0 0 1 2-2m3 5V3m3 5V5a2 2 0 0 0-2-2M8 13h8" />
+								</svg>
+							{:else if category.icon === 'heart-pulse'}
+								<svg viewBox="0 0 24 24">
+									<path
+										d="M20.8 8.7c0 5-8.8 11.3-8.8 11.3S3.2 13.7 3.2 8.7a4.6 4.6 0 0 1 8.8-1.6 4.6 4.6 0 0 1 8.8 1.6Z"
+									/>
+									<path d="M4 12h4l2-3 3 6 2-3h5" />
+								</svg>
+							{:else if category.icon === 'backpack'}
+								<svg viewBox="0 0 24 24">
+									<path d="M5 9h14v12H5z" />
+									<path d="M9 9V6a3 3 0 0 1 6 0v3M5 13h14M9 13v3h6v-3" />
+								</svg>
+							{:else if category.icon === 'book-open'}
+								<svg viewBox="0 0 24 24">
+									<path
+										d="M12 7v14M3 18V5a2 2 0 0 1 2-2h2a5 5 0 0 1 5 5 5 5 0 0 1 5-5h2a2 2 0 0 1 2 2v13"
+									/>
+									<path d="M3 18a2 2 0 0 0 2 2h2a5 5 0 0 1 5 1 5 5 0 0 1 5-1h2a2 2 0 0 0 2-2" />
+								</svg>
 							{:else}
-								<svg viewBox="0 0 24 24"
-									><circle cx="12" cy="12" r="9" /><path d="M8 10h8m-8 4h8m-5-7 2 10" /></svg
-								>
+								<svg viewBox="0 0 24 24">
+									<circle cx="17" cy="5" r="3" />
+									<path d="M17 3.5v3M15.5 5h3M3 17h8l7-4a2 2 0 0 1 2 3l-6 4H7l-4-3Z" />
+									<path d="M7 17v-2a2 2 0 0 1 2-2h4" />
+								</svg>
 							{/if}
 						</span>
 						<span class="category-label">{category.label}</span>
@@ -345,7 +438,10 @@
 		</section>
 	{/if}
 
-	<section class="shop-section shop-reveal" aria-labelledby="discover-title">
+	<section
+		class="shop-section shop-reveal mx-auto w-full max-w-5xl px-6 sm:px-8 lg:px-10"
+		aria-labelledby="discover-title"
+	>
 		<div class="section-heading">
 			<div>
 				<p class="shop-eyebrow">
@@ -368,20 +464,25 @@
 		{#if visibleProducts.length}
 			<div class="product-grid">
 				{#each visibleProducts as product (product.id)}
-					<article class="shop-product-card">
+					<article class="shop-product-card group">
 						<div class="shop-product-image" class:missing-image={!product.image}>
 							{#if product.image}
 								<img
+									class={productThumbnailClasses(product.name)}
 									src={product.image}
 									alt={product.name}
 									loading="lazy"
 									onerror={handleProductImageError}
-									class="h-full w-full object-contain"
 								/>
-								<span class="no-image-label">No image available</span>
-							{:else}
-								<span class="no-image-label">No image available</span>
 							{/if}
+							<div class="shop-product-image-fallback" aria-hidden="true">
+								<svg viewBox="0 0 24 24">
+									<path
+										d="M8.5 3H19a2 2 0 0 1 2 2v11.5M3 8V5a2 2 0 0 1 2-2h1.5M21 21H5a2 2 0 0 1-2-2v-3m0-2 5-5 4 4 1-1M2 2l20 20"
+									/>
+								</svg>
+								<span>No image available</span>
+							</div>
 						</div>
 						<div class="shop-product-info">
 							<span class="product-category-label">{categoryLabel(product.category)}</span>
@@ -392,10 +493,21 @@
 							{/if}
 							<h3>{product.name}</h3>
 							<div class="product-price-row">
-								<strong>{formatPrice(product)}</strong>
-								<span class="product-sku">{product.sku}</span>
+								{#if productPrice(product) === undefined}
+									<span class="product-price-tba">Price TBA</span>
+								{:else}
+									<strong>{formatPrice(product)}</strong>
+								{/if}
 							</div>
-							<a class="select-product" href={productHref(product)}>Browse category</a>
+							{#if productPrice(product) === undefined}
+								<span class="select-product select-product-disabled" aria-disabled="true"
+									>Check at Coop</span
+								>
+							{:else if page.data.user}
+								<a class="button-primary select-product" href={productPreviewHref(product)}>Select product</a>
+							{:else}
+								<a class="button-secondary select-product" href="/login?redirect=%2Fshop">Login to shop</a>
+							{/if}
 						</div>
 					</article>
 				{/each}
@@ -403,8 +515,8 @@
 			{#if visibleProducts.length < discoveredProducts.length}
 				<div class="show-more-wrap">
 					<a
-						class="show-more"
-						href={selectedCategory ? `/products?category=${selectedCategory.id}` : '/products'}
+						class="button-secondary show-more"
+						href={page.data.user ? (selectedCategory ? `/products?category=${selectedCategory.id}` : '/products') : '/login?redirect=%2Fshop'}
 					>
 						See more <span aria-hidden="true">↓</span>
 					</a>
@@ -419,7 +531,7 @@
 <style>
 	.shop-page {
 		--shop-ink: #10233f;
-		--shop-muted: #657892;
+		--shop-muted: #3b5578;
 		--shop-line: #e2e8f0;
 		--shop-card: #fff;
 		--shop-surface: #f3f6fb;
@@ -446,8 +558,11 @@
 	}
 	.shop-subtitle {
 		margin: 0;
-		color: var(--shop-muted);
+		color: #3b5578;
 		font-size: 0.8rem;
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-subtitle) {
+		color: #94a3b8;
 	}
 	.shop-breadcrumb {
 		display: inline-flex;
@@ -459,8 +574,7 @@
 		font-weight: 750;
 		text-decoration: none;
 	}
-	.shop-breadcrumb:hover,
-	.text-link:hover {
+	.shop-breadcrumb:hover {
 		color: #2563eb;
 	}
 	.shop-breadcrumb svg {
@@ -494,23 +608,22 @@
 	.section-description {
 		margin: 0.25rem 0 0;
 	}
-	.text-link {
-		color: #3156a6;
+	.shop-view-all {
+		display: inline-flex;
+		padding: 0.45rem 0.8rem;
 		font-size: 0.72rem;
-		font-weight: 800;
 		text-decoration: none;
+		white-space: nowrap;
 	}
 	.featured-mask {
 		overflow: hidden;
 		padding: 0.65rem 0 1.1rem;
-		mask-image: linear-gradient(to right, transparent, #000 3.5%, #000 96.5%, transparent);
-		-webkit-mask-image: linear-gradient(to right, transparent, #000 3.5%, #000 96.5%, transparent);
 	}
 	.featured-track {
 		display: flex;
 		gap: 1rem;
 		overflow-x: auto;
-		padding: 0.9rem 1.5rem 1.3rem;
+		padding-block: 0.9rem 1.3rem;
 		scrollbar-width: none;
 		touch-action: pan-x;
 		overscroll-behavior-x: contain;
@@ -520,50 +633,64 @@
 	}
 	.featured-card {
 		display: flex;
-		flex: 0 0 86%;
+		flex: 0 0 auto;
+		gap: 0.625rem;
 		flex-direction: column;
 		min-width: 0;
-		overflow: hidden;
-		border: 1px solid var(--shop-line);
-		border-radius: 1.15rem;
-		background: var(--shop-card);
+		border: 1px solid rgba(186, 230, 253, 0.6);
+		border-radius: 1rem;
+		background: #f4f9ff;
+		padding: 0.875rem;
 		color: inherit;
-		box-shadow: 0 8px 24px rgba(27, 47, 81, 0.07);
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 		transform-origin: center center;
-		text-decoration: none;
-		transition:
-			transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-			box-shadow 220ms ease;
+		transition: all 300ms ease;
 	}
 	.featured-card:hover,
 	.featured-card:active,
-	.featured-card:focus-visible {
+	.featured-card:focus-within {
 		z-index: 3;
-		transform: perspective(900px) translate3d(0, -5px, 22px) scale(1.045);
-		box-shadow: 0 22px 38px rgba(27, 47, 81, 0.2);
+		border-color: rgba(59, 130, 246, 0.4);
+		transform: translate3d(0, -0.25rem, 0) scale(1.025);
+		box-shadow:
+			0 4px 6px -1px rgba(15, 23, 42, 0.1),
+			0 2px 4px -2px rgba(15, 23, 42, 0.1);
 	}
 	.featured-topline {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
-		padding: 1rem 1rem 0;
-	}
-	.featured-badge {
-		border-radius: 999px;
-		background: #2563eb;
-		color: #fff;
-		padding: 0.32rem 0.6rem;
-		font-size: 0.58rem;
-		font-weight: 850;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
+		min-width: 0;
 	}
 	.featured-category {
+		min-width: 0;
+		overflow: hidden;
+		border-radius: 999px;
+		border: 1px solid rgba(125, 211, 252, 0.7);
+		background: #e0f2fe;
+		padding: 0.125rem 0.5rem;
+		color: #1d4ed8;
+		font-size: 0.6875rem;
+		font-weight: 500;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.featured-stock {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.4rem;
 		color: var(--shop-muted);
-		font-size: 0.6rem;
-		font-weight: 700;
-		text-align: right;
+		font-size: 0.6875rem;
+		white-space: nowrap;
+	}
+	.featured-stock span {
+		width: 0.4rem;
+		height: 0.4rem;
+		border-radius: 50%;
+		background: #22c55e;
+		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
 	}
 	.featured-image,
 	.shop-product-image {
@@ -574,42 +701,53 @@
 		background: var(--shop-surface);
 	}
 	.featured-image {
-		height: 11rem;
-		margin: 0.8rem 1rem 0;
-		border: 1px solid #dbe4f0;
-		border-radius: 0.75rem;
-		background: #fff;
-	}
-	.featured-image img,
-	.shop-product-image img {
 		width: 100%;
-		height: 100%;
-		object-fit: contain;
-		padding: 0.8rem;
-		background: #fff;
+		height: auto;
+		flex: 0 0 auto;
+		aspect-ratio: 1 / 1;
+		box-sizing: border-box;
+		border: 1px solid #dbeafe;
+		border-radius: 0.75rem;
+		background: rgba(224, 242, 254, 0.8);
+		padding: 0.5rem;
 	}
-	.no-image-label {
-		display: none;
-		color: #8494aa;
-		font-size: 0.65rem;
-		font-weight: 850;
-		letter-spacing: 0.1em;
-		text-align: center;
-		text-transform: uppercase;
+	.featured-main {
+		display: flex;
+		min-height: 0;
+		flex: 1;
+		flex-direction: column;
+		gap: 0.625rem;
+		color: inherit;
+		text-decoration: none;
 	}
-	.featured-image.missing-image,
-	.shop-product-image.missing-image {
-		background: #fff;
-	}
-	.featured-image.missing-image .no-image-label,
-	.shop-product-image.missing-image .no-image-label {
+	.featured-image img {
 		display: block;
+		object-fit: contain;
+		object-position: center;
+		filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.15));
+	}
+	.shop-featured-image-fallback {
+		display: none;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
 		color: #64748b;
+		font-size: 0.6875rem;
+	}
+	.shop-featured-image-fallback svg {
+		width: 1.75rem;
+		height: 1.75rem;
+		stroke: currentColor;
+		stroke-width: 1.5;
+	}
+	.featured-image.missing-image .shop-featured-image-fallback {
+		display: flex;
 	}
 	.featured-info {
-		display: grid;
-		gap: 0.35rem;
-		padding: 0.85rem 1rem 1rem;
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		gap: 0.375rem;
 	}
 	.stock-badge {
 		display: inline-flex;
@@ -629,59 +767,63 @@
 		color: #b91c1c;
 	}
 	.featured-info h3 {
+		display: -webkit-box;
+		overflow: hidden;
+		min-height: 3.5rem;
 		margin: 0;
-		font-size: 0.92rem;
-		font-weight: 850;
+		color: var(--shop-ink);
+		font-size: 0.875rem;
+		font-weight: 700;
+		line-height: 1.25;
+		-webkit-box-orient: vertical;
+		line-clamp: 3;
+		-webkit-line-clamp: 3;
 	}
 	.featured-info p {
 		display: -webkit-box;
 		overflow: hidden;
 		margin: 0;
 		color: var(--shop-muted);
-		font-size: 0.67rem;
-		line-height: 1.45;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		min-height: 2rem;
 		-webkit-box-orient: vertical;
 		line-clamp: 2;
 		-webkit-line-clamp: 2;
 	}
-	.featured-info strong {
-		margin-top: 0.2rem;
-		color: #2563eb;
-		font-size: 1.1rem;
-		font-weight: 900;
-	}
-	.carousel-controls {
+	.featured-footer {
 		display: flex;
-		justify-content: center;
+		align-items: center;
+		justify-content: space-between;
 		gap: 0.5rem;
-		margin-top: 0.25rem;
+		margin-top: auto;
+		border-top: 1px solid rgba(186, 230, 253, 0.5);
+		padding-top: 0.625rem;
 	}
-	.carousel-controls button {
-		display: grid;
-		width: 2.4rem;
-		height: 2.4rem;
-		place-items: center;
-		border: 1px solid var(--shop-line);
+	.featured-footer strong {
+		color: var(--shop-ink);
+		font-size: 0.875rem;
+		font-weight: 700;
+	}
+	.featured-add {
+		flex: 0 0 auto;
+		border: 0;
 		border-radius: 0.75rem;
-		background: var(--shop-card);
-		color: #3156a6;
+		background: linear-gradient(to right, #2563eb, #3b82f6, #0ea5e9);
+		padding: 0.25rem 0.625rem;
+		color: #fff;
+		font-size: 0.75rem;
+		font-weight: 600;
 		cursor: pointer;
-		transition:
-			background 160ms ease,
-			color 160ms ease,
-			transform 160ms ease;
+		transition: filter 150ms ease, box-shadow 150ms ease;
 	}
-	.carousel-controls button:hover {
-		transform: translateY(-1px);
-		background: #3156a6;
-		color: white;
+	.featured-add:hover {
+		filter: brightness(1.08);
+		box-shadow: 0 6px 16px rgba(14, 165, 233, 0.25);
 	}
-	.carousel-controls svg {
-		width: 1.1rem;
-		height: 1.1rem;
-		fill: none;
-		stroke: currentColor;
-		stroke-width: 2;
+	.featured-add:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 	.category-row {
 		display: grid;
@@ -702,10 +844,10 @@
 		width: 3.65rem;
 		height: 3.65rem;
 		place-items: center;
-		border: 1px solid var(--shop-line);
+		border: 1px solid rgba(186, 230, 253, 0.7);
 		border-radius: 1.05rem;
-		background: var(--shop-card);
-		color: #3156a6;
+		background: #f4f9ff;
+		color: #2563eb;
 		box-shadow: 0 4px 12px rgba(27, 47, 81, 0.045);
 		transition:
 			transform 180ms ease,
@@ -725,8 +867,8 @@
 	.category-link:hover .category-icon,
 	.category-link:focus-visible .category-icon {
 		transform: scale(1.08);
-		border-color: #9db8f5;
-		background: #eaf1ff;
+		border-color: rgba(59, 130, 246, 0.4);
+		background: #e6f0fa;
 		color: #1d4ed8;
 	}
 	.category-label {
@@ -738,96 +880,144 @@
 	}
 	.product-grid {
 		display: grid;
+		align-items: stretch;
 		grid-auto-rows: 1fr;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.8rem;
 	}
 	.shop-product-card {
 		display: flex;
+		justify-content: space-between;
+		gap: 0.875rem;
 		min-width: 0;
+		height: 100%;
 		flex-direction: column;
 		overflow: hidden;
-		border: 1px solid #233f91;
+		border: 1px solid rgba(186, 230, 253, 0.7);
 		border-radius: 1rem;
-		background: #233f91;
-		color: #fff;
-		box-shadow: 0 8px 18px rgba(21, 43, 105, 0.17);
-		transition:
-			transform 180ms ease,
-			box-shadow 180ms ease;
+		background: #f4f9ff;
+		padding: 1.25rem;
+		color: #0c2340;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+		transition: all 300ms ease;
 	}
 	.shop-product-card:hover {
-		transform: translateY(-3px);
-		box-shadow: 0 14px 26px rgba(21, 43, 105, 0.23);
+		transform: translateY(-0.25rem);
+		border-color: rgba(59, 130, 246, 0.4);
+		box-shadow:
+			0 4px 6px -1px rgba(15, 23, 42, 0.1),
+			0 2px 4px -2px rgba(15, 23, 42, 0.1);
 	}
 	.shop-product-image {
-		height: 8.5rem;
+		width: 100%;
+		height: auto;
 		flex: 0 0 auto;
-		margin: 0.65rem 0.65rem 0;
-		border: 1px solid #dbe4f0;
+		aspect-ratio: 1 / 1;
+		box-sizing: border-box;
+		overflow: hidden;
+		border: 1px solid rgba(186, 230, 253, 0.45);
 		border-radius: 0.75rem;
-		background: #fff;
+		background: rgba(224, 242, 254, 0.8);
+		padding: 0.5rem;
 	}
 	.shop-product-image img {
-		padding: 1rem;
+		display: block;
+		object-fit: contain;
+		object-position: center;
+		filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.15));
+	}
+	.shop-product-image.missing-image {
+		border: 1px dashed rgba(125, 211, 252, 0.6);
+		background: rgba(224, 242, 254, 0.5);
+	}
+	.shop-product-image-fallback {
+		display: none;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		color: #94a3b8;
+		font-size: 0.75rem;
+	}
+	.shop-product-image-fallback svg {
+		width: 1.75rem;
+		height: 1.75rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.shop-product-image.missing-image .shop-product-image-fallback {
+		display: flex;
 	}
 	.shop-product-info {
 		display: flex;
 		flex: 1;
 		flex-direction: column;
-		padding: 0.85rem;
+		gap: 0.625rem;
 	}
 	.product-category-label {
-		min-height: 0.8rem;
-		color: #d3defe;
-		font-size: 0.56rem;
-		font-weight: 800;
-		letter-spacing: 0.08em;
+		display: inline-flex;
+		width: fit-content;
+		align-items: center;
+		border-radius: 9999px;
+		background: #e0f2fe;
+		padding: 0.2rem 0.55rem;
+		color: #1d4ed8;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
 	.shop-product-info h3 {
-		min-height: 2.5rem;
-		margin: 0.35rem 0 0.65rem;
-		color: #fff;
-		font-size: 0.8rem;
-		font-weight: 850;
-		line-height: 1.35;
+		display: -webkit-box;
+		overflow: hidden;
+		min-height: 3.75rem;
+		margin: 0;
+		color: #0c2340;
+		font-size: 0.875rem;
+		font-weight: 700;
+		line-height: 1.375;
+		-webkit-box-orient: vertical;
+		line-clamp: 3;
+		-webkit-line-clamp: 3;
 	}
 	.product-price-row {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: 0.3rem;
 		margin-top: auto;
 	}
 	.product-price-row strong {
-		color: #fff;
-		font-size: 0.98rem;
-		font-weight: 900;
+		color: #0c2340;
+		font-size: 0.875rem;
+		font-weight: 700;
 	}
-	.product-sku {
-		color: #d0d9f1;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 0.56rem;
+	.product-price-tba {
+		border: 1px solid rgba(245, 158, 11, 0.3);
+		border-radius: 999px;
+		background: rgba(254, 243, 199, 0.8);
+		padding: 0.2rem 0.55rem;
+		color: #92400e;
+		font-size: 0.6875rem;
+		font-weight: 700;
 	}
 	.select-product {
-		display: block;
-		margin-top: 0.8rem;
-		border-radius: 999px;
-		background: #fff;
-		padding: 0.55rem 0.7rem;
-		color: #233f91;
-		font-size: 0.68rem;
-		font-weight: 850;
+		display: flex;
+		width: 100%;
+		align-items: center;
+		justify-content: center;
+		margin-top: 0.25rem;
+		padding: 0.625rem 0.75rem;
+		font-size: 0.75rem;
 		text-align: center;
 		text-decoration: none;
-		transition:
-			background 150ms ease,
-			transform 150ms ease;
 	}
-	.select-product:hover {
-		transform: translateY(-1px);
-		background: #eaf1ff;
+	.select-product-disabled {
+		background: rgba(226, 232, 240, 0.7);
+		color: #94a3b8;
+		cursor: not-allowed;
 	}
 	.show-more-wrap {
 		display: grid;
@@ -841,22 +1031,11 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		border: 1px solid #3156a6;
-		border-radius: 999px;
-		background: transparent;
 		padding: 0.65rem 1.1rem;
-		color: #3156a6;
 		font: inherit;
 		font-size: 0.75rem;
 		font-weight: 850;
 		text-decoration: none;
-		transition:
-			background 150ms ease,
-			color 150ms ease;
-	}
-	.show-more:hover {
-		background: #3156a6;
-		color: #fff;
 	}
 	.empty-products {
 		border: 1px dashed var(--shop-line);
@@ -891,58 +1070,91 @@
 	:global(html[data-theme='dark'] .shop-page .shop-eyebrow) {
 		color: #7cb5ff;
 	}
-	:global(html[data-theme='dark'] .shop-page .text-link),
 	:global(html[data-theme='dark'] .shop-page .shop-breadcrumb) {
 		color: #a9c8ff;
 	}
 	:global(html[data-theme='dark'] .shop-page .featured-card) {
-		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+		border-color: rgba(255, 255, 255, 0.1);
+		background: #162038;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 	}
-	:global(html[data-theme='dark'] .shop-page .featured-info strong) {
-		color: #8eb5ff;
+	:global(html[data-theme='dark'] .shop-page .featured-card:hover),
+	:global(html[data-theme='dark'] .shop-page .featured-card:active),
+	:global(html[data-theme='dark'] .shop-page .featured-card:focus-within) {
+		border-color: rgba(56, 189, 248, 0.35);
+		background: #162038;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 	}
-	:global(html[data-theme='dark'] .shop-page .carousel-controls button) {
-		border-color: #415878;
-		background: #172640;
-		color: #b9d1ff;
+	:global(html[data-theme='dark'] .shop-page .featured-image) {
+		border-color: rgba(255, 255, 255, 0.1);
+		background: rgba(30, 41, 59, 0.85);
 	}
-	:global(html[data-theme='dark'] .shop-page .carousel-controls button:hover) {
-		background: #3156a6;
+	:global(html[data-theme='dark'] .shop-page .featured-info h3),
+	:global(html[data-theme='dark'] .shop-page .featured-footer strong) {
 		color: #fff;
 	}
+	:global(html[data-theme='dark'] .shop-page .featured-category) {
+		border-color: rgba(59, 130, 246, 0.25);
+		background: rgba(23, 37, 84, 0.7);
+		color: #7dd3fc;
+	}
+	:global(html[data-theme='dark'] .shop-page .featured-info p) {
+		color: #94a3b8;
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-featured-image-fallback) {
+		color: #64748b;
+	}
+	:global(html[data-theme='dark'] .shop-page .featured-footer) {
+		border-color: rgba(255, 255, 255, 0.1);
+	}
 	:global(html[data-theme='dark'] .shop-page .category-icon) {
-		border-color: #334866;
-		background: #172640;
-		color: #a9c8ff;
+		border-color: rgba(255, 255, 255, 0.1);
+		background: #162038;
+		color: #7dd3fc;
 	}
 	:global(html[data-theme='dark'] .shop-page .category-link:hover .category-icon),
 	:global(html[data-theme='dark'] .shop-page .category-link:focus-visible .category-icon) {
-		border-color: #5274b7;
-		background: #203a60;
-		color: #d2e1ff;
+		border-color: rgba(56, 189, 248, 0.35);
+		background: #1e293b;
+		color: #7dd3fc;
 	}
 	:global(html[data-theme='dark'] .shop-page .shop-product-card) {
-		border-color: #3b61b5;
-		background: #233f91;
-	}
-	:global(html[data-theme='dark'] .shop-page .shop-product-image),
-	:global(html[data-theme='dark'] .shop-page .shop-product-image img),
-	:global(html[data-theme='dark'] .shop-page .featured-image),
-	:global(html[data-theme='dark'] .shop-page .featured-image img) {
-		background: #fff;
-	}
-	:global(html[data-theme='dark'] .shop-page .show-more) {
-		border-color: #6f96e8;
-		color: #b9d1ff;
-	}
-	:global(html[data-theme='dark'] .shop-page .show-more:hover) {
-		background: #3156a6;
+		border-color: rgba(255, 255, 255, 0.1);
+		background: #162038;
 		color: #fff;
 	}
+	:global(html[data-theme='dark'] .shop-page .shop-product-image) {
+		border-color: rgba(255, 255, 255, 0.1);
+		background: rgba(30, 41, 59, 0.85);
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-product-image.missing-image) {
+		border-color: #334155;
+		background: rgba(30, 41, 59, 0.5);
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-product-image-fallback) {
+		color: #64748b;
+	}
+	:global(html[data-theme='dark'] .shop-page .product-category-label) {
+		background: rgba(23, 37, 84, 0.7);
+		color: #7dd3fc;
+	}
+	:global(html[data-theme='dark'] .shop-page .shop-product-info h3),
+	:global(html[data-theme='dark'] .shop-page .product-price-row strong) {
+		color: #fff;
+	}
+	:global(html[data-theme='dark'] .shop-page .product-price-tba) {
+		border-color: rgba(245, 158, 11, 0.3);
+		background: rgba(245, 158, 11, 0.15);
+		color: #fcd34d;
+	}
+	:global(html[data-theme='dark'] .shop-page .select-product-disabled) {
+		background: #1e293b;
+		color: #94a3b8;
+	}
+	:global(html[data-theme='dark'] .shop-page .featured-add:not(:disabled)) {
+		background: linear-gradient(to right, #2563eb, #6366f1, #0ea5e9);
+	}
 	@media (min-width: 600px) {
-		.featured-card {
-			flex-basis: calc(50% - 0.5rem);
-		}
 		.category-row {
 			grid-template-columns: repeat(8, minmax(0, 1fr));
 		}
@@ -954,31 +1166,11 @@
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 			gap: 1rem;
 		}
-		.shop-product-image {
-			height: 10rem;
-		}
-		.shop-product-info {
-			padding: 1rem;
-		}
-		.shop-product-info h3 {
-			font-size: 0.87rem;
-		}
 	}
 	@media (min-width: 900px) {
-		.featured-card {
-			flex-basis: calc(33.333% - 0.68rem);
-		}
 		.product-grid {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
 			gap: 1.1rem;
-		}
-		.shop-product-image {
-			height: 11rem;
-		}
-	}
-	@media (min-width: 1200px) {
-		.featured-card {
-			flex-basis: calc(25% - 0.75rem);
 		}
 	}
 	@media (max-width: 420px) {
@@ -993,12 +1185,6 @@
 			width: 3.2rem;
 			height: 3.2rem;
 		}
-		.shop-product-image {
-			height: 7rem;
-		}
-		.product-sku {
-			font-size: 0.5rem;
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		:global(.shop-page .shop-reveal.reveal-pending) {
@@ -1007,6 +1193,7 @@
 			transition: none;
 		}
 		.featured-card,
+		.featured-add,
 		.category-icon,
 		.shop-product-card,
 		.select-product {

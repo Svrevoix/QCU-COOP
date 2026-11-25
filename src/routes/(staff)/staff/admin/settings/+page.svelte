@@ -3,13 +3,14 @@
 	import { page } from '$app/state';
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
 	import { avatarStorageKey } from '$lib/profile';
+	import { theme } from '$lib/stores/theme';
 
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
 	let avatarError = $state('');
-	let isDarkMode = $state(false);
+	let isDarkMode = $derived($theme === 'dark');
 
 	function handleImageSelect(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -37,17 +38,13 @@
 	}
 
 	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		const theme = isDarkMode ? 'dark' : 'light';
-		document.documentElement.dataset.theme = theme;
-		localStorage.setItem('qcu-theme', theme);
+		theme.toggle();
 	}
 
 	onMount(() => {
 		avatar = user?.profileId
 			? localStorage.getItem(avatarStorageKey(user.profileId))
 			: null;
-		isDarkMode = localStorage.getItem('qcu-theme') === 'dark';
 	});
 </script>
 
