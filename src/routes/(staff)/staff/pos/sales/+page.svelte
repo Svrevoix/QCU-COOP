@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
-	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
-	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
 	type SalesPeriod = 'Daily Sales' | 'Weekly' | 'Monthly';
 	type ChartPoint = { label: string; amount: number };
 
-	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	const cashierSidebar = getContext<{
+		collapsed: boolean;
+		mobileOpen: boolean;
+		toggleMobile: () => void;
+		closeMobile: () => void;
+	}>('cashierSidebar');
 	let { data } = $props();
 	let period = $state<SalesPeriod>('Daily Sales');
-	let mobileSidebarOpen = $state(false);
 	const monthlyChart: ChartPoint[] = data.metrics.monthly;
 	const weeklyChart: ChartPoint[] = data.metrics.weekly;
 	const dailyChart: ChartPoint[] = data.metrics.daily;
@@ -75,7 +76,7 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape') mobileSidebarOpen = false;
+		if (event.key === 'Escape') cashierSidebar.closeMobile();
 	}}
 />
 
@@ -84,40 +85,20 @@
 	<meta name="description" content="Sales overview and trends for the cashier workspace." />
 </svelte:head>
 
-<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed} class:mobile-open={mobileSidebarOpen}>
-	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
-		<CashierSidebarHeader
-			collapsed={cashierSidebar.collapsed}
-		/>
-		<p class="sidebar-label">Workspace</p>
-		<CashierNavigation
-			collapsed={cashierSidebar.collapsed}
-			onNavigate={() => (mobileSidebarOpen = false)}
-		/>
-		<StaffLogout />
-	</aside>
-	{#if mobileSidebarOpen}
-		<button
-			class="cashier-sidebar-backdrop"
-			type="button"
-			aria-label="Close navigation"
-			onclick={() => (mobileSidebarOpen = false)}
-		></button>
-	{/if}
-
+<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed}>
 	<section class="cashier-content sales-content">
 		<header class="sales-topbar">
 			<div class="cashier-heading">
 				<button
 					class="cashier-mobile-menu-button"
 					type="button"
-					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
-					aria-expanded={mobileSidebarOpen}
+					aria-label={cashierSidebar.mobileOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={cashierSidebar.mobileOpen}
 					aria-controls="cashier-sidebar"
-					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+					onclick={cashierSidebar.toggleMobile}
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+						<path d={cashierSidebar.mobileOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
 					</svg>
 				</button>
 				<div class="cashier-heading-copy">
@@ -220,6 +201,10 @@
 </main>
 
 <style>
+	:global(html:has(.sales-content)) {
+		font-size: 17.5px;
+	}
+
 	.cashier-shell {
 		--navy: #07152d;
 		--ink: #172b4d;
@@ -367,7 +352,7 @@
 	.sales-metrics {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.7rem;
+		gap: 0.8rem;
 		margin: 1rem 0 1.15rem;
 	}
 	.sales-metrics article {
@@ -376,12 +361,12 @@
 		border-radius: 0.7rem;
 		background: white;
 		box-shadow: 0 4px 14px rgba(32, 55, 88, 0.035);
-		padding: 0.82rem 0.9rem;
+		padding: 0.95rem 1rem;
 	}
 	.sales-metrics article > span {
 		display: block;
 		color: #778397;
-		font-size: 0.54rem;
+		font-size: 0.62rem;
 		font-weight: 700;
 		text-transform: uppercase;
 	}
@@ -393,7 +378,7 @@
 		font-weight: 900;
 	}
 	.sales-metrics small {
-		font-size: 0.52rem;
+		font-size: 0.6rem;
 		font-weight: 800;
 	}
 	.sales-metrics small i {
@@ -430,7 +415,7 @@
 		color: #65738a;
 		padding: 0.4rem 0.75rem;
 		font: inherit;
-		font-size: 0.56rem;
+		font-size: 0.62rem;
 		font-weight: 700;
 		cursor: pointer;
 	}
@@ -455,7 +440,7 @@
 	.sales-panels {
 		display: grid;
 		grid-template-columns: minmax(0, 2.18fr) minmax(14rem, 0.86fr);
-		gap: 0.7rem;
+		gap: 0.8rem;
 	}
 	.sales-panel {
 		min-width: 0;
@@ -464,7 +449,7 @@
 		border-radius: 0.8rem;
 		background: white;
 		box-shadow: 0 5px 17px rgba(32, 55, 88, 0.035);
-		padding: 1rem;
+		padding: 1.1rem;
 	}
 	.panel-heading {
 		display: flex;
@@ -475,27 +460,27 @@
 	.panel-heading h2 {
 		margin: 0;
 		color: #1b2b47;
-		font-size: 0.7rem;
+		font-size: 0.78rem;
 		font-weight: 900;
 	}
 	.panel-heading p {
 		margin: 0.2rem 0 0;
 		color: #8490a1;
-		font-size: 0.55rem;
+		font-size: 0.62rem;
 	}
 	.trend-badge {
 		border-radius: 1rem;
 		background: #d8f8e9;
 		color: #09874a;
 		padding: 0.25rem 0.48rem;
-		font-size: 0.5rem;
+		font-size: 0.58rem;
 		font-weight: 800;
 		white-space: nowrap;
 	}
 	.chart-wrap {
 		display: flex;
 		width: min(100%, 27rem);
-		height: 12rem;
+		height: 13rem;
 		margin-top: 1.2rem;
 	}
 	.y-axis {
@@ -505,7 +490,7 @@
 		justify-content: space-between;
 		padding: 0.05rem 0.3rem 0.8rem 0;
 		color: #8b99ab;
-		font-size: 0.48rem;
+		font-size: 0.57rem;
 	}
 	.line-chart {
 		position: relative;
@@ -515,7 +500,7 @@
 	.line-chart svg {
 		display: block;
 		width: 100%;
-		height: 10.8rem;
+		height: 11.7rem;
 		overflow: visible;
 	}
 	.gridline {
@@ -546,17 +531,17 @@
 		left: 2.2rem;
 		justify-content: space-between;
 		color: #667891;
-		font-size: 0.5rem;
+		font-size: 0.58rem;
 	}
 	.category-chart {
 		display: grid;
-		min-height: 13rem;
+		min-height: 14rem;
 		place-items: center;
 	}
 	.donut {
 		display: grid;
-		width: 7.5rem;
-		height: 7.5rem;
+		width: 8rem;
+		height: 8rem;
 		place-content: center;
 		border-radius: 50%;
 		background:
@@ -572,7 +557,7 @@
 	.donut span {
 		margin-top: 0.1rem;
 		color: #79869a;
-		font-size: 0.45rem;
+		font-size: 0.55rem;
 	}
 	.category-legend {
 		display: grid;
@@ -585,7 +570,7 @@
 		border-radius: 0.42rem;
 		padding: 0.38rem 0.5rem;
 		color: #334158;
-		font-size: 0.53rem;
+		font-size: 0.6rem;
 	}
 	.category-legend > div span {
 		display: flex;
@@ -600,7 +585,7 @@
 	}
 	.category-legend strong {
 		color: #27344a;
-		font-size: 0.53rem;
+		font-size: 0.6rem;
 	}
 	.category-legend .grocery {
 		background: #ffe3e2;
@@ -628,7 +613,7 @@
 		background: white;
 		padding: 0.5rem clamp(1rem, 2vw, 1.5rem);
 		color: #8490a1;
-		font-size: 0.48rem;
+		font-size: 0.54rem;
 	}
 	.sales-footer > span:last-child {
 		display: flex;

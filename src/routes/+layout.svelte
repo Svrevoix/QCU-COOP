@@ -3,11 +3,12 @@
 	import { fade, fly } from 'svelte/transition';
 	import { afterNavigate, beforeNavigate, goto, onNavigate } from '$app/navigation';
 	import './layout.css';
+	import AppearanceSelector from '$lib/components/AppearanceSelector.svelte';
 	import { cartItemCount, cartPieceCount, setCartAccount } from '$lib/cart';
 	import { avatarImage } from '$lib/profile';
 	import { setPurchaseHistoryAccount } from '$lib/orders';
 	import { productCatalog, type Product, type ProductCategory } from '$lib/products';
-	import { theme } from '$lib/stores/theme';
+	import { appearance } from '$lib/stores/theme';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
@@ -18,7 +19,6 @@
 	let desktopSearchContainer = $state<HTMLFormElement>();
 	let mobileSearchContainer = $state<HTMLFormElement>();
 	let showSearchSuggestions = $state(false);
-	let isDarkMode = $derived($theme === 'dark');
 	const searchCategoryLabels: Record<ProductCategory, string> = {
 		supplies: 'School & Office',
 		uniforms: 'Uniforms',
@@ -67,7 +67,7 @@
 	let profileMenuContainer = $state<HTMLDivElement>();
 
 	let showLogoutConfirmation = $state(false);
-	let showLoadingSkeleton = $state(true);
+	let showLoadingSkeleton = $state(!page.url.pathname.startsWith('/staff'));
 	let loadingPathname = $state<string>(page.url.pathname);
 	let loadingStartedAt = 0;
 	let loadingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,7 +86,7 @@
 		if (pathname === '/staff/admin/settings') return 'admin-settings';
 		if (pathname === '/staff/admin' || pathname.startsWith('/staff/admin/dashboard')) return 'admin-dashboard';
 		if (pathname === '/cart') return 'cart';
-		if (pathname === '/orders') return 'orders';
+		if (pathname === '/orders' || pathname === '/history') return 'orders';
 		if (pathname.startsWith('/products')) return 'products';
 		if (pathname.startsWith('/shop')) return 'shop';
 		if (pathname.startsWith('/about')) return 'about';
@@ -184,8 +184,9 @@
 			isHomeOrShopPath(from?.url.pathname) && isHomeOrShopPath(to?.url.pathname);
 		loadingStartedAt = Date.now();
 		loadingPathname = to?.url.pathname ?? page.url.pathname;
-		if (skipStorefrontLoading) {
+		if (skipStorefrontLoading || loadingPathname.startsWith('/staff')) {
 			showLoadingSkeleton = false;
+			loadingStartedAt = 0;
 			return;
 		}
 		showLoadingSkeleton = true;
@@ -209,9 +210,10 @@
 	afterNavigate(() => {
 		showMobileMenu = false;
 		loadingPathname = page.url.pathname;
-		if (skipStorefrontLoading) {
+		if (skipStorefrontLoading || page.url.pathname.startsWith('/staff')) {
 			skipStorefrontLoading = false;
 			loadingStartedAt = 0;
+			showLoadingSkeleton = false;
 			return;
 		}
 		if (!loadingStartedAt) loadingStartedAt = Date.now();
@@ -241,7 +243,7 @@
 	});
 
 	onMount(() => {
-		theme.initialize();
+		appearance.initialize();
 		cashierSidebarState.collapsed = true;
 		loadingStartedAt = Date.now();
 		finishPageLoading();
@@ -253,9 +255,6 @@
 		};
 	});
 
-	function toggleTheme() {
-		theme.toggle();
-	}
 </script>
 
 {#snippet searchSuggestions(id: string)}
@@ -340,7 +339,7 @@
 			</div>
 		</div>
 	</header>
-{:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login' && page.url.pathname !== '/orders'}
+{:else if !page.url.pathname.startsWith('/staff') && page.url.pathname !== '/login' && page.url.pathname !== '/orders' && page.url.pathname !== '/history'}
 <header class="site-header {page.url.pathname === '/' ? 'landing-header text-[#0C2340] dark:text-slate-100' : page.url.pathname.startsWith('/shop') ? 'shop-header text-[#0C2340] dark:text-slate-100' : page.url.pathname.startsWith('/products') ? 'catalog-header text-[#0C2340] dark:text-slate-100' : 'bg-[#090D16] text-white shadow-md'} relative z-50 font-sans" style="font-family: 'Montserrat', sans-serif;">
 	<div class="{isStorefront ? 'w-full max-w-7xl mx-auto px-6 sm:px-10' : 'max-w-6xl mx-auto px-4'} h-16 flex items-center justify-between gap-4">
 		
@@ -387,7 +386,7 @@
 			</form>
 		{/if}
 
-		<div class="flex items-center gap-4 font-medium text-sm shrink-0 ml-auto">
+		<div class="flex items-center gap-3 sm:gap-3.5 font-medium text-sm shrink-0 ml-auto">
 			{#if !isAdmin && !isPublicLanding}
 				<nav class="storefront-nav relative hidden w-44 {isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'} items-center gap-1 rounded-full border border-blue-400/30 bg-blue-900/40 p-1 shadow-inner shadow-black/20 md:grid">
 					<span
@@ -408,24 +407,7 @@
 				</nav>
 			{/if}
 
-			<button
-				type="button"
-				class="theme-toggle flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/80 bg-white/70 shadow-sm transition-all hover:bg-white dark:border-white/10 dark:bg-slate-800/80 dark:hover:bg-slate-700/80"
-				onclick={toggleTheme}
-				aria-pressed={isDarkMode}
-				aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-			>
-				{#if isDarkMode}
-					<svg class="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<circle cx="12" cy="12" r="4" />
-						<path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" />
-					</svg>
-				{:else}
-					<svg class="h-5 w-5 text-[#0C2340]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
-					</svg>
-				{/if}
-			</button>
+			<AppearanceSelector />
 
 			<!-- Profile trigger: student ID pill sits left of the avatar, which opens the Account/Logout dropdown. -->
 			<!-- Keyed on role+id so the avatar visual force-resets/remounts on every identity change. -->
@@ -482,11 +464,11 @@
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
 					</svg>
-					<span class="cart-count-badge absolute top-0 right-0 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#090D16]">
+					<span class="cart-count-badge absolute -top-1 -right-1 bg-blue-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-[#090D16]">
 						{$cartPieceCount}
 					</span>
 				</a>
-				<a href="/orders" class="flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/70 bg-sky-100/80 text-[#0C2340] transition-colors hover:bg-sky-200/80 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80" aria-label="Purchase history" title="Purchase history">
+				<a href="/history" data-sveltekit-reload class="flex h-10 w-10 items-center justify-center rounded-full border border-sky-200/70 bg-sky-100/80 text-[#0C2340] transition-colors hover:bg-sky-200/80 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80" aria-label="Purchase history" title="Purchase history">
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 3h12v18l-6-3-6 3V3Z"/><path stroke-linecap="round" d="M9 8h6M9 12h6"/></svg>
 				</a>
 			{/if}
@@ -547,7 +529,7 @@
 				<a href="/shop" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Shop</a>
 			{/if}
 			{#if isAuthenticated}
-				<a href="/orders" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Purchase history</a>
+				<a href="/history" data-sveltekit-reload class="mobile-menu-link" onclick={() => showMobileMenu = false}>Purchase history</a>
 			{:else}
 				<a href="/login" class="mobile-menu-link" onclick={() => showMobileMenu = false}>Login</a>
 			{/if}
@@ -581,14 +563,17 @@
 		place-items: center;
 		width: 2.75rem;
 		height: 2.75rem;
+		border: 1px solid rgba(125, 161, 205, 0.35);
 		border-radius: 0.75rem;
-		background: rgba(255, 255, 255, 0.1);
-		color: white;
+		background: rgba(224, 242, 254, 0.9);
+		color: #0c2340;
 		transition: background 160ms ease;
 	}
 
-	.cart-back-button:hover { background: rgba(255, 255, 255, 0.18); }
+	.cart-back-button:hover { background: rgba(186, 230, 253, 0.9); }
 	.cart-back-button svg { width: 1.25rem; height: 1.25rem; }
+	:global(html[data-theme='dark'] .cart-back-button) { border-color: rgba(255, 255, 255, 0.1); background: rgba(30, 41, 59, 0.8); color: #f1f5f9; }
+	:global(html[data-theme='dark'] .cart-back-button:hover) { background: rgba(51, 65, 85, 0.9); }
 	.cart-header-title { margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
 	.cart-header-meta { margin: 0.25rem 0 0; color: #a8bddf; font-size: 0.625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
 	main.cart-layout-main { display: flex; box-sizing: border-box; height: calc(100dvh - 5rem); min-height: 0; flex-direction: column; overflow: hidden; background: #e6f0fa; }
@@ -660,7 +645,7 @@
 	:global(html[data-theme='dark'] .product-page > div:first-child p), :global(html[data-theme='dark'] .product-page a) { color: #b8c8dd !important; }
 	:global(html[data-theme='dark'] .product-card), :global(html[data-theme='dark'] .aisle-card) { border-color: #3b61b5 !important; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24) !important; }
 	:global(html[data-theme='dark'] .filter-panel) { background: #162038 !important; color: #edf4ff; }
-	:global(html[data-theme='dark'] .modal-panel), :global(html[data-theme='dark'] .buy-now-modal), :global(html[data-theme='dark'] .checkout-modal) { background: #172640 !important; color: #edf4ff; }
+	:global(html[data-theme='dark'] .modal-panel), :global(html[data-theme='dark'] .buy-now-modal), :global(html[data-theme='dark'] .checkout-modal) { border-color: var(--card-border) !important; background: var(--card-surface) !important; color: var(--text-primary) !important; }
 	:global(html[data-theme='dark'] .hero-section) {
 		background-color: transparent !important;
 		background-image: radial-gradient(circle at 72% 48%, rgba(56, 189, 248, 0.28), transparent 65%), radial-gradient(circle at 12% 18%, rgba(245, 158, 11, 0.08), transparent 36%) !important;
@@ -681,11 +666,11 @@
 	:global(html[data-theme='dark'] .landing-footer .footer-title) { color: #f1f5f9 !important; }
 	:global(html[data-theme='dark'] .landing-footer .footer-copy), :global(html[data-theme='dark'] .landing-footer .footer-meta) { color: #94a3b8 !important; }
 	:global(html[data-theme='dark'] .cart-summary) { background: rgba(16, 29, 53, 0.96) !important; border-color: #334866; }
-	:global(html[data-theme='dark'] .cart-heading), :global(html[data-theme='dark'] .checkout-line), :global(html[data-theme='dark'] .checkout-total) { border-color: #334866 !important; }
-	:global(html[data-theme='dark'] .empty-cart h2), :global(html[data-theme='dark'] .checkout-modal h2), :global(html[data-theme='dark'] .buy-now-modal h2) { color: #edf4ff !important; }
-	:global(html[data-theme='dark'] .checkout-line strong), :global(html[data-theme='dark'] .checkout-line b), :global(html[data-theme='dark'] .checkout-total strong), :global(html[data-theme='dark'] .buy-now-item strong), :global(html[data-theme='dark'] .buy-now-item b) { color: #edf4ff !important; }
-	:global(html[data-theme='dark'] .checkout-line span), :global(html[data-theme='dark'] .checkout-total span), :global(html[data-theme='dark'] .qr-copy), :global(html[data-theme='dark'] .order-reference), :global(html[data-theme='dark'] .buy-now-item span), :global(html[data-theme='dark'] .buy-now-reference), :global(html[data-theme='dark'] .buy-now-note) { color: #b8c8dd !important; }
-	:global(html[data-theme='dark'] .buy-now-item), :global(html[data-theme='dark'] .checkout-items), :global(html[data-theme='dark'] .checkout-total) { border-color: #415878 !important; }
+	:global(html[data-theme='dark'] .cart-heading), :global(html[data-theme='dark'] .checkout-line), :global(html[data-theme='dark'] .checkout-total), :global(html[data-theme='dark'] .checkout-pickup-location) { border-color: var(--card-border) !important; }
+	:global(html[data-theme='dark'] .empty-cart h2), :global(html[data-theme='dark'] .checkout-modal h2), :global(html[data-theme='dark'] .buy-now-modal h2) { color: var(--text-primary) !important; }
+	:global(html[data-theme='dark'] .checkout-line strong), :global(html[data-theme='dark'] .checkout-line b), :global(html[data-theme='dark'] .checkout-total strong), :global(html[data-theme='dark'] .buy-now-item strong), :global(html[data-theme='dark'] .buy-now-item b) { color: var(--text-primary) !important; }
+	:global(html[data-theme='dark'] .checkout-line span), :global(html[data-theme='dark'] .checkout-total span), :global(html[data-theme='dark'] .checkout-pickup-location span), :global(html[data-theme='dark'] .qr-copy), :global(html[data-theme='dark'] .order-reference), :global(html[data-theme='dark'] .buy-now-item span), :global(html[data-theme='dark'] .buy-now-reference), :global(html[data-theme='dark'] .buy-now-note) { color: var(--text-muted) !important; }
+	:global(html[data-theme='dark'] .buy-now-item), :global(html[data-theme='dark'] .checkout-items), :global(html[data-theme='dark'] .checkout-total) { border-color: var(--card-border) !important; }
 	:global(html[data-theme='dark'] .modal-close), :global(html[data-theme='dark'] .edit-cart-button) { background: #eaf2fc !important; color: #172640 !important; }
 	:global(html[data-theme='dark'] .quantity-control), :global(html[data-theme='dark'] .quantity-control span) { border-color: #415878 !important; background: #101d35 !important; color: #edf4ff !important; }
 	:global(html[data-theme='dark'] .quantity-control button) { background: #eaf2fc !important; }
@@ -727,7 +712,6 @@
 	.nav-active-indicator.nav-active { opacity: 1; }
 	.nav-active-indicator.shop-active { transform: translateX(calc(100% + .25rem)); }
 	.nav-active-indicator.single { width: calc(100% - .625rem); }
-	.theme-toggle { flex: 0 0 2.5rem; }
 	:global(.landing-header .cart-count-badge) { border-color: #e6f0fa !important; }
 	:global(html[data-theme='dark'] .landing-header .cart-count-badge) { border-color: #0f172a !important; }
 	:global(html[data-theme='dark'] .site-header nav:not(.mobile-menu-panel)) { background: rgba(30, 58, 138, 0.35) !important; border-color: rgba(96, 165, 250, 0.35) !important; }
@@ -759,7 +743,7 @@
 	@media (max-width: 560px) {
 		:global(.site-header > div) { gap: .35rem; padding-right: .625rem; padding-left: .625rem; }
 		:global(.site-header.landing-header > div), :global(.site-header.shop-header > div) { padding-right: 1.5rem; padding-left: 1.5rem; }
-		:global(.site-header > div > .ml-auto) { gap: .35rem; }
+		:global(.site-header > div > .ml-auto) { gap: .5rem; }
 		:global(.site-header .student-id-badge) { display: none; }
 		:global(.site-header .site-brand) { font-size: clamp(.8rem, 4vw, .95rem) !important; letter-spacing: .04em !important; }
 	}
@@ -1051,7 +1035,6 @@
 	.dashboard-enter { animation: dashboard-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 </style>
 
-{#key page.url.pathname}
 	<main
 		class="font-sans {isStorefront ? 'bg-transparent' : 'bg-zinc-50'}"
 		class:min-h-screen={!isStorefront && page.url.pathname !== '/cart'}
@@ -1065,7 +1048,6 @@
 	>
 		{@render children()}
 	</main>
-{/key}
 </div>
 
 {#if showLogoutConfirmation}

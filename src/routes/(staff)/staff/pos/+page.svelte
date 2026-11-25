@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
-	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
-	import StaffLogout from '$lib/components/StaffLogout.svelte';
 
-	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	const cashierSidebar = getContext<{
+		collapsed: boolean;
+		mobileOpen: boolean;
+		toggleMobile: () => void;
+		closeMobile: () => void;
+	}>('cashierSidebar');
 	let { data } = $props();
-	let loading = $state(true);
 	let localTime = $state('');
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
 	let notificationsOpen = $state(false);
-	let mobileSidebarOpen = $state(false);
 	const monthLabel = $derived(
 		new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(today)
 	);
@@ -33,7 +33,6 @@
 
 		updateClock();
 		const interval = setInterval(updateClock, 1000);
-		loading = false;
 		return () => clearInterval(interval);
 	});
 
@@ -67,7 +66,7 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape') mobileSidebarOpen = false;
+		if (event.key === 'Escape') cashierSidebar.closeMobile();
 	}}
 />
 
@@ -75,40 +74,20 @@
 	<title>POS Transaction Logs | QCU Coop Store</title>
 </svelte:head>
 
-<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed} class:mobile-open={mobileSidebarOpen}>
-	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
-		<CashierSidebarHeader
-			collapsed={cashierSidebar.collapsed}
-		/>
-		<p class="sidebar-label">Workspace</p>
-		<CashierNavigation
-			collapsed={cashierSidebar.collapsed}
-			onNavigate={() => (mobileSidebarOpen = false)}
-		/>
-		<StaffLogout />
-	</aside>
-	{#if mobileSidebarOpen}
-		<button
-			class="cashier-sidebar-backdrop"
-			type="button"
-			aria-label="Close navigation"
-			onclick={() => (mobileSidebarOpen = false)}
-		></button>
-	{/if}
-
+<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed}>
 	<section class="cashier-content">
 		<header class="cashier-topbar">
 			<div class="cashier-heading">
 				<button
 					class="cashier-mobile-menu-button"
 					type="button"
-					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
-					aria-expanded={mobileSidebarOpen}
+					aria-label={cashierSidebar.mobileOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={cashierSidebar.mobileOpen}
 					aria-controls="cashier-sidebar"
-					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+					onclick={cashierSidebar.toggleMobile}
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+						<path d={cashierSidebar.mobileOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
 					</svg>
 				</button>
 				<div class="cashier-heading-copy">
@@ -147,15 +126,6 @@
 				<button class="topbar-avatar" type="button" aria-label="Cashier account">QC</button>
 			</div>
 		</header>
-		{#if loading}
-			<div class="cashier-skeleton" aria-label="Loading cashier dashboard" aria-busy="true">
-				<div class="skeleton-header"></div>
-				<div class="skeleton-kpis">
-					{#each [1, 2, 3, 4] as item (item)}<div class="skeleton-block"></div>{/each}
-				</div>
-				<div class="skeleton-panel activity"></div>
-			</div>
-		{:else}
 			<div>
 				<div class="cashier-title-row" in:fade={{ duration: 250 }}>
 					<div class="cashier-title-copy">
@@ -251,7 +221,6 @@
 					</div>
 				</section>
 			</div>
-		{/if}
 		<footer class="cashier-footer">
 			<span>© {today.getFullYear()} QCU Coop Store · Admin Portal</span>
 			<span>Member pricing and patronage benefits are subject to cooperative policy.</span>
@@ -261,6 +230,10 @@
 </main>
 
 <style>
+	:global(html:has(.cashier-shell)) {
+		font-size: 17.5px;
+	}
+
 	.cashier-shell {
 		--navy: #07152d;
 		--ink: #172b4d;
@@ -456,43 +429,6 @@
 	.cashier-footer a {
 		color: #1356dd;
 		text-decoration: none;
-	}
-	.cashier-skeleton {
-		min-height: 42rem;
-	}
-	.skeleton-header,
-	.skeleton-block,
-	.skeleton-panel {
-		border-radius: 0.75rem;
-		background: linear-gradient(90deg, #e8edf4 25%, #f3f6fa 50%, #e8edf4 75%);
-		background-size: 200% 100%;
-		animation: cashier-skeleton-shimmer 1.2s ease-in-out infinite;
-	}
-	.skeleton-header {
-		width: min(100%, 40rem);
-		height: 7rem;
-		margin-bottom: 2rem;
-	}
-	.skeleton-kpis {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.85rem;
-		margin-bottom: 1.25rem;
-	}
-	.skeleton-block {
-		min-height: 5rem;
-	}
-	.skeleton-panel {
-		min-height: 11rem;
-		margin-bottom: 0.85rem;
-	}
-	.skeleton-panel.activity {
-		min-height: 19rem;
-	}
-	@keyframes cashier-skeleton-shimmer {
-		to {
-			background-position: -200% 0;
-		}
 	}
 	.cashier-title-row {
 		display: flex;
@@ -801,11 +737,7 @@
 		color: #c4d2e5;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.skeleton-header,
-		.skeleton-block,
-		.skeleton-panel {
-			animation: none;
-		}
+
 	}
 	@media (max-width: 980px) {
 		.cashier-sidebar {

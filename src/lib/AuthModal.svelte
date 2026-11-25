@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Role } from '$lib/session';
-	import { theme } from '$lib/stores/theme';
+	import AppearanceSelector from '$lib/components/AppearanceSelector.svelte';
 
 	/**
 	 * Split-screen authentication overlay shown after logging out.
@@ -22,7 +22,6 @@
 	let showPassword = $state(false);
 	let studentId = $state('');
 	let password = $state('');
-	let isDarkMode = $derived($theme === 'dark');
 	let authError = $state('');
 
 	// Total credential erasure whenever the parent signals a sign-out.
@@ -49,10 +48,6 @@
 
 	function togglePasswordVisibility() {
 		showPassword = !showPassword;
-	}
-
-	function toggleTheme() {
-		theme.toggle();
 	}
 
 	// Digits-only typing mask: auto-inserts a dash after the first 2 digits, capped at "NN-NNNN".
@@ -98,18 +93,10 @@
 
 				<!-- Credentials form panel: slides between right/left -->
 				<div class="form-panel" class:signup={mode === 'signup'}>
-					<button type="button" class="theme-toggle-corner" onclick={toggleTheme} aria-pressed={isDarkMode} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
-						{#if isDarkMode}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
-						{/if}
-					</button>
+					<div class="appearance-control"><AppearanceSelector /></div>
 
 					<div class="form-header">
-						<span class="brand-logo" aria-hidden="true">
-							<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
-						</span>
+						<img class="brand-logo mx-auto mb-3 h-12 w-auto" src="/images/logo/qcu_cooplogo-light-mode_bg.png" alt="QCU Coop" />
 						<h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
 						<p class="form-subtitle">{mode === 'login' ? 'Sign in with your student credentials' : 'Register using your student ID'}</p>
 					</div>
@@ -252,32 +239,10 @@
 
 	.form-panel.signup { transform: translateX(-100%); }
 
-	.theme-toggle-corner {
-		position: absolute;
-		bottom: 1.25rem;
-		left: 1.5rem;
-		display: grid;
-		place-items: center;
-		width: 2.1rem;
-		height: 2.1rem;
-		border: 1px solid var(--field-border);
-		border-radius: 0.6rem;
-		background: var(--field-bg);
-		color: #2563eb;
-		cursor: pointer;
-		transition: background 150ms ease, border-color 150ms ease;
-	}
-	.theme-toggle-corner:hover { background: #e2e8f0; }
-	.theme-toggle-corner svg { width: 1.05rem; height: 1.05rem; }
+	.appearance-control { position: absolute; top: 1rem; right: 1rem; z-index: 3; }
 
 	.form-header { text-align: center; margin-bottom: clamp(1rem, 3vh, 1.4rem); }
-	.brand-logo {
-		display: block;
-		width: 8rem;
-		margin: 0 auto 0.75rem;
-		flex-shrink: 0;
-	}
-	.brand-logo img { display: block; width: 8rem; height: auto; margin: 0 auto; }
+	.brand-logo { display: block; flex-shrink: 0; }
 	.form-header h1 { margin: 0; font-size: clamp(0.95rem, 2.2vw, 1.15rem); font-weight: 800; overflow-wrap: break-word; }
 	.form-subtitle { margin: 0.35rem 0 0; font-size: clamp(0.68rem, 1.6vw, 0.75rem); font-weight: 600; color: var(--form-muted); overflow-wrap: break-word; }
 
@@ -342,7 +307,8 @@
 		--field-bg: #101d35;
 		--field-border: #415878;
 	}
-	:global(html[data-theme='dark'] .theme-toggle-corner:hover) { background: #223957; }
+	:global(html[data-appearance='midnight-royal'] .brand-logo),
+	:global(html[data-appearance='qcu-navy-gold'] .brand-logo) { filter: brightness(0) invert(1); }
 	:global(html[data-theme='dark'] .pill-outline:hover), :global(html[data-theme='dark'] .pill-outline.active) { color: #7ec8ff; border-color: #7ec8ff; }
 
 	@media (max-width: 640px) {

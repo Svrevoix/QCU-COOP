@@ -2,6 +2,7 @@
 	import CartItem from '$lib/CartItem.svelte';
 	import { goto } from '$app/navigation';
 	import { cartItems, removeFromCart, updateCartQuantity } from '$lib/cart';
+	import { recordPurchaseOrder } from '$lib/orders';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -22,6 +23,11 @@
 
 	const formatPrice = (value: number) =>
 		new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
+
+	function portalToBody(node: HTMLElement) {
+		document.body.append(node);
+		return { destroy: () => node.remove() };
+	}
 
 	let checkoutCartItems = $derived($cartItems.filter((item) => checkoutItemKeys.includes(item.productId + item.sku)));
 	let checkoutPieceCount = $derived(checkoutCartItems.reduce((sum, item) => sum + item.quantity, 0));
@@ -109,6 +115,15 @@
 			savedOrderNumber = result.orderNumber || orderReference;
 			savedOrderTotal = Number(result.totalAmount ?? checkoutTotal);
 			savedOrderPieces = checkoutPieceCount;
+			recordPurchaseOrder({
+				id: savedOrderNumber,
+				date: new Date().toISOString(),
+				status: 'Pending confirmation',
+				items: checkoutCartItems.map((item) => ({ ...item })),
+				subtotal: checkoutSubtotal,
+				discount: checkoutDiscount,
+				total: savedOrderTotal
+			});
 			for (const item of checkoutCartItems) removeFromCart(item.productId, item.sku);
 			checkoutItemKeys = [];
 			checkoutStage = 'qr';
@@ -121,7 +136,7 @@
 
 	function closeCheckout() {
 		if (checkoutStage === 'qr') {
-			void goto('/orders');
+			void goto('/history', { invalidateAll: true });
 			return;
 		}
 
@@ -240,20 +255,21 @@
 </div>
 
 {#if checkoutStage}
-	<div class="checkout-overlay" role="presentation" onclick={(event) => event.target === event.currentTarget && closeCheckout()}>
-		<div class="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+	<div use:portalToBody class="checkout-overlay" role="presentation" onclick={(event) => event.target === event.currentTarget && closeCheckout()}>
+		<div class="checkout-modal w-full max-w-md rounded-3xl border border-sky-200/80 bg-[#F4F9FF] p-6 text-[#0C2340] shadow-2xl dark:border-white/10 dark:bg-[#162038] dark:text-slate-100 sm:p-7" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
 			{#if checkoutStage === 'review'}
 				<button type="button" class="modal-close" onclick={closeCheckout} aria-label="Close checkout">×</button>
 			{/if}
 			{#if checkoutStage === 'review'}
 				<p class="modal-eyebrow">Order review</p>
 				<h2 id="checkout-title">Confirm your items</h2>
-				<div class="checkout-items">
+				<div class="checkout-items max-h-60 space-y-2.5 overflow-y-auto rounded-2xl border border-sky-200/70 bg-sky-100/60 p-3.5 dark:border-white/10 dark:bg-slate-900/60">
 					{#each checkoutCartItems as item (item.productId + item.sku)}
 						<div class="checkout-line"><div><strong>{item.name}</strong><span>{item.variant} · {item.quantity} pc{item.quantity === 1 ? '' : 's'}</span></div><b>{formatPrice(item.unitPrice * item.quantity)}</b></div>
 					{/each}
 				</div>
 				{#if memberTeacher}<div class="checkout-line"><span>Items subtotal</span><b>{formatPrice(checkoutSubtotal)}</b></div><div class="checkout-line"><span>Cooperative member discount (20%)</span><b>−{formatPrice(checkoutDiscount)}</b></div>{/if}
+				<div class="checkout-pickup-location"><span>Pickup location</span><strong>Coop Office, Bautista Building Basement</strong></div>
 				<div class="checkout-total"><span>Total to pay</span><strong>{formatPrice(checkoutTotal)}</strong></div>
 				{#if orderError}<p class="order-error" role="alert">{orderError}</p>{/if}
 				<button type="button" class="confirm-button" onclick={confirmOrder} disabled={placingOrder}>{placingOrder ? 'Saving order…' : 'Place order'} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
@@ -261,10 +277,11 @@
 				<p class="modal-eyebrow">Order confirmed</p>
 				<h2 id="checkout-title">Order request saved</h2>
 				<p class="qr-copy">Show this order QR code to the cashier. Payment is completed at the counter.</p>
-				<img class="qr-code" src={qrCodeUrl} alt={`QR code for order ${orderReference}`} />
+				<div class="qr-code-frame"><img class="qr-code" src={qrCodeUrl} alt={`QR code for order ${orderReference}`} /></div>
 				<p class="order-reference">{savedOrderNumber}</p>
 				<div class="checkout-total"><span>Order total</span><strong>{formatPrice(savedOrderTotal ?? checkoutTotal)}</strong></div>
 				<button type="button" class="confirm-button" onclick={closeCheckout}>Done</button>
+				<a class="history-link" href="/history" data-sveltekit-reload>View in Purchase History <span aria-hidden="true">→</span></a>
 			{/if}
 		</div>
 	</div>
@@ -321,27 +338,35 @@
 	:global(html[data-theme='dark'] .cart-checkout-button:disabled), :global(html[data-theme='dark'] .cart-delete-button:disabled) { background: #1e293b; color: #64748b; }
 	:global(html[data-theme='dark'] .cart-checkout-button:not(:disabled)) { background: linear-gradient(to right, #2563eb, #6366f1, #0ea5e9); }
 	:global(html[data-theme='dark'] .cart-checkout-button:not(:disabled):hover) { background: linear-gradient(to right, #3b82f6, #38bdf8, #67e8f9); }
-	.checkout-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1rem; background: rgba(3, 18, 42, 0.58); backdrop-filter: blur(4px); }
-	.checkout-modal { position: relative; width: min(100%, 31rem); max-height: calc(100vh - 2rem); overflow-y: auto; border: 1px solid rgba(186, 230, 253, 0.7); border-radius: 1rem; background: #f4f9ff; padding: 2rem; box-shadow: 0 24px 70px rgba(3, 18, 42, 0.3); }
+	.checkout-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 1rem; background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(12px); }
+	.checkout-modal { position: relative; max-height: calc(100dvh - 2rem); overflow-y: auto; }
 	.modal-close { position: absolute; top: 1rem; right: 1rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: #e6f0fa; color: #38506f; font-size: 1.25rem; cursor: pointer; }
 	.modal-eyebrow { margin: 0; color: #155bd8; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-	.checkout-modal h2 { margin: 0.5rem 2rem 1.4rem 0; color: #061d42; font-size: 1.4rem; font-weight: 800; }
-	.checkout-items { max-height: 15rem; overflow-y: auto; border-top: 1px solid #d9e0ea; }
-	.checkout-line { display: flex; align-items: start; justify-content: space-between; gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid #e6ebf2; }
+	.checkout-modal h2 { margin: 0.5rem 2rem 1.4rem 0; color: inherit; font-size: 1.4rem; font-weight: 800; }
+	.checkout-items { display: flex; flex-direction: column; }
+	.checkout-line { display: flex; align-items: start; justify-content: space-between; gap: 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.28); padding: 0.65rem; }
+	.checkout-items .checkout-line { border: 0; border-radius: 0.75rem; background: rgba(255, 255, 255, 0.68); }
+	:global(html[data-theme='dark'] .checkout-items .checkout-line) { background: rgba(30, 41, 59, 0.65); }
 	.checkout-line strong, .checkout-line span { display: block; }
-	.checkout-line strong { font-size: 0.8rem; }
+	.checkout-line strong { color: inherit; font-size: 0.8rem; }
 	.checkout-line span { margin-top: 0.25rem; color: #38506f; font-size: 0.7rem; }
-	.checkout-line b { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+	.checkout-line b { color: inherit; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+	.checkout-pickup-location { display: grid; gap: 0.3rem; margin-top: 0.9rem; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 0.85rem; padding: 0.8rem 0.9rem; }
+	.checkout-pickup-location span { color: #64748b; font-size: 0.68rem; font-weight: 700; }
+	.checkout-pickup-location strong { color: inherit; font-size: 0.78rem; line-height: 1.45; }
 	.checkout-total { display: flex !important; align-items: end; justify-content: space-between; margin: 1.25rem 0; padding: 1rem 0; border-bottom: 1px solid #d9e0ea; border-top: 1px solid #d9e0ea; }
 	.checkout-total span { color: #7890b6; font-size: 0.73rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 	.checkout-total strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; }
-	.confirm-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; border: 0; border-radius: 0.7rem; background: #155bd8; padding: 0.9rem 1rem; color: white; font: inherit; font-size: 0.9rem; font-weight: 800; cursor: pointer; }
-	.confirm-button:hover { background: #0d4fc7; }
+	.confirm-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; min-height: 3rem; border: 0; border-radius: 0.75rem; background: linear-gradient(to right, #2563eb, #3b82f6, #0ea5e9); padding: 0.75rem 1rem; color: white; font: inherit; font-size: 0.9rem; font-weight: 800; cursor: pointer; box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2); transition: background 180ms ease, transform 180ms ease; }
+	.confirm-button:hover { background: linear-gradient(to right, #3b82f6, #0ea5e9, #22d3ee); }
 	.confirm-button:disabled { opacity: .6; cursor: wait; }
+	.history-link { display: block; margin-top: 0.9rem; color: #2563eb; font-size: 0.78rem; font-weight: 700; text-align: center; text-decoration: none; }
+	.history-link:hover { text-decoration: underline; }
 	.order-error { margin: .75rem 0 0; border-radius: .55rem; background: #fff1f2; padding: .65rem .75rem; color: #b42336; font-size: .74rem; line-height: 1.45; }
 	.confirm-button svg { width: 1rem; height: 1rem; }
 	.qr-copy { margin: -0.65rem 0 1.25rem; color: #607897; font-size: 0.8rem; line-height: 1.55; }
-	.qr-code { display: block; width: min(100%, 13.75rem); aspect-ratio: 1; margin: 0 auto 1rem; border: 0.7rem solid #f4f7fb; image-rendering: pixelated; }
+	.qr-code-frame { width: fit-content; max-width: 100%; margin: 0 auto 1rem; border-radius: 1rem; background: #fff; padding: 0.75rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1); }
+	.qr-code { display: block; width: min(100%, 13.75rem); aspect-ratio: 1; margin: 0 auto; image-rendering: pixelated; }
 	.order-reference { margin: 0 0 1.25rem; color: #607897; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-align: center; }
 	@media (min-width: 1024px) {
 		.cart-viewport { padding: 1.5rem; }

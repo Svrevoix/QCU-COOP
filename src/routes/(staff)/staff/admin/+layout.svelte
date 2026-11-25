@@ -94,6 +94,19 @@
 				<div class="brand-mark">Q</div>
 				<div class="brand-copy"><strong>QCU COOP</strong><span>Admin workspace</span></div>
 			</div>
+			<button
+				class="admin-sidebar-toggle"
+				type="button"
+				aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+				aria-expanded={!sidebarCollapsed}
+				title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+				onclick={() => (sidebarCollapsed = !sidebarCollapsed)}
+			>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<rect x="3" y="4" width="18" height="16" rx="2" />
+					<path d="M9 4v16m5-11 2.5 3L14 15" />
+				</svg>
+			</button>
 		</div>
 		<div class="sidebar-label">Workspace</div>
 		<nav aria-label="Admin navigation">
@@ -108,6 +121,7 @@
 				<a
 					class:active={activeNavigationIndex === index}
 					href={item.href}
+					aria-current={activeNavigationIndex === index ? 'page' : undefined}
 					title={sidebarCollapsed ? item.label : undefined}
 					onclick={() => (mobileSidebarOpen = false)}
 				>
@@ -179,6 +193,10 @@
 </div>
 
 <style>
+	:global(html:has(.admin-shell)) {
+		font-size: 17.5px;
+	}
+
 	:global(.admin-shell) {
 		--navy: #07152d;
 		--ink: #17233d;
@@ -367,12 +385,16 @@
 	}
 	.admin-sidebar {
 		display: flex;
-		width: 17rem;
+		width: 15rem;
+		flex: 0 0 15rem;
 		flex-shrink: 0;
 		flex-direction: column;
-		background: var(--navy);
-		color: #dbe7fb;
+		border-right: 1px solid var(--card-border);
+		background: var(--card-surface);
+		color: var(--text-primary);
 		padding: 1.5rem 1rem 1rem;
+		backdrop-filter: blur(18px);
+		transition: width 300ms ease-out, flex-basis 300ms ease-out, padding 300ms ease-out;
 	}
 	.admin-brand {
 		display: flex;
@@ -386,7 +408,7 @@
 		width: 2.25rem;
 		height: 2.25rem;
 		border-radius: 0.65rem;
-		background: #2d6cff;
+		background: var(--accent-gradient);
 		color: white;
 		font-size: 1.25rem;
 		font-weight: 900;
@@ -398,18 +420,18 @@
 		display: block;
 	}
 	.admin-brand strong {
-		color: white;
+		color: var(--text-primary);
 		font-size: 0.8rem;
 		letter-spacing: 0.12em;
 	}
 	.admin-brand span {
 		margin-top: 0.2rem;
-		color: #8da1c3;
+		color: var(--text-muted);
 		font-size: 0.65rem;
 	}
 	.sidebar-label {
 		padding: 0 0.75rem 0.7rem;
-		color: #6e82a5;
+		color: var(--text-muted);
 		font-size: 0.6rem;
 		font-weight: 800;
 		letter-spacing: 0.16em;
@@ -439,10 +461,11 @@
 		height: var(--nav-item-height);
 		transform: translateY(calc(var(--active-nav-index) * var(--nav-item-step)));
 		border-radius: 0.65rem;
-		background: #2563eb;
+		background: var(--accent-gradient);
 		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 		pointer-events: none;
-		transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+		transition: transform 300ms ease-out, background 200ms ease, border-color 200ms ease;
+		border: 1px solid var(--accent-border);
 	}
 	nav a {
 		position: relative;
@@ -452,18 +475,20 @@
 		height: var(--nav-item-height);
 		align-items: center;
 		gap: 0.75rem;
-		border-radius: 0.65rem;
-		color: #9aacca;
-		padding: 0.75rem;
+		border: 1px solid transparent;
+		border-radius: 0.75rem;
+		color: var(--text-muted);
+		padding: 0.625rem 0.875rem;
 		font-size: 0.72rem;
 		font-weight: 700;
 		line-height: 1.25;
 		text-decoration: none;
-		transition: color 150ms ease;
+		transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
 	}
 	nav a:hover:not(.active) {
-		background: #12274b;
-		color: white;
+		border-color: var(--accent-border);
+		background: var(--accent-soft);
+		color: var(--text-primary);
 	}
 	nav a.active {
 		color: white;
@@ -500,7 +525,7 @@
 		box-shadow: 0 0 0 0.2rem rgba(66, 211, 146, 0.12);
 	}
 	.sidebar-footer strong {
-		color: #dbe7fb;
+		color: var(--text-primary);
 		font-size: 0.65rem;
 	}
 	.sidebar-footer span {
@@ -672,13 +697,9 @@
 		top: 0;
 		align-self: flex-start;
 		box-sizing: border-box;
-		height: 100vh;
-		min-height: 100vh;
-		overflow: visible;
-		transition:
-			width 180ms ease,
-			flex-basis 180ms ease,
-			padding 180ms ease;
+		height: 100dvh;
+		min-height: 100dvh;
+		overflow: hidden;
 	}
 	.sidebar-top {
 		display: flex;
@@ -691,6 +712,34 @@
 	.admin-brand {
 		min-width: 0;
 		padding: 0;
+	}
+	.admin-sidebar-toggle {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		flex: 0 0 auto;
+		place-items: center;
+		border: 1px solid var(--card-border);
+		border-radius: 0.65rem;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
+	}
+	.admin-sidebar-toggle:hover {
+		border-color: var(--accent-border);
+		background: var(--accent-soft);
+		color: var(--text-primary);
+	}
+	.admin-sidebar-toggle svg {
+		display: block;
+		width: 1.1rem;
+		height: 1.1rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.8;
 	}
 	.mobile-menu-button {
 		display: grid;
@@ -754,8 +803,8 @@
 		border-color: transparent;
 	}
 	:global(.admin-shell.collapsed) .admin-sidebar {
-		width: 5rem;
-		flex-basis: 5rem;
+		width: 4.5rem;
+		flex-basis: 4.5rem;
 		padding-right: 0.65rem;
 		padding-left: 0.65rem;
 	}
@@ -957,5 +1006,55 @@
 		:global(.admin-workflow-fields) {
 			grid-template-columns: 1fr;
 		}
+	}
+	:global(html[data-appearance] .admin-shell) {
+		background: var(--bg-gradient);
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-sidebar) {
+		border-color: var(--card-border);
+		background: var(--card-surface);
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-sidebar nav a) {
+		color: var(--text-muted);
+		transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
+	}
+	:global(html[data-appearance] .admin-sidebar nav a:hover:not(.active)) {
+		border-color: var(--accent-border);
+		background: var(--accent-soft);
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-sidebar .nav-active-indicator) {
+		border-color: var(--accent-border);
+		background: var(--accent-gradient);
+	}
+	:global(html[data-appearance='qcu-navy-gold'] .admin-sidebar .nav-active-indicator) {
+		border-color: rgb(252 211 77 / 35%);
+		background: linear-gradient(90deg, #1e325c, #2b4375);
+	}
+	:global(html[data-appearance='qcu-navy-gold'] .admin-sidebar nav a.active) {
+		color: #fcd34d;
+	}
+	:global(html[data-appearance] .admin-content) {
+		background: transparent;
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-content :is(.account-panel, .table-wrap, .toolbar, .overview-card, .account-card, .activity-card, .account-stats article, .overview-stats article, .overview-links a, .inventory-topbar, .utility-topbar, .reports-topbar, .dashboard-topbar, .date-chip, .icon-button, .notification-popover, .kpi-card, .movement-card, .welcome-card, .dashboard-card, .quick-links a, .restock-panel, .workflow-disclosure, .profile-form, .item-form-panel, .simple-profile, .report-catalog)) {
+		border-color: var(--card-border);
+		background: var(--card-surface);
+		color: var(--text-primary);
+		backdrop-filter: blur(14px);
+	}
+	:global(html[data-appearance] .admin-content :is(input, select, textarea)) {
+		border-color: var(--card-border);
+		background: var(--card-surface);
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-content :is(.admin-title, h1, h2, h3, .dashboard-page td strong, .live-clock time, .summary-list strong, .compact-row strong, .activity-row strong)) {
+		color: var(--text-primary);
+	}
+	:global(html[data-appearance] .admin-content :is(.admin-subtitle, p, th, .result-count, .count, .profile-details dt)) {
+		color: var(--text-muted);
 	}
 </style>

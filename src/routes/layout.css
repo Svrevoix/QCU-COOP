@@ -68,7 +68,6 @@ main.landing-viewport > footer {
 		.avatar-frame,
 		.avatar-preview,
 		.avatar-edit-badge,
-		.theme-toggle-corner,
 		.mobile-menu-toggle,
 		.cashier-mobile-menu-button,
 		.mobile-menu-button
@@ -92,7 +91,7 @@ main.landing-viewport > footer {
 		object-fit: cover;
 	}
 
-	:where(.header-icon, .theme-toggle-corner) {
+	:where(.header-icon) {
 		border-radius: 50%;
 	}
 
@@ -108,5 +107,331 @@ main.landing-viewport > footer {
 		font-size: 0.75rem;
 		text-decoration: none;
 		white-space: nowrap;
+	}
+}
+
+:root {
+	--bg-gradient: linear-gradient(135deg, #070d1a 0%, #0b1528 52%, #0f1e3a 100%);
+	--card-surface: rgb(19 32 59 / 80%);
+	--card-border: rgb(125 211 252 / 15%);
+	--text-primary: #f8fafc;
+	--text-muted: #cbd5e1;
+	--accent-gradient: linear-gradient(90deg, #2563eb, #3b82f6, #22d3ee);
+	--accent-gradient-hover: linear-gradient(90deg, #3b82f6, #06b6d4, #67e8f9);
+	--accent-border: rgb(125 211 252 / 24%);
+	--accent-soft: rgb(56 189 248 / 12%);
+	--image-surface: rgb(15 31 56 / 82%);
+	color-scheme: dark;
+}
+
+:root[data-appearance='campus-sky-mist'] {
+	--bg-gradient: linear-gradient(135deg, #dcebfa 0%, #e8f2fc 52%, #d4e6f9 100%);
+	--card-surface: rgb(255 255 255 / 75%);
+	--card-border: rgb(125 161 205 / 35%);
+	--text-primary: #0c2340;
+	--text-muted: #3b5578;
+	--accent-gradient: linear-gradient(90deg, #2563eb, #3b82f6, #38bdf8);
+	--accent-gradient-hover: linear-gradient(90deg, #3b82f6, #0ea5e9, #22d3ee);
+	--accent-border: rgb(59 130 246 / 28%);
+	--accent-soft: rgb(219 234 254 / 72%);
+	--image-surface: rgb(219 234 254 / 76%);
+	color-scheme: light;
+}
+
+:root[data-appearance='qcu-navy-gold'] {
+	--bg-gradient: linear-gradient(135deg, #0b1324 0%, #101b33 52%, #14223d 100%);
+	--card-surface: rgb(22 35 62 / 90%);
+	--card-border: rgb(252 211 77 / 15%);
+	--text-primary: #f1f5f9;
+	--text-muted: #cbd5e1;
+	--accent-gradient: linear-gradient(110deg, #22458a 0%, #31578d 70%, #8a6940 100%);
+	--accent-gradient-hover: linear-gradient(110deg, #2b559d 0%, #3b6798 68%, #a17b4b 100%);
+	--accent-border: rgb(252 211 77 / 25%);
+	--accent-soft: rgb(245 158 11 / 10%);
+	--image-surface: rgb(22 35 62 / 90%);
+	color-scheme: dark;
+}
+
+html[data-appearance] {
+	min-height: 100%;
+	background: var(--bg-gradient);
+	color: var(--text-primary);
+}
+
+html[data-appearance] body {
+	min-height: 100vh;
+	background: var(--bg-gradient) !important;
+	color: var(--text-primary);
+}
+
+html[data-appearance] :is(
+	.storefront-shell,
+	.history-page,
+	.cart-layout-main,
+	.cart-viewport,
+	.login-page
+) {
+	background: var(--bg-gradient) !important;
+	color: var(--text-primary);
+}
+
+html[data-appearance][data-theme] :is(.site-header, .cart-shell-header) {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+	backdrop-filter: blur(16px);
+}
+
+html[data-appearance] :is(.history-toolbar, .reorder-bar) {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+	backdrop-filter: blur(16px);
+}
+
+html[data-appearance] .site-header :is(.site-brand, .profile-avatar-button, .cart-icon-button, a[aria-label='Purchase history']) {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .site-header .storefront-nav {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	box-shadow: none !important;
+	backdrop-filter: blur(16px);
+}
+
+html[data-appearance] .site-header .storefront-nav a {
+	color: var(--text-muted) !important;
+}
+
+html[data-appearance] .site-header .storefront-nav a:hover {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .nav-active-indicator {
+	background: var(--accent-gradient) !important;
+}
+
+html[data-appearance] .site-header :is(.header-search-input, .mobile-menu-search-input),
+html[data-appearance] .site-header [role='listbox'],
+html[data-appearance] .profile-dropdown {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+	backdrop-filter: blur(16px);
+}
+
+html[data-appearance] .site-header :is(.header-search-input, .mobile-menu-search-input)::placeholder {
+	color: var(--text-muted) !important;
+}
+
+html[data-appearance] .site-header :is(.header-search-input, .mobile-menu-search-input) {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .site-header [role='listbox'] :is(button, p, span) {
+	color: var(--text-primary);
+}
+
+html[data-appearance] .site-header [role='listbox'] button:hover {
+	background: var(--accent-soft) !important;
+}
+
+html[data-appearance] .site-header .profile-dropdown-item {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .site-header .profile-dropdown-item:hover {
+	background: var(--accent-soft) !important;
+}
+
+html[data-appearance] .site-header .mobile-menu-panel {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+	backdrop-filter: blur(18px);
+}
+
+html[data-appearance] .site-header .mobile-menu-link {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .site-header .mobile-menu-link:hover {
+	background: var(--accent-soft) !important;
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] :is(
+	.featured-card,
+	.shop-product-card,
+	.catalog-product-card,
+	.order-block,
+	.order-summary-card,
+	.cart-item,
+	.checkout-items,
+	.cart-summary,
+	.filter-panel,
+	.product-details-panel,
+	.checkout-modal,
+	.buy-now-modal,
+	.auth-modal
+) {
+	border-color: var(--card-border) !important;
+	background-color: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+	backdrop-filter: blur(16px);
+}
+
+html[data-appearance] :is(.catalog-product-image, .featured-image, .shop-product-image, .item-thumbnail) {
+	border-color: var(--card-border) !important;
+	background-color: var(--image-surface) !important;
+}
+
+html[data-appearance] :is(.storefront-shell, .history-page, .cart-viewport, .login-page) :is(
+	h1,
+	h2,
+	h3,
+	.featured-name,
+	.featured-price,
+	.item-info h3,
+	.order-total strong,
+	.selection-summary strong
+) {
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] :is(.storefront-shell, .history-page, .cart-viewport, .login-page) :is(
+	p,
+	small,
+	.featured-desc,
+	.featured-sku,
+	.item-info p,
+	.item-info code,
+	.order-count,
+	.order-total span,
+	.selection-summary span,
+	.selection-summary small
+) {
+	color: var(--text-muted);
+}
+
+html[data-appearance] .history-toolbar,
+html[data-appearance] .reorder-bar {
+	border-color: var(--card-border) !important;
+	background: var(--card-surface) !important;
+	color: var(--text-primary) !important;
+}
+
+html[data-appearance] .history-page :is(.back-button, .quantity-control) {
+	border-color: var(--card-border);
+	background: var(--card-surface);
+	color: var(--text-primary);
+}
+
+html[data-appearance] .history-page .filter-tabs button:not(.active) {
+	border-color: var(--card-border);
+	background: var(--card-surface);
+	color: var(--text-muted);
+}
+
+html[data-appearance] .history-page :is(.order-header, .order-item) {
+	border-color: var(--card-border);
+}
+
+html[data-appearance] .cart-viewport :is(.cart-item, .order-summary-card, .checkout-modal) {
+	border-color: var(--card-border);
+	background-color: var(--card-surface);
+	color: var(--text-primary);
+}
+
+html[data-appearance] .cart-viewport .checkout-items {
+	border-color: var(--card-border);
+}
+
+html[data-appearance] .cart-viewport .checkout-pickup-location {
+	border-color: var(--card-border);
+}
+
+html[data-theme='dark'] .cart-viewport .history-link {
+	color: #7dd3fc;
+}
+
+html[data-appearance='qcu-navy-gold'] .cart-viewport .history-link {
+	color: rgb(252 211 77 / 90%);
+}
+
+html[data-appearance] .cart-viewport :is(.summary-row, .pickup-location, .summary-total, .cart-heading) {
+	border-color: var(--card-border);
+	color: var(--text-muted);
+}
+
+html[data-appearance] .site-header .cart-count-badge {
+	border-color: var(--card-border) !important;
+}
+
+html[data-appearance] .auth-overlay .auth-modal {
+	--form-bg: var(--card-surface);
+	--form-text: var(--text-primary);
+	--form-muted: var(--text-muted);
+	--field-bg: var(--image-surface);
+	--field-border: var(--card-border);
+	border-color: var(--card-border);
+	background-color: var(--card-surface);
+}
+
+html[data-appearance] .auth-modal .field :is(input, select) {
+	border-color: var(--card-border);
+	background: var(--image-surface);
+	color: var(--text-primary);
+}
+
+html[data-appearance] .login-page {
+	background: var(--bg-gradient) !important;
+}
+
+html[data-appearance] :is(
+	.button-primary,
+	.reorder-button,
+	.cart-checkout-button,
+	.confirm-button,
+	.featured-add:not(:disabled),
+	.select-product:not(.select-product-disabled),
+	.filter-tabs button.active
+) {
+	background-image: var(--accent-gradient) !important;
+	color: #fff !important;
+}
+
+html[data-appearance] :is(
+	.button-primary,
+	.reorder-button,
+	.cart-checkout-button,
+	.confirm-button,
+	.featured-add:not(:disabled),
+	.select-product:not(.select-product-disabled),
+	.filter-tabs button.active
+):hover {
+	background-image: var(--accent-gradient-hover) !important;
+}
+
+html[data-appearance='qcu-navy-gold'] :is(.hero-eyebrow, .shop-eyebrow, .status-badge) {
+	border-color: var(--accent-border) !important;
+	background-color: var(--accent-soft) !important;
+	color: rgb(252 211 77 / 90%) !important;
+}
+
+html[data-appearance='qcu-navy-gold'] .auth-modal .action-panel button[type='submit'] {
+	background-image: var(--accent-gradient) !important;
+}
+
+html[data-appearance='qcu-navy-gold'] :is(.history-toolbar, .reorder-bar, .order-block) {
+	border-color: var(--accent-border) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html[data-appearance] *,
+	html[data-appearance] *::before,
+	html[data-appearance] *::after {
+		scroll-behavior: auto !important;
 	}
 }

@@ -2,16 +2,19 @@
 	import { enhance } from '$app/forms';
 	import { getContext, tick } from 'svelte';
 	import type { PageData } from './$types';
-	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
-	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
-	import StaffLogout from '$lib/components/StaffLogout.svelte';
+	import { appearance, appearanceOptions } from '$lib/stores/theme';
 
 	type Product = { id: number; sku: string; name: string; categoryId: number | null; price: number | null; size: string; stock: number; image: string | null };
 	type CartLine = { product: Product; quantity: number };
 	type Member = { id: string; displayId: string; name: string; role: string };
 	type PickupOrder = { id: string; reference: string; customerId: string; customerName: string; total: number; stockReserved: boolean; createdAt: string; items: Array<{ productId: number; name: string; quantity: number; price: number }> };
 	let { data, form }: { data: PageData; form?: { success?: boolean; message?: string } } = $props();
-	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	const cashierSidebar = getContext<{
+		collapsed: boolean;
+		mobileOpen: boolean;
+		toggleMobile: () => void;
+		closeMobile: () => void;
+	}>('cashierSidebar');
 	let activeCategory = $state('all');
 	let showFilters = $state(false);
 	let search = $state('');
@@ -26,10 +29,13 @@
 	let toast = $state('');
 	let heldOrders = $state<CartLine[][]>([]);
 	let lastHeldOrder = $state<CartLine[] | null>(null);
-	let mobileSidebarOpen = $state(false);
+	let failedProductImageIds = $state<number[]>([]);
 	const products = $derived(data.products as Product[]);
 	const members = $derived(data.customers as Member[]);
 	const pickupOrders = $derived(data.pickupOrders as PickupOrder[]);
+	const activeAppearanceLabel = $derived(
+		appearanceOptions.find((option) => option.value === $appearance)?.label ?? 'Midnight Royal'
+	);
 	const categories = $derived([{ id: 'all', label: 'All products' }, ...data.categories.map((category) => ({ id: String(category.id), label: category.category_name }))]);
 	const categoryLabels = $derived(new Map(data.categories.map((category) => [category.id, category.category_name])));
 	const filteredProducts = $derived(products.filter((product) => {
@@ -49,6 +55,12 @@
 
 	function quantityFor(product: Product) {
 		return cart.find((line) => line.product.id === product.id)?.quantity ?? 0;
+	}
+
+	function cycleAppearance() {
+		const currentIndex = appearanceOptions.findIndex((option) => option.value === $appearance);
+		const nextAppearance = appearanceOptions[(currentIndex + 1) % appearanceOptions.length];
+		if (nextAppearance) appearance.set(nextAppearance.value);
 	}
 
 	function addToOrder(product: Product) {
@@ -101,7 +113,10 @@
 </script>
 
 <svelte:window onkeydown={(event) => {
-	if (event.key === 'Escape') showFilters = false;
+	if (event.key === 'Escape') {
+		showFilters = false;
+		cashierSidebar.closeMobile();
+	}
 }} />
 
 <svelte:head>
@@ -112,47 +127,21 @@
 <main
 	class="register-shell"
 	class:collapsed={cashierSidebar.collapsed}
-	class:mobile-open={mobileSidebarOpen}
 >
-	<aside class="register-sidebar" id="register-sidebar" aria-label="Cashier workspace sidebar">
-		<CashierSidebarHeader
-			collapsed={cashierSidebar.collapsed}
-			href="/staff/pos/register"
-		/>
-		<div class="sidebar-label">Workspace</div>
-		<CashierNavigation
-			collapsed={cashierSidebar.collapsed}
-			onNavigate={() => (mobileSidebarOpen = false)}
-		/>
-		<div class="sidebar-footer">
-			<span class="online-dot"></span><span class="sidebar-footer-copy"
-				><strong>Register online</strong><small>Register 01 · Open</small></span
-			>
-		</div>
-		<StaffLogout />
-	</aside>
-	{#if mobileSidebarOpen}
-		<button
-			class="sidebar-backdrop"
-			type="button"
-			aria-label="Close navigation"
-			onclick={() => (mobileSidebarOpen = false)}
-		></button>
-	{/if}
 	<section class="register-main">
 		<header class="register-topbar">
 			<div class="topbar-title">
 				<button
 					class="mobile-menu-button"
 					type="button"
-					aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
-					aria-expanded={mobileSidebarOpen}
-					aria-controls="register-sidebar"
-					onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+					aria-label={cashierSidebar.mobileOpen ? 'Close navigation' : 'Open navigation'}
+					aria-expanded={cashierSidebar.mobileOpen}
+					aria-controls="cashier-sidebar"
+					onclick={cashierSidebar.toggleMobile}
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true"
 						><path
-							d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'}
+							d={cashierSidebar.mobileOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'}
 						/></svg
 					>
 				</button>
@@ -162,7 +151,20 @@
 			<div class="topbar-actions">
 				<span class="register-state"><strong>Register 01</strong><span><i></i> Open</span></span>
 				<span class="topbar-divider"></span>
-				<button class="header-icon" type="button" aria-label="Register status">◦</button>
+				<button
+					class="header-icon appearance-button"
+					type="button"
+					aria-label={`Change appearance. Current appearance: ${activeAppearanceLabel}`}
+					title={`Change appearance: ${activeAppearanceLabel}`}
+					onclick={cycleAppearance}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M12 3a9 9 0 1 0 0 18h1.2a2.3 2.3 0 0 0 1.6-3.9 1.6 1.6 0 0 1 1.1-2.8H18a3 3 0 0 0 3-3c0-4.6-4-8.3-9-8.3Z" />
+						<circle cx="7.5" cy="12" r="1" />
+						<circle cx="10" cy="7.5" r="1" />
+						<circle cx="15" cy="8" r="1" />
+					</svg>
+				</button>
 				<div class="notification-wrap">
 					<button
 						class="header-icon"
@@ -270,16 +272,30 @@
 					{#each filteredProducts as product (product.id)}
 						<article class="product-card">
 							<div class="product-image">
-								<span class="stock-badge" class:low-stock={product.stock < 20}
+								<span
+									class="stock-badge"
+									class:in-stock={product.stock > 10}
+									class:low-stock={product.stock > 0 && product.stock <= 10}
+									class:out-of-stock={product.stock === 0}
 									>{product.stock} left</span
 								>
-								{#if product.image}<img src={product.image} alt="" loading="lazy" />{:else}<div class="image-placeholder" aria-hidden="true">
+								{#if product.image && !failedProductImageIds.includes(product.id)}
+									<img
+										src={product.image}
+										alt=""
+										loading="lazy"
+										class="h-full w-full object-contain"
+										onerror={() => {
+											if (!failedProductImageIds.includes(product.id)) {
+												failedProductImageIds = [...failedProductImageIds, product.id];
+											}
+										}}
+									/>
+								{:else}<div class="image-placeholder" aria-hidden="true">
 									<svg viewBox="0 0 24 24"
-										><rect x="4" y="4" width="16" height="16" rx="2" /><circle
-											cx="9"
-											cy="9"
-											r="1.5"
-										/><path d="m5 17 5-5 3 3 2-2 4 4" /></svg
+										><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path
+											d="m4.5 7.5 7.5 4 7.5-4M12 12v9"
+										/></svg
 									>
 								</div>{/if}
 								<span class="product-variant">{product.size}<small>{product.sku}</small></span>
@@ -348,8 +364,12 @@
 							class="member-button"
 							type="button"
 							aria-label="Choose customer or member"
-							onclick={() => customerDialog?.showModal()}>⌄</button
+							onclick={() => customerDialog?.showModal()}
 						>
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="m6 9 6 6 6-6" />
+							</svg>
+						</button>
 					</div>
 					<p class="discount-note">
 						{#if customer}Patronage Discount (5%) applied{:else}No member discount applied{/if}
@@ -596,6 +616,10 @@
 </dialog>
 
 <style>
+	:global(html:has(.register-shell)) {
+		font-size: 17.5px;
+	}
+
 	.register-shell {
 		--ink: #172033;
 		--muted: #70809a;
@@ -750,6 +774,9 @@
 		color: #172033;
 		font-size: 0.55rem;
 	}
+	.register-state > strong {
+		font-weight: 700;
+	}
 	.register-state > span {
 		display: inline-flex;
 		align-items: center;
@@ -781,6 +808,20 @@
 		background: transparent;
 		color: #75839a;
 		cursor: pointer;
+	}
+	.appearance-button {
+		width: 1.9rem;
+		height: 1.9rem;
+		border: 1px solid #dfe7ef;
+		border-radius: 50%;
+		background: white;
+		color: #53647a;
+		transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+	}
+	.appearance-button:hover {
+		border-color: #93c5fd;
+		background: #eff6ff;
+		color: #2563eb;
 	}
 	.header-icon svg {
 		width: 0.82rem;
@@ -1198,29 +1239,34 @@
 	.product-image {
 		position: relative;
 		display: flex;
-		height: 3.55rem;
-		align-items: flex-end;
-		justify-content: space-between;
+		height: 7rem;
+		align-items: center;
+		justify-content: center;
 		overflow: hidden;
 		border: 1px solid #e2e7ed;
-		border-radius: 0.45rem 0.45rem 0 0;
-		background: #f1f3f5;
+		border-radius: 0.75rem;
+		background: rgba(11, 21, 40, 0.7);
+		padding: 0.625rem;
 	}
 	.image-placeholder {
 		display: grid;
-		width: 3.7rem;
+		width: 3rem;
 		height: 3rem;
 		place-items: center;
-		border: 1px solid #e2e7ed;
-		border-bottom: 0;
-		border-radius: 0.42rem 0.42rem 0 0;
-		background: #f6f7f8;
-		color: #9aa6b6;
+		border: 1px solid rgba(148, 163, 184, 0.2);
+		border-radius: 0.75rem;
+		background: rgba(255, 255, 255, 0.08);
+		color: #94a3b8;
 	}
-	.product-image > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+	.product-image > img {
+		display: block;
+		min-width: 0;
+		flex: 1;
+		object-fit: contain;
+	}
 	.image-placeholder svg {
-		width: 1.1rem;
-		height: 1.1rem;
+		width: 1.5rem;
+		height: 1.5rem;
 		fill: none;
 		stroke: currentColor;
 		stroke-linecap: round;
@@ -1232,26 +1278,41 @@
 		z-index: 1;
 		top: 0.28rem;
 		right: 0.28rem;
-		border-radius: 0.32rem;
-		background: #e3fbef;
-		color: #0a9b53;
+		border: 1px solid transparent;
+		border-radius: 9999px;
 		padding: 0.18rem 0.35rem;
 		font-size: 0.48rem;
 		font-weight: 800;
 	}
+	.stock-badge.in-stock {
+		border-color: rgba(52, 211, 153, 0.3);
+		background: rgba(16, 185, 129, 0.15);
+		color: #6ee7b7;
+	}
 	.stock-badge.low-stock {
-		background: #fff0ee;
-		color: #e74b43;
+		border-color: rgba(251, 191, 36, 0.3);
+		background: rgba(245, 158, 11, 0.15);
+		color: #fcd34d;
+	}
+	.stock-badge.out-of-stock {
+		border-color: rgba(251, 113, 133, 0.3);
+		background: rgba(244, 63, 94, 0.15);
+		color: #fda4af;
 	}
 	.product-variant {
+		position: absolute;
+		z-index: 1;
+		right: 0.35rem;
+		bottom: 0.35rem;
 		display: grid;
 		gap: 0.12rem;
 		padding: 0 0.25rem 0.25rem 0;
-		color: #7889a2;
+		color: #cbd5e1;
 		font-size: 0.49rem;
 		text-align: right;
 	}
 	.product-variant small {
+		color: #94a3b8;
 		font-size: 0.46rem;
 	}
 	.product-card h3 {
@@ -1384,17 +1445,24 @@
 	}
 	.customer-control {
 		display: flex;
-		gap: 0.35rem;
+		height: 2.75rem;
+		gap: 0;
+		overflow: hidden;
+		border: 1px solid #dfe7ef;
+		border-radius: 0.5rem;
+		background: #f1f3f6;
 	}
 	.customer-button {
 		flex: 1;
 		min-width: 0;
+		height: 100%;
+		box-sizing: border-box;
 		overflow: hidden;
 		border: 0;
-		border-radius: 0.42rem;
-		background: #f1f3f6;
+		border-radius: 0;
+		background: transparent;
 		color: #1f293b;
-		padding: 0.52rem 0.6rem;
+		padding: 0 0.75rem;
 		font: inherit;
 		font-size: 0.57rem;
 		font-weight: 800;
@@ -1404,13 +1472,25 @@
 		cursor: pointer;
 	}
 	.member-button {
-		width: 1.9rem;
+		display: grid;
+		width: 2.75rem;
+		height: 100%;
+		flex: 0 0 2.75rem;
+		place-items: center;
 		border: 0;
-		border-radius: 0.42rem;
+		border-radius: 0;
 		background: #347af5;
 		color: white;
-		font-size: 0.8rem;
 		cursor: pointer;
+	}
+	.member-button svg {
+		width: 1rem;
+		height: 1rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
 	}
 	.discount-note {
 		margin: 0.3rem 0 0.7rem;
@@ -1789,6 +1869,23 @@
 		background: #172640;
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .register-topbar) {
+		background: #0b1528;
+	}
+	:global(html[data-theme='dark'] .register-state > strong) {
+		color: #cbd5e1;
+		font-weight: 500;
+	}
+	:global(html[data-theme='dark'] .appearance-button) {
+		border-color: #405776;
+		background: #101d35;
+		color: #cbd5e1;
+	}
+	:global(html[data-theme='dark'] .appearance-button:hover) {
+		border-color: #60a5fa;
+		background: #1b2e49;
+		color: #bfdbfe;
+	}
 	:global(html[data-theme='dark'] .pos-error) { border-color: #74434b; background: #3c242c; color: #ffc6c6; }
 	:global(html[data-theme='dark'] .pos-success) { border-color: #28664d; background: #173a30; color: #a8edc8; }
 	:global(html[data-theme='dark'] .pickup-orders summary),
@@ -1822,14 +1919,25 @@
 		background: #101d35;
 		color: #edf4ff;
 	}
+	:global(html[data-theme='dark'] .customer-control) {
+		border-color: #415878;
+		background: #101d35;
+	}
+	:global(html[data-theme='dark'] .customer-button) {
+		background: transparent;
+	}
+	:global(html[data-theme='dark'] .member-button) {
+		background: #347af5;
+		color: #fff;
+	}
 	:global(html[data-theme='dark'] .register-shell .product-image) {
 		border-color: #58718f;
-		background: #1b2e49;
+		background: rgba(11, 21, 40, 0.7);
 	}
 	:global(html[data-theme='dark'] .register-shell .image-placeholder) {
-		border-color: #58718f;
-		background: #263f60;
-		color: #dbeafe;
+		border-color: rgba(148, 163, 184, 0.2);
+		background: rgba(255, 255, 255, 0.08);
+		color: #94a3b8;
 	}
 	:global(html[data-theme='dark'] .register-shell .product-price) {
 		color: #60a5fa;

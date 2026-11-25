@@ -1,1 +1,7 @@
-export { theme, type Theme } from './stores/theme';
+export {
+	appearance,
+	appearanceOptions,
+	isAppearancePreset,
+	isDarkAppearance,
+	type AppearancePreset
+} from './stores/theme';

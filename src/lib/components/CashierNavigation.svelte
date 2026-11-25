@@ -56,13 +56,13 @@
 <style>
 	.cashier-navigation {
 		position: relative;
-		--nav-item-height: 2.65rem;
-		--nav-item-step: 3rem;
+		--nav-item-height: 2.75rem;
+		--nav-item-step: 3.1rem;
 		display: grid;
 		flex: 1 1 0;
 		grid-auto-rows: var(--nav-item-height);
 		align-content: start;
-		gap: 0.35rem;
+		gap: 0.3rem;
 		min-height: 0;
 		overflow: hidden;
 	}
@@ -74,11 +74,12 @@
 		left: 0;
 		height: var(--nav-item-height);
 		transform: translateY(calc(var(--active-nav-index) * var(--nav-item-step)));
-		border-radius: 0.65rem;
-		background: #2563eb;
-		box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
+		border: 1px solid var(--accent-border);
+		border-radius: 0.75rem;
+		background: var(--accent-gradient);
+		box-shadow: 0 8px 16px rgb(37 99 235 / 22%);
 		pointer-events: none;
-		view-transition-name: cashier-nav-active;
+		transition: transform 300ms ease-out, background 200ms ease, border-color 200ms ease;
 	}
 	.cashier-navigation a {
 		position: relative;
@@ -89,18 +90,20 @@
 		min-width: 0;
 		align-items: center;
 		gap: 0.75rem;
-		border-radius: 0.65rem;
-		color: #9aacca;
-		padding: 0.75rem;
+		border: 1px solid transparent;
+		border-radius: 0.75rem;
+		color: var(--text-muted);
+		padding: 0.625rem 0.875rem;
 		font-size: 0.72rem;
 		font-weight: 700;
 		line-height: 1.25;
 		text-decoration: none;
-		transition: color 150ms ease;
+		transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
 	}
 	.cashier-navigation a:hover:not(.active) {
-		background: #12274b;
-		color: white;
+		border-color: var(--accent-border);
+		background: var(--accent-soft);
+		color: var(--text-primary);
 	}
 	.cashier-navigation a.active {
 		color: white;
@@ -121,12 +124,25 @@
 		stroke-linejoin: round;
 		stroke-width: 1.8;
 	}
+	.nav-label {
+		display: inline;
+		max-width: 12rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		opacity: 1;
+		transform: translateX(0);
+		transition: max-width 200ms ease, opacity 200ms ease, transform 200ms ease;
+	}
 	.cashier-navigation.collapsed a {
 		justify-content: center;
 		padding: 0.75rem 0;
 	}
 	.cashier-navigation.collapsed .nav-label {
-		display: none;
+		max-width: 0;
+		opacity: 0;
+		transform: translateX(-0.35rem);
+		visibility: hidden;
 	}
 	@media (max-width: 760px) {
 		.cashier-navigation {
@@ -142,6 +158,10 @@
 		}
 		.cashier-navigation.collapsed .nav-label {
 			display: inline;
+			max-width: 12rem;
+			opacity: 1;
+			transform: translateX(0);
+			visibility: visible;
 		}
 	}
 	@media (max-height: 600px) {

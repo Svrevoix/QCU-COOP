@@ -14,7 +14,7 @@ export type PurchaseOrder = {
 	total?: number;
 };
 
-const STORAGE_KEY = 'qcu-coop-purchase-history';
+const STORAGE_KEY = 'qcu-coop-purchase-history-v2';
 let activeProfileId: string | null = null;
 
 function readOrders(profileId: string): PurchaseOrder[] {
@@ -32,7 +32,11 @@ export const purchaseOrders = writable<PurchaseOrder[]>([]);
 
 purchaseOrders.subscribe((orders) => {
 	if (browser && activeProfileId) {
-		localStorage.setItem(`${STORAGE_KEY}:${activeProfileId}`, JSON.stringify(orders));
+		try {
+			localStorage.setItem(`${STORAGE_KEY}:${activeProfileId}`, JSON.stringify(orders));
+		} catch (cause) {
+			console.error('Could not persist purchase history in this browser.', cause);
+		}
 	}
 });
 

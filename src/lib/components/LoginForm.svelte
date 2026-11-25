@@ -2,7 +2,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
-	import { theme } from '$lib/stores/theme';
+	import AppearanceSelector from '$lib/components/AppearanceSelector.svelte';
 	import {
 		departmentCourses,
 		maxYearLevelForCourse,
@@ -27,7 +27,6 @@
 	let signupYearLevel = $state('');
 	let signupCourses = $derived(signupDepartment ? departmentCourses[signupDepartment] : []);
 	let signupMaxYearLevel = $derived(maxYearLevelForCourse(signupCourse));
-	let isDarkMode = $derived($theme === 'dark');
 	let isLoading = $state(true);
 
 	function handleIdInput(event: Event, field: 'login' | 'signup') {
@@ -68,21 +67,7 @@
 </script>
 
 <div class="auth-overlay">
-	<button
-		type="button"
-		class="theme-toggle"
-		aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-		aria-pressed={isDarkMode}
-		onclick={() => theme.toggle()}
-	>
-		{#if isDarkMode}
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
-			<span>Light mode</span>
-		{:else}
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z" /></svg>
-			<span>Dark mode</span>
-		{/if}
-	</button>
+	<div class="appearance-control"><AppearanceSelector /></div>
 	<div class="auth-modal w-full max-w-5xl lg:h-[610px]" role="dialog" aria-modal="true" aria-label={activeMode === 'login' ? 'Log in' : 'Sign up'}>
 		{#if isLoading}
 			<div class="skeleton-panel" aria-live="polite" aria-busy="true">
@@ -133,9 +118,7 @@
 							>
 								<input type="hidden" name="mode" value="login" />
 								<div class="form-header">
-									<span class="brand-logo" aria-hidden="true">
-										<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
-									</span>
+									<img class="brand-logo mx-auto mb-3 h-12 w-auto" src="/images/logo/qcu_cooplogo-light-mode_bg.png" alt="QCU Coop" />
 									<h1>Welcome back</h1>
 									<p class="form-subtitle">Sign in with your QCU account</p>
 								</div>
@@ -162,9 +145,7 @@
 							>
 								<input type="hidden" name="mode" value="signup" />
 								<div class="form-header">
-									<span class="brand-logo" aria-hidden="true">
-										<img src={isDarkMode ? '/images/logo/qcu_cooplogo-dark-mode_bg.jpeg' : '/images/logo/qcu_cooplogo-light-mode_bg.png'} alt="" />
-									</span>
+									<img class="brand-logo mx-auto mb-3 h-12 w-auto" src="/images/logo/qcu_cooplogo-light-mode_bg.png" alt="QCU Coop" />
 									<h1>Create your account</h1>
 									<p class="form-subtitle">Register with your email address</p>
 								</div>
@@ -211,11 +192,7 @@
 <style>
 	.auth-overlay { position: fixed; inset: 0; z-index: 100; display: grid; width: 100%; min-height: 100dvh; place-items: center; overflow-y: auto; background: rgba(2, 6, 23, .6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: clamp(.5rem, 3vw, 1.5rem); }
 	.auth-modal { --form-bg: #f4f9ff; --form-text: #0c2340; --form-muted: #3b5578; --field-bg: #fff; --field-border: #d9e2ec; position: relative; width: 100%; max-width: 64rem; height: min(610px, calc(100dvh - 2rem)); min-height: min(26rem, calc(100dvh - 1rem)); margin: auto; overflow: hidden; border: 1px solid rgba(15, 23, 42, .08); border-radius: 1.5rem; background: var(--form-bg); box-shadow: 0 32px 80px rgba(7, 21, 45, .35); }
-	.theme-toggle { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 101; display: inline-flex; align-items: center; gap: .55rem; border: 1px solid rgba(148, 163, 184, .38); border-radius: 9999px; background: rgba(255, 255, 255, .88); padding: .6rem .9rem; color: #0c2340; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); backdrop-filter: blur(12px); cursor: pointer; font-size: .8rem; font-weight: 700; transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease; }
-	.theme-toggle:hover { border-color: #38bdf8; }
-	.theme-toggle:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
-	.theme-toggle svg { width: 1rem; height: 1rem; flex-shrink: 0; }
-	:global(html[data-theme='dark'] .theme-toggle) { border-color: rgba(148, 163, 184, .3); background: rgba(15, 23, 42, .9); color: #e2e8f0; }
+	.appearance-control { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 101; }
 	.skeleton-panel { display: flex; width: 100%; height: 100%; flex-direction: column; justify-content: center; gap: 1.1rem; padding: 2.25rem 2rem; background: linear-gradient(135deg, #eef4fb, #f7f9fc); }
 	.skeleton-avatar { width: 6.25rem; height: 6.25rem; margin: 0 auto 1rem; border-radius: 50%; background: linear-gradient(90deg, #dfeaf5 25%, #edf3f9 50%, #dfeaf5 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 	.skeleton-line { height: 1.05rem; border-radius: .75rem; background: linear-gradient(90deg, #dfeaf5 25%, #edf3f9 50%, #dfeaf5 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
@@ -235,10 +212,8 @@
 	.form-panel { position: absolute; top: 0; left: 41.666667%; display: flex; box-sizing: border-box; width: 58.333333%; height: 100%; min-width: 0; min-height: 0; flex-direction: column; justify-content: center; align-items: center; overflow-y: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, .6) transparent; background: var(--form-bg); color: var(--form-text); transition: left 500ms cubic-bezier(.22, 1, .36, 1); }
 	.panels-track.signup .form-panel { left: 0; }
 	.form-header { width: 100%; margin-bottom: .75rem; text-align: center; }
-	.brand-logo { display: block; width: 7rem; flex-shrink: 0; margin: 0 auto .5rem; }
-	.brand-logo img { display: block; width: 7rem; height: auto; margin: 0 auto; }
+	.brand-logo { display: block; flex-shrink: 0; }
 	.panels-track.signup .form-header { margin-bottom: .5rem; }
-	.panels-track.signup .brand-logo, .panels-track.signup .brand-logo img { width: 5.5rem; }
 	.form-header h1 { margin: 0; overflow-wrap: break-word; font-size: 1.15rem; font-weight: 800; }
 	.form-subtitle { margin: .35rem 0 0; color: var(--form-muted); overflow-wrap: break-word; font-size: .75rem; font-weight: 600; }
 	.auth-form { display: grid; width: 100%; min-height: 0; flex: 0 1 auto; grid-template-areas: 'auth'; }
@@ -264,5 +239,7 @@
 	@media (min-width: 1024px) { .image-panel { display: flex; } }
 	@media (max-width: 1023px) { .image-panel { display: none; } .form-panel { position: relative; left: 0; width: 100%; overflow-y: auto; } }
 	@media (max-height: 640px) { .form-panel { overflow-y: auto; } }
-	@media (max-height: 540px) { .auth-modal { border-radius: 1rem; } .form-panel { padding-top: 1rem; padding-bottom: 1rem; } .form-header { margin-bottom: .5rem; } .brand-logo, .brand-logo img { width: 6rem; } .brand-logo { margin-bottom: .35rem; } }
+	@media (max-height: 540px) { .auth-modal { border-radius: 1rem; } .form-panel { padding-top: 1rem; padding-bottom: 1rem; } .form-header { margin-bottom: .5rem; } }
+	:global(html[data-appearance='midnight-royal'] .brand-logo),
+	:global(html[data-appearance='qcu-navy-gold'] .brand-logo) { filter: brightness(0) invert(1); }
 </style>

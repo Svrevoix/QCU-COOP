@@ -2,15 +2,14 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
+	import AppearanceSelector from '$lib/components/AppearanceSelector.svelte';
 	import { avatarStorageKey } from '$lib/profile';
-	import { theme } from '$lib/stores/theme';
 
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
 	let avatarError = $state('');
-	let isDarkMode = $derived($theme === 'dark');
 
 	function handleImageSelect(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -35,10 +34,6 @@
 			avatarError = 'The selected image could not be loaded.';
 		};
 		reader.readAsDataURL(file);
-	}
-
-	function toggleTheme() {
-		theme.toggle();
 	}
 
 	onMount(() => {
@@ -96,18 +91,10 @@
 			<h3>Settings</h3>
 			<div class="settings-row">
 				<div>
-					<strong>Dark mode</strong>
-					<p>Use a darker appearance throughout the admin workspace.</p>
+					<strong>Appearance</strong>
+					<p>Choose a shared gradient appearance for your workspace.</p>
 				</div>
-				<button
-					type="button"
-					class="theme-switch"
-					onclick={toggleTheme}
-					aria-pressed={isDarkMode}
-					aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-				>
-					<span class="switch-thumb"></span>
-				</button>
+				<AppearanceSelector />
 			</div>
 			<PasswordChange />
 		</div>
@@ -136,15 +123,9 @@
 	.settings-section h3 { margin: 0 0 .85rem; color: #111827; font-size: .85rem; font-weight: 800; }
 	.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: #1f2937; font-size: .85rem; font-weight: 700; }
 	.settings-row p { margin: .25rem 0 0; color: #718096; font-size: .72rem; font-weight: 500; }
-	.theme-switch { position: relative; display: block; box-sizing: border-box; width: 2.4rem; min-width: 2.4rem; height: 1.3rem; min-height: 1.3rem; flex: 0 0 2.4rem; border: 1px solid #d3dae6; border-radius: 9999px; background: #e2e8f0; padding: 0; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
-	.theme-switch[aria-pressed='true'] { border-color: #2563eb; background: #2563eb; }
-	.switch-thumb { position: absolute; top: 1px; left: 1px; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform 160ms ease; }
-	.theme-switch[aria-pressed='true'] .switch-thumb { transform: translateX(1.1rem); }
 	:global(html[data-theme='dark'] .settings-card) { border-color: #334866; background: #172640; }
 	:global(html[data-theme='dark'] .settings-card h2), :global(html[data-theme='dark'] .account-name), :global(html[data-theme='dark'] .settings-section h3), :global(html[data-theme='dark'] .settings-row), :global(html[data-theme='dark'] .profile-details dd) { color: #edf4ff; }
 	:global(html[data-theme='dark'] .account-role), :global(html[data-theme='dark'] .settings-row p), :global(html[data-theme='dark'] .profile-details dt) { color: #b8c8dd; }
 	:global(html[data-theme='dark'] .settings-section) { border-color: #334866; }
 	:global(html[data-theme='dark'] .avatar-preview) { border-color: #415878; background: #101d35; color: #b8c8dd; }
-	:global(html[data-theme='dark'] .theme-switch) { border-color: #415878; background: #223957; }
-	:global(html[data-theme='dark'] .theme-switch[aria-pressed='true']) { border-color: #2563eb; background: #2563eb; }
 </style>

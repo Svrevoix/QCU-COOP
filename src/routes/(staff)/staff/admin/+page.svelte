@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
-	let loading = $state(true);
 	let localTime = $state('');
 	let timeOfDay = $state('morning');
 	let today = $state(new Date());
@@ -32,7 +31,6 @@
 		}
 		updateClock();
 		const interval = setInterval(updateClock, 1000);
-		loading = false;
 		return () => clearInterval(interval);
 	});
 </script>
@@ -94,18 +92,6 @@
 		</div>
 	</header>
 
-	{#if loading}
-		<div class="dashboard-skeleton" aria-label="Loading dashboard" aria-busy="true">
-			<div class="skeleton-header"></div>
-			<div class="skeleton-stats">
-				{#each [1, 2, 3, 4] as item (item)}<div class="skeleton-card"></div>{/each}
-			</div>
-			<div class="skeleton-columns">
-				<div class="skeleton-card"></div>
-				<div class="skeleton-card"></div>
-			</div>
-		</div>
-	{:else}
 		<section class="welcome-card" aria-label="Operations overview">
 			<div class="welcome-icon" aria-hidden="true"></div>
 			<div class="welcome-copy">
@@ -329,10 +315,8 @@
 						{/each}
 					</div>
 				</section>
-
 			</aside>
 		</div>
-	{/if}
 </main>
 
 <style>
@@ -1001,41 +985,6 @@
 	.activity-row > .status-badge {
 		flex: 0 0 auto;
 	}
-	.dashboard-skeleton {
-		min-height: 30rem;
-	}
-	.skeleton-header,
-	.skeleton-card {
-		border-radius: 0.7rem;
-		background: linear-gradient(90deg, #e8edf4 25%, #f3f6fa 50%, #e8edf4 75%);
-		background-size: 200% 100%;
-		animation: skeleton-shimmer 1.2s ease-in-out infinite;
-	}
-	.skeleton-header {
-		height: 5rem;
-		margin-bottom: 0.8rem;
-	}
-	.skeleton-stats,
-	.skeleton-columns {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.6rem;
-		margin-bottom: 0.6rem;
-	}
-	.skeleton-columns {
-		grid-template-columns: 2fr 1fr;
-	}
-	.skeleton-card {
-		min-height: 5rem;
-	}
-	.skeleton-columns .skeleton-card {
-		min-height: 22rem;
-	}
-	@keyframes skeleton-shimmer {
-		to {
-			background-position: -200% 0;
-		}
-	}
 	:global(html[data-theme='dark'] .dashboard-page .dashboard-topbar),
 	:global(html[data-theme='dark'] .dashboard-page .welcome-card),
 	:global(html[data-theme='dark'] .dashboard-page .dashboard-card),
@@ -1086,12 +1035,6 @@
 	}
 	:global(html[data-theme='dark'] .dashboard-page td) {
 		border-color: #334866;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skeleton-header,
-		.skeleton-card {
-			animation: none;
-		}
 	}
 	@media (max-width: 900px) {
 		.dashboard-columns {

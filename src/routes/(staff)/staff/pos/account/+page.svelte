@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import CashierNavigation from '$lib/components/CashierNavigation.svelte';
-	import CashierSidebarHeader from '$lib/components/CashierSidebarHeader.svelte';
 	import PasswordChange from '$lib/components/PasswordChange.svelte';
-	import StaffLogout from '$lib/components/StaffLogout.svelte';
+	import AppearanceSelector from '$lib/components/AppearanceSelector.svelte';
 	import { avatarStorageKey } from '$lib/profile';
-	import { theme } from '$lib/stores/theme';
 
-	const cashierSidebar = getContext<{ collapsed: boolean }>('cashierSidebar');
+	const cashierSidebar = getContext<{
+		collapsed: boolean;
+		mobileOpen: boolean;
+		toggleMobile: () => void;
+		closeMobile: () => void;
+	}>('cashierSidebar');
 	const user = $derived(page.data.user);
 	const fullName = $derived([user?.firstName, user?.lastName].filter(Boolean).join(' '));
 	let fileInput = $state<HTMLInputElement>();
 	let avatar = $state<string | null>(null);
-	let isDarkMode = $derived($theme === 'dark');
-	let mobileSidebarOpen = $state(false);
 
 	function handleImageSelect(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -31,31 +31,17 @@
 		reader.readAsDataURL(file);
 	}
 
-	function toggleTheme() {
-		theme.toggle();
-	}
-
 	onMount(() => {
 		avatar = user?.profileId
 			? localStorage.getItem(avatarStorageKey(user.profileId))
 			: null;
 	});
 
-	$effect(() => {
-		if (!mobileSidebarOpen) return;
-
-		const previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-
-		return () => {
-			document.body.style.overflow = previousOverflow;
-		};
-	});
 </script>
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape') mobileSidebarOpen = false;
+		if (event.key === 'Escape') cashierSidebar.closeMobile();
 	}}
 />
 
@@ -63,39 +49,19 @@
 	<title>Cashier Account | QCU Coop Store</title>
 </svelte:head>
 
-<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed} class:mobile-open={mobileSidebarOpen}>
-	<aside class="cashier-sidebar" id="cashier-sidebar" aria-label="Cashier workspace sidebar">
-		<CashierSidebarHeader
-			collapsed={cashierSidebar.collapsed}
-		/>
-		<p class="sidebar-label">Workspace</p>
-		<CashierNavigation
-			collapsed={cashierSidebar.collapsed}
-			onNavigate={() => (mobileSidebarOpen = false)}
-		/>
-		<StaffLogout />
-	</aside>
-	{#if mobileSidebarOpen}
-		<button
-			class="cashier-sidebar-backdrop"
-			type="button"
-			aria-label="Close navigation"
-			onclick={() => (mobileSidebarOpen = false)}
-		></button>
-	{/if}
-
+<main class="cashier-shell" class:collapsed={cashierSidebar.collapsed}>
 	<section class="cashier-content">
 		<header class="cashier-mobile-topbar">
 			<button
 				class="cashier-mobile-menu-button"
 				type="button"
-				aria-label={mobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
-				aria-expanded={mobileSidebarOpen}
+				aria-label={cashierSidebar.mobileOpen ? 'Close navigation' : 'Open navigation'}
+				aria-expanded={cashierSidebar.mobileOpen}
 				aria-controls="cashier-sidebar"
-				onclick={() => (mobileSidebarOpen = !mobileSidebarOpen)}
+				onclick={cashierSidebar.toggleMobile}
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
-					<path d={mobileSidebarOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
+					<path d={cashierSidebar.mobileOpen ? 'm6 6 12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} />
 				</svg>
 			</button>
 			<strong>Cashier workspace</strong>
@@ -178,15 +144,8 @@
 			<div class="settings-section">
 				<h3>Settings</h3>
 				<div class="settings-row">
-					<span>Dark mode</span>
-					<button
-						type="button"
-						class="theme-switch"
-						onclick={toggleTheme}
-						aria-pressed={isDarkMode}
-						aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-						><span class="switch-thumb"></span></button
-					>
+					<span>Appearance</span>
+					<AppearanceSelector />
 				</div>
 				<PasswordChange />
 			</div>
@@ -406,38 +365,6 @@
 		font-size: 0.85rem;
 		font-weight: 700;
 	}
-	.theme-switch {
-		position: relative;
-		width: 2.4rem;
-		height: 1.3rem;
-		flex-shrink: 0;
-		border: 1px solid #d3dae6;
-		border-radius: 9999px;
-		background: #e2e8f0;
-		padding: 0;
-		cursor: pointer;
-		transition:
-			background 160ms ease,
-			border-color 160ms ease;
-	}
-	.theme-switch[aria-pressed='true'] {
-		border-color: #2563eb;
-		background: #2563eb;
-	}
-	.switch-thumb {
-		position: absolute;
-		top: 1px;
-		left: 1px;
-		width: 1.1rem;
-		height: 1.1rem;
-		border-radius: 50%;
-		background: white;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-		transition: transform 160ms ease;
-	}
-	.theme-switch[aria-pressed='true'] .switch-thumb {
-		transform: translateX(1.1rem);
-	}
 	:global(html[data-theme='dark'] .cashier-shell) {
 		background: #101d35;
 		color: #edf4ff;
@@ -465,14 +392,6 @@
 		border-color: #415878;
 		background: #101d35;
 		color: #b8c8dd;
-	}
-	:global(html[data-theme='dark'] .theme-switch) {
-		border-color: #415878;
-		background: #223957;
-	}
-	:global(html[data-theme='dark'] .theme-switch[aria-pressed='true']) {
-		border-color: #2563eb;
-		background: #2563eb;
 	}
 	:global(html[data-theme='dark'] .profile-details dt) {
 		color: #b8c8dd;
